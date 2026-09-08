@@ -1,23 +1,14 @@
 /**
- * The hackathon tracks — single source of truth.
- *
- * These exact strings are what the registration form submits and what is stored
- * on `Team.hackathonTrack` (and mirrored into the legacy `challenge` column), so
- * every selector, filter and per-track count in the app must render from this
- * list. Diverging copies are why the admin dashboard used to filter and count by
- * tracks no team could ever have.
- *
- * Order follows the registration form.
+ * Backwards-compatible aliases for src/lib/challenges.ts, which is the single
+ * source of truth for the hackathon's tracks. Call sites added before the
+ * upstream "challenges" naming import from here.
  */
-export const HACKATHON_TRACKS = [
-  'تعزيز الدمج المجتمعي لكبار السن والمكفوفين',
-  'إثراء تجربة ضيوف الرحمن في المدن المقدسة',
-  'الحلول الاجتماعية المستدامة',
-] as const;
+export { CHALLENGES as HACKATHON_TRACKS, resolveChallenge, normalizeTrackText, TRACK_ALIASES } from './challenges';
+export type { Challenge as HackathonTrack } from './challenges';
 
-export type HackathonTrack = (typeof HACKATHON_TRACKS)[number];
+import { CHALLENGES } from './challenges';
 
 /** True when `value` is one of the current tracks. */
-export function isHackathonTrack(value: unknown): value is HackathonTrack {
-  return typeof value === 'string' && (HACKATHON_TRACKS as readonly string[]).includes(value);
+export function isHackathonTrack(value: unknown): value is (typeof CHALLENGES)[number] {
+  return typeof value === 'string' && (CHALLENGES as readonly string[]).includes(value);
 }

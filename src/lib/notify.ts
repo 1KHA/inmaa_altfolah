@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from './prisma';
+import { ACTIVE_PARTICIPANT_WHERE, ELIGIBLE_PARTICIPANT_WHERE, isEffectivelyDisabled } from './account-status';
 import {
   getEmailSettings,
   toSmtpConfig,
@@ -198,6 +199,32 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       dashboardMessage: 'فعالية {{eventTitle}} ستبدأ خلال ساعة في {{location}}',
     }),
     def({
+      key: 'newEventAvailable',
+      label: 'فعالية جديدة (لكل المشاركين)',
+      category: 'participant',
+      variables: ['eventTitle', 'eventDate', 'location'],
+      type: 'info',
+      dashboardTitle: 'فعالية جديدة',
+      dashboardMessage: 'تمت إضافة فعالية جديدة: {{eventTitle}} بتاريخ {{eventDate}} في {{location}}',
+      actionUrl: '/participant-dashboard/events',
+      bulk: true,
+    }),
+    def({
+      key: 'eventReminderManual',
+      label: 'تذكير بفعالية (إرسال يدوي من المشرف)',
+      category: 'participant',
+      variables: ['eventTitle', 'eventDate', 'eventLocation'],
+      type: 'info',
+      dashboardTitle: 'تذكير بفعالية: {{eventTitle}}',
+      dashboardMessage: 'نذكرك بفعالية {{eventTitle}} بتاريخ {{eventDate}} في {{eventLocation}}.',
+      emailSubject: 'تذكير بفعالية {{eventTitle}}',
+      emailBody:
+        'نذكرك بأنك مسجّل في فعالية {{eventTitle}}.\n\nالتاريخ: {{eventDate}}\nالمكان: {{eventLocation}}\n\nنتطلع لحضورك.',
+      actionUrl: '/participant-dashboard/events',
+      // BCC fan-out: same text for everyone, so no per-recipient variables.
+      bulk: true,
+    }),
+    def({
       key: 'newMilestoneAvailable',
       label: 'مرحلة جديدة متاحة (لكل المشاركين)',
       category: 'participant',
@@ -228,6 +255,19 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       actionUrl: '/participant-dashboard/milestones',
     }),
     def({
+      key: 'milestoneResubmissionRequested',
+      label: 'طلب إعادة تسليم المرحلة',
+      category: 'participant',
+      variables: ['milestoneTitle', 'reviewComment', 'deadline'],
+      type: 'warning',
+      dashboardTitle: 'مطلوب إعادة تسليم: {{milestoneTitle}}',
+      dashboardMessage: 'طلب المشرف إعادة تسليم {{milestoneTitle}}. الملاحظات: {{reviewComment}}',
+      emailSubject: 'مطلوب إعادة تسليم {{milestoneTitle}}',
+      emailBody:
+        'راجع المشرف تسليمكم للمرحلة {{milestoneTitle}} ويطلب إعادة التسليم.\n\nملاحظات المراجع:\n{{reviewComment}}\n\nالموعد النهائي لإعادة التسليم: {{deadline}}\n\nيمكنكم رفع الملف مرة أخرى من لوحة المشارك.',
+      actionUrl: '/participant-dashboard/milestones',
+    }),
+    def({
       key: 'milestoneReviewRejected',
       label: 'رفض تسليم المرحلة',
       category: 'participant',
@@ -241,10 +281,13 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       key: 'bookingConfirmation',
       label: 'تأكيد حجز جلسة إرشاد',
       category: 'participant',
-      variables: ['mentorName', 'dateTime'],
+      variables: ['mentorName', 'dateTime', 'meetingLink'],
       type: 'success',
       dashboardTitle: 'تأكيد حجز الجلسة',
       dashboardMessage: 'تم تأكيد حجز جلستك مع {{mentorName}} في {{dateTime}}',
+      emailSubject: 'تأكيد حجز جلستك مع {{mentorName}}',
+      emailBody:
+        'تم تأكيد حجز جلسة الإرشاد مع {{mentorName}} في {{dateTime}}.\n\nرابط الاجتماع (افتحه في موعد الجلسة من المتصفح أو الجوال):\n{{meetingLink}}\n\nلا حاجة لإنشاء حساب — اضغط الرابط وانضم مباشرة.',
       actionUrl: '/participant-dashboard/mentors',
     }),
     def({
@@ -280,6 +323,21 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       actionUrl: '/participant-dashboard/team',
     }),
     def({
+      key: 'memberAddedByLeader',
+      label: 'إضافة عضو بواسطة قائد الفريق (بيانات الدخول)',
+      category: 'participant',
+      // email/password/loginUrl/participantName are PER RECIPIENT — the new
+      // member gets their own credentials, exactly like teamApproval.
+      variables: ['teamName', 'participantName', 'email', 'password', 'loginUrl'],
+      type: 'success',
+      dashboardTitle: 'تمت إضافتك إلى الفريق!',
+      dashboardMessage: 'تمت إضافتك إلى فريق {{teamName}} بواسطة قائد الفريق',
+      emailSubject: 'تمت إضافتك إلى فريق {{teamName}} — بيانات الدخول إلى حسابك',
+      emailBody:
+        'مرحباً {{participantName}}،\n\nتمت إضافتك إلى فريق {{teamName}} في الهاكثون بواسطة قائد الفريق.\n\nبيانات الدخول إلى لوحة المشارك:\nالبريد الإلكتروني: {{email}}\nكلمة المرور: {{password}}\n\nرابط تسجيل الدخول: {{loginUrl}}\n\nهذه البيانات خاصة بك ولا تشاركها مع أحد. يمكنك تغيير كلمة المرور في أي وقت عبر خيار "نسيت كلمة المرور" في صفحة الدخول.',
+      actionUrl: '/participant-dashboard/team',
+    }),
+    def({
       key: 'joinRequestRejected',
       label: 'رفض طلب الانضمام',
       category: 'participant',
@@ -303,10 +361,13 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       key: 'newBookingRequest',
       label: 'طلب حجز جلسة (للمرشد)',
       category: 'mentor',
-      variables: ['participantName', 'dateTime'],
+      variables: ['participantName', 'dateTime', 'meetingLink'],
       type: 'info',
       dashboardTitle: 'طلب حجز جلسة جديد',
       dashboardMessage: 'طلب {{participantName}} حجز جلسة معك في {{dateTime}}',
+      emailSubject: 'حجز جلسة إرشاد جديد — {{dateTime}}',
+      emailBody:
+        'قام {{participantName}} بحجز جلسة إرشاد معك في {{dateTime}}.\n\nرابط الاجتماع:\n{{meetingLink}}\n\nافتح الرابط في موعد الجلسة وسجّل الدخول بحساب Google (أو GitHub) لبدء الاجتماع كمشرف — المشاركون ينضمون بعدها مباشرة دون حسابات.',
       actionUrl: '/mentor-dashboard/sessions',
     }),
     def({
@@ -384,7 +445,9 @@ export type Audience =
   | { kind: 'mentor'; id: string }
   | { kind: 'admins' }
   | { kind: 'team'; teamId: string }
-  | { kind: 'allParticipants' };
+  | { kind: 'allParticipants' }
+  /** Everyone still registered for a given event (admin-triggered reminders). */
+  | { kind: 'eventRegistrants'; eventId: string };
 
 export interface DispatchParams {
   templateKey: string;
@@ -436,11 +499,25 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
   if (audience.kind === 'participant' || audience.kind === 'mentor') {
     let email: string | null = null;
     try {
-      const row =
-        audience.kind === 'participant'
-          ? await prisma.participant.findUnique({ where: { id: audience.id }, select: { email: true } })
-          : await prisma.mentor.findUnique({ where: { id: audience.id }, select: { email: true } });
-      email = row?.email ?? null;
+      if (audience.kind === 'participant') {
+        const row = await prisma.participant.findUnique({
+          where: { id: audience.id },
+          select: { email: true, isDisabled: true, phase: { select: { isDisabled: true } }, team: { select: { isDisabled: true, phase: { select: { isDisabled: true } } } } },
+        });
+        // Disabled accounts get NO transactional notification at all — not the
+        // email and not the dashboard row. Admin broadcasts are the one channel
+        // that can still reach them (see account-status.ts).
+        if (isEffectivelyDisabled(row)) return;
+        email = row?.email ?? null;
+      } else {
+        const row = await prisma.mentor.findUnique({
+          where: { id: audience.id },
+          select: { email: true, isDisabled: true },
+        });
+        // Disabled mentors get no transactional notification either.
+        if (row?.isDisabled) return;
+        email = row?.email ?? null;
+      }
     } catch {
       email = null;
     }
@@ -480,9 +557,18 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
     // Mirrors notifyTeamMembers: silently no-op when the team is missing.
     const team = await prisma.team.findUnique({
       where: { id: audience.teamId },
-      include: { participants: { select: { id: true, email: true } } },
+      include: {
+        phase: { select: { isDisabled: true } },
+        participants: {
+          where: { isDisabled: false },
+          select: { id: true, email: true },
+        },
+      },
     });
     if (!team) return;
+    // A disabled team — or a team sitting in a disabled PHASE — notifies
+    // nobody. Individually disabled members are filtered by the `where` above.
+    if (team.isDisabled || team.phase?.isDisabled) return;
     for (const p of team.participants) {
       recipients.push({
         notificationId: crypto.randomUUID(),
@@ -492,9 +578,35 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
         variables: varsFor(p.id),
       });
     }
+  } else if (audience.kind === 'eventRegistrants') {
+    // Participants with a live registration for this event. Cancelled
+    // registrations and disabled accounts are excluded.
+    const registrations = await prisma.eventRegistration.findMany({
+      where: {
+        eventId: audience.eventId,
+        status: 'registered',
+        participant: ELIGIBLE_PARTICIPANT_WHERE,
+      },
+      select: { participant: { select: { id: true, email: true } } },
+    });
+    for (const reg of registrations) {
+      recipients.push({
+        notificationId: crypto.randomUUID(),
+        recipientType: 'participant',
+        recipientId: reg.participant.id,
+        email: reg.participant.email,
+        variables: varsFor(reg.participant.id),
+      });
+    }
   } else {
     // allParticipants — bulk fan-out (milestone creation)
-    const participants = await prisma.participant.findMany({ select: { id: true, email: true } });
+    // Announcements (new milestone / new event) go to APPROVED participants
+    // only — a pending applicant or a rejected one must not be told about
+    // hackathon activity. See mdfiles/pending-accounts-email.md.
+    const participants = await prisma.participant.findMany({
+      where: ELIGIBLE_PARTICIPANT_WHERE,
+      select: { id: true, email: true },
+    });
     for (const p of participants) {
       recipients.push({
         notificationId: crypto.randomUUID(),

@@ -23,6 +23,8 @@ export const PARTICIPANT_PUBLIC_FIELDS = {
   university: true,
   isLeader: true,
   status: true,
+  isDisabled: true,
+  disabledAt: true,
   teamId: true,
   createdAt: true,
   updatedAt: true,
@@ -38,4 +40,19 @@ export const PARTICIPANT_PUBLIC_FIELDS = {
   nationality: true,
   residence: true,
   canAttend: true,
+  // Phase membership. An individual carries their own phase; a team member's
+  // real phase is the TEAM's — the admin tables read it through the team.
+  phaseId: true,
+  phaseStatus: true,
+  phaseUpdatedAt: true,
+} as const;
+
+/**
+ * The same fields plus the resolved phase, for the admin tables that render a
+ * phase badge. Kept separate so the many routes that only need scalars are not
+ * forced into an extra join.
+ */
+export const PARTICIPANT_WITH_PHASE_FIELDS = {
+  ...PARTICIPANT_PUBLIC_FIELDS,
+  phase: { select: { id: true, name: true, order: true, isDisabled: true } },
 } as const;

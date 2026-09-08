@@ -17,3 +17,17 @@ export const ALLOWED_FILE_TYPES = [
   "image/jpeg",
   "image/png",
 ];
+
+// Mentor availability slot granularity (minutes). One knob for every calendar:
+// change to 30 later to widen the booking grid everywhere at once.
+export const SLOT_STEP_MINUTES = 15;
+export const SLOT_TIMESLOTS_PER_HOUR = 60 / SLOT_STEP_MINUTES;
+
+// Maximum team size (leader + members). Enforced server-side when a team
+// leader adds a member; the add window itself is stored in TeamSettings.
+export const TEAM_MAX_MEMBERS = 30;
+
+// TEMPORARY: hides public team registration (the /register-team page redirects
+// to /login, and every "سجل فريقك" entry point is hidden). Flip to false to
+// bring registration back. The API route itself is untouched.
+export const TEAM_REGISTRATION_HIDDEN = true;
