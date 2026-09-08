@@ -138,7 +138,8 @@ async function main() {
   for (let i = 0; i < 120; i++) {
     const e = `${TAG}-bulk${i}@t.test`;
     bulkEmails.push(e);
-    bulkData.push({ email: e, fullName: `مشارك ${i}` });
+    // teamless participants must be approved to be eligible for bulk email
+    bulkData.push({ email: e, fullName: `مشارك ${i}`, status: 'approved' });
   }
   await prisma.participant.createMany({ data: bulkData });
   const bulkIds = (await prisma.participant.findMany({ where: { email: { in: bulkEmails } }, select: { id: true } })).map(p => p.id);

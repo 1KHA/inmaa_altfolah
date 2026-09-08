@@ -23,7 +23,7 @@ const check = (n, ok, d = '') => { if (ok) { pass++; console.log(`  PASS  ${n}`)
 const section = (s) => console.log(`\n--- ${s} ---`);
 const cookie = (c) => 'token=' + jwt.sign(c, SECRET, { expiresIn: '30m' });
 
-const TRACK = 'البنية التحتية للمياه';
+const TRACK = 'إثراء تجربة ضيوف الرحمن في المدن المقدسة';
 
 /** Build a CSV string (with BOM, like the real templates). */
 const csv = (rows) => '﻿' + rows.map((r) => r.map((c) => (/[",\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : c)).join(',')).join('\r\n');
@@ -229,11 +229,11 @@ async function waitForServer() {
   const mkSrcRow = (o) => { const r = new Array(srcHeader.length).fill('');
     r[3]=o.email; r[5]=o.phone; r[6]=o.name; r[9]=o.gender; r[15]=o.subTrack; r[16]=o.project; r[17]=o.brief;
     r[18]=o.attend; return r; };
-  const srcAoa = [[], ['', 'Digital Technologies & AI'], ['', 'Active'], ['', 'Exported on: 3/9/2026'], [], srcHeader,
+  const srcAoa = [[], ['', 'Sustainable Social Solutions'], ['', 'Active'], ['', 'Exported on: 3/9/2026'], [], srcHeader,
     mkSrcRow({ email:`${TAG}-C1@T.LOCAL`, phone:'0501234567', name:'محمد علي', gender:'Male',
-               subTrack:'Digital Technologies & AI', project:`${TAG} مشروع واحد`, brief:'وصف المشروع الأول', attend:'Yes' }),
+               subTrack:'Sustainable Social Solutions', project:`${TAG} مشروع واحد`, brief:'وصف المشروع الأول', attend:'Yes' }),
     mkSrcRow({ email:`${TAG}-c2@t.local`, phone:'0559876543', name:'نورة سعد', gender:'Female',
-               subTrack:'Water Infrastructure', project:`${TAG} مشروع اثنان`, brief:'وصف المشروع الثاني', attend:'No' }),
+               subTrack:'Social Inclusion for Elderly and Blind', project:`${TAG} مشروع اثنان`, brief:'وصف المشروع الثاني', attend:'No' }),
     mkSrcRow({ email:`${TAG}-c3@t.local`, phone:'0500000003', name:'خالد', gender:'Male',
                subTrack:'Totally Unknown Track', project:`${TAG} مشروع ثلاثة`, brief:'وصف ثالث', attend:'Maybe later' }),
   ];
@@ -264,13 +264,13 @@ async function waitForServer() {
   const convOut = XLSX.utils.sheet_to_json(XLSX.readFile(`${outBase}.xlsx`).Sheets['الفرق مع القائد'], { defval:'', raw:false });
   check('converted 3 rows', convOut.length === 3, String(convOut.length));
   const c1 = convOut.find(x => x.teamName === `${TAG} مشروع واحد`);
-  check('English sub-track mapped to the Arabic challenge', c1 && c1.hackathonTrack === 'التقنيات الرقمية والذكاء الاصطناعي', c1 && c1.hackathonTrack);
+  check('English sub-track mapped to the Arabic challenge', c1 && c1.hackathonTrack === 'الحلول الاجتماعية المستدامة', c1 && c1.hackathonTrack);
   check('Male -> ذكر, Yes -> TRUE', c1 && c1.leaderGender === 'ذكر' && c1.leaderCanAttendHackathon === 'TRUE', JSON.stringify(c1));
   check('email lower-cased', c1 && c1.leaderEmail === `${TAG}-c1@t.local`.toLowerCase(), c1 && c1.leaderEmail);
   check('phone leading zero preserved through conversion', c1 && c1.leaderContactNumber === '0501234567', c1 && c1.leaderContactNumber);
   const c2 = convOut.find(x => x.teamName === `${TAG} مشروع اثنان`);
-  check('Water Infrastructure mapped, Female -> أنثى, No -> FALSE',
-        c2 && c2.hackathonTrack === 'البنية التحتية للمياه' && c2.leaderGender === 'أنثى' && c2.leaderCanAttendHackathon === 'FALSE', JSON.stringify(c2));
+  check('English alias mapped, Female -> أنثى, No -> FALSE',
+        c2 && c2.hackathonTrack === 'تعزيز الدمج المجتمعي لكبار السن والمكفوفين' && c2.leaderGender === 'أنثى' && c2.leaderCanAttendHackathon === 'FALSE', JSON.stringify(c2));
   const c3 = convOut.find(x => x.teamName === `${TAG} مشروع ثلاثة`);
   check('unknown track left BLANK (not guessed)', c3 && c3.hackathonTrack === '', JSON.stringify(c3));
 

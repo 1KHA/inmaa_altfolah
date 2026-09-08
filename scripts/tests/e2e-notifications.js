@@ -79,7 +79,7 @@ async function main() {
   if (!team) { check('team row created', false, 'no team found - aborting'); return; }
   made.teams.push(team.id);
   team.participants.forEach(p => made.participants.push(p.id));
-  check('team + participants persisted', team.participants.length === 2, `members=${team.participants.length}`);
+  check('team + participants persisted', team.participants.length === 3, `members=${team.participants.length}`);
 
   const adminAfterReg = await countFor('admin', admin.id);
   check('all admins notified of the new team', adminAfterReg === adminBefore + 1, `${adminBefore} -> ${adminAfterReg}`);

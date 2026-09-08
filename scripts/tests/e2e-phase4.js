@@ -67,8 +67,8 @@ async function main() {
   // fixtures: 3 participants (one with a team) + 2 mentors
   const team = await prisma.team.create({ data: { teamName: `${TAG} فريق`, status: 'approved', isTeamRegistration: true } });
   const p1 = await prisma.participant.create({ data: { email: `${TAG}-p1@t.test`, fullName: 'مشارك ١', teamId: team.id } });
-  const p2 = await prisma.participant.create({ data: { email: `${TAG}-p2@t.test`, fullName: 'مشارك ٢' } });
-  const p3 = await prisma.participant.create({ data: { email: `${TAG}-p3@t.test`, fullName: 'مشارك ٣' } });
+  const p2 = await prisma.participant.create({ data: { email: `${TAG}-p2@t.test`, fullName: 'مشارك ٢' , status: 'approved' } });
+  const p3 = await prisma.participant.create({ data: { email: `${TAG}-p3@t.test`, fullName: 'مشارك ٣' , status: 'approved' } });
   made.participants.push(p1.id, p2.id, p3.id);
   made.teamId = team.id;
   const mt1 = await prisma.mentor.create({ data: { name: `${TAG} مرشد ١`, email: `${TAG}-mt1@t.test`, specialty: 'س', phone: '05', status: 'active' } });

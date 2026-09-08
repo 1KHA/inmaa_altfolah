@@ -1,0 +1,4 @@
+﻿email,fullName,contactNumber,gender,isUniversityStudent,university,universityMajor,professionalField,city,canAttendHackathon,teamName,isLeader
+sara@example.com,سارة عبدالله,0501111111,أنثى,TRUE,جامعة الملك سعود,علوم حاسب,برمجة,https://github.com/sara,TRUE,فريق المياه,TRUE
+omar@example.com,عمر خالد,0502222222,ذكر,TRUE,جامعة الملك سعود,هندسة,علم البيانات,https://github.com/omar,TRUE,فريق المياه,FALSE
+huda@example.com,هدى فهد,0503333333,أنثى,FALSE,,,ذكاء اصناعي,https://github.com/huda,FALSE,,FALSE

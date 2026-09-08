@@ -79,7 +79,7 @@ async function main() {
   check('registration accepted', regRes.status === 200 || regRes.status === 201, `status=${regRes.status}`);
 
   const team = await prisma.team.findFirst({ where: { teamName: `${TAG} فريق` }, include: { participants: true } });
-  check('team + 2 members persisted', !!team && team.participants.length === 2, `members=${team?.participants?.length}`);
+  check('team + 3 members persisted', !!team && team.participants.length === 3, `members=${team?.participants?.length}`);
   made.teams.push(team.id);
   team.participants.forEach((p) => made.participants.push(p.id));
   const leader = team.participants.find((p) => p.isLeader) || team.participants[0];
