@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { PARTICIPANT_PUBLIC_FIELDS } from '@/lib/participant-fields';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+import { requireActiveParticipant, isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,9 @@ export async function GET(request: NextRequest) {
 
     // Use consistent field names with other endpoints
     const currentUserId = decoded.participantId;
+    const blocked_ = await requireActiveParticipant(currentUserId);
+    if (blocked_) return blocked_;
+
     
     if (!currentUserId) {
       return NextResponse.json({ error: 'Participant ID not found in token.' }, { status: 401 });
@@ -74,7 +78,7 @@ export async function GET(request: NextRequest) {
     // Add a computed fullName to each participant
     const participantsWithFullName = team.participants.map(p => ({
       ...p,
-      fullName: `${p.firstName} ${p.secondName} ${p.familyName}`,
+      fullName: p.fullName || [p.firstName, p.secondName, p.familyName].filter(Boolean).join(' ').trim() || p.email || 'غير متوفر',
     }));
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import { requireActiveMentor } from '@/lib/account-status';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -24,6 +25,9 @@ export async function PUT(request: NextRequest) {
     if (!decoded || decoded.role !== 'mentor') {
       return NextResponse.json({ message: 'Invalid token or role' }, { status: 403 });
     }
+    const blocked_ = await requireActiveMentor(decoded.id);
+    if (blocked_) return blocked_;
+
 
     const body = await request.json();
     const { name, email, specialty, phone } = body;

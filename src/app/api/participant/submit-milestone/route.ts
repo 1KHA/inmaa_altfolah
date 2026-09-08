@@ -4,6 +4,8 @@ import crypto from "crypto";
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { dispatchNotification } from '@/lib/notify';
+import { requireActiveParticipant, isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status';
+import { evaluateSubmission } from '@/lib/milestones';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -65,6 +67,9 @@ export async function POST(request: NextRequest) {
 
     // Get participantId directly from the decoded token
     const participantId = decoded.participantId;
+    const blocked_ = await requireActiveParticipant(participantId);
+    if (blocked_) return blocked_;
+
 
     // Get the participant with team information
     const participant = await prisma.participant.findUnique({
@@ -99,32 +104,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if the participant has already submitted for this milestone
-    const existingSubmission = await prisma.$queryRaw`
-      SELECT * FROM "MilestoneSubmission" 
-      WHERE "participantId" = ${participant.id} AND "milestoneId" = ${milestoneId}
-    `;
-    
-    if (existingSubmission && Array.isArray(existingSubmission) && existingSubmission.length > 0) {
-      return NextResponse.json(
-        { error: "لقد قمت بتسليم هذا المشروع بالفعل ولا يمكنك التسليم مرة أخرى" },
-        { status: 400 }
-      );
+    const milestoneRow: any = Array.isArray(milestone) ? milestone[0] : milestone;
+
+    const existing = await prisma.milestoneSubmission.findUnique({
+      where: { participantId_milestoneId: { participantId: participant.id, milestoneId } },
+      select: { id: true, reviewStatus: true, resubmissionDeadline: true, resubmissionCount: true },
+    });
+
+    // One rule for the deadline and the resubmission window, shared with
+    // /api/milestones and the dashboards — see src/lib/milestones.ts.
+    // This is the authoritative gate: the UI can be bypassed, this cannot.
+    const verdict = evaluateSubmission({
+      now: new Date(),
+      milestone: {
+        dueDate: new Date(milestoneRow.dueDate),
+        allowLateSubmission: Boolean(milestoneRow.allowLateSubmission),
+      },
+      existing,
+    });
+
+    if (!verdict.canSubmit) {
+      return NextResponse.json({ error: verdict.reason }, { status: 400 });
     }
 
-    // Create a new milestone submission in the database
-    // File is already uploaded to Supabase, we just store the metadata
-    const submission = await prisma.$executeRaw`
-      INSERT INTO "MilestoneSubmission" (id, "participantId", "milestoneId", "filePath", "fileName", "submittedAt")
-      VALUES (${crypto.randomUUID()}, ${participant.id}, ${milestoneId}, ${filePath}, ${fileName}, ${new Date().toISOString()}::timestamp)
-    `;
-
-    // Update the milestone submission count
-    await prisma.$executeRaw`
-      UPDATE "Milestone"
-      SET "submissionCount" = "submissionCount" + 1
-      WHERE id = ${milestoneId}
-    `;
+    const now = new Date();
+    if (existing) {
+      // Resubmission: replace the file in place, so the
+      // @@unique([participantId, milestoneId]) constraint still holds.
+      // Only the newest file is kept (documented trade-off).
+      await prisma.milestoneSubmission.update({
+        where: { id: existing.id },
+        data: {
+          filePath,
+          fileName,
+          submittedAt: now,
+          reviewStatus: 'pending',
+          reviewComment: null,
+          reviewedAt: null,
+          resubmissionCount: { increment: 1 },
+          isLate: verdict.isLate,
+        },
+      });
+    } else {
+      await prisma.milestoneSubmission.create({
+        data: {
+          participantId: participant.id,
+          milestoneId,
+          filePath,
+          fileName,
+          submittedAt: now,
+          reviewStatus: 'pending',
+          isLate: verdict.isLate,
+        },
+      });
+      // Only a first submission counts; a resubmission is not a new one.
+      await prisma.milestone.update({
+        where: { id: milestoneId },
+        data: { submissionCount: { increment: 1 } },
+      });
+    }
 
     // Create notification for admins about new milestone submission
     try {
@@ -146,8 +184,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "تم تسليم المشروع بنجاح",
-      submission,
+      message: verdict.isResubmission ? "تم إعادة التسليم بنجاح" : "تم تسليم المشروع بنجاح",
+      isResubmission: verdict.isResubmission,
+      isLate: verdict.isLate,
     });
   } catch (error) {
     console.error("Error submitting milestone:", error);

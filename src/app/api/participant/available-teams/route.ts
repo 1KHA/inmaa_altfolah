@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import { requireActiveParticipant } from '@/lib/account-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,11 @@ export async function GET(request: NextRequest) {
 
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { participantId: string };
+
+    // Disabled accounts cannot act (see src/lib/account-status.ts)
+    const blocked_ = await requireActiveParticipant(decoded.participantId);
+    if (blocked_) return blocked_;
+
     
     // Get current participant to check if they have a team
     const currentParticipant = await prisma.participant.findUnique({
@@ -34,7 +40,9 @@ export async function GET(request: NextRequest) {
     // Get all approved teams first
     const allApprovedTeams = await prisma.team.findMany({
       where: {
-        status: 'approved'
+        status: 'approved',
+        // A disabled team is not joinable and must not even be listed.
+        isDisabled: false
       },
       include: {
         participants: {
@@ -59,7 +67,7 @@ export async function GET(request: NextRequest) {
       .map(team => {
         const leader = team.participants.find(p => p.isLeader);
         const leaderName = leader?.fullName || 
-                          (leader ? `${leader.firstName} ${leader.secondName} ${leader.familyName}`.trim() : 'غير محدد');
+                          (leader ? (leader.fullName || [leader.firstName, leader.secondName, leader.familyName].filter(Boolean).join(' ').trim() || 'غير محدد') : 'غير محدد');
         
         return {
           id: team.id,

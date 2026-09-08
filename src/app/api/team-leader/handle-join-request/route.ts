@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { dispatchNotification } from '@/lib/notify';
 import bcrypt from 'bcryptjs';
 import { generatePassword, credentialVariables } from '@/lib/credentials';
+import { requireActiveParticipant, isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,11 @@ export async function POST(request: NextRequest) {
 
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { participantId: string };
+
+    // Disabled accounts cannot act (see src/lib/account-status.ts)
+    const blocked_ = await requireActiveParticipant(decoded.participantId);
+    if (blocked_) return blocked_;
+
     
     // Get request body
     const { requestId, action } = await request.json();
@@ -93,8 +99,14 @@ export async function POST(request: NextRequest) {
       // Check if participant still doesn't have a team
       const participantToAdd = await prisma.participant.findUnique({
         where: { id: joinRequest.participantId },
-        select: { teamId: true }
+        select: { teamId: true, isDisabled: true, phase: { select: { isDisabled: true } }, team: { select: { isDisabled: true, phase: { select: { isDisabled: true } } } } }
       });
+
+      // The joining account itself must be active — a disabled participant
+      // cannot be added to a team by anyone.
+      if (isEffectivelyDisabled(participantToAdd)) {
+        return NextResponse.json({ error: DISABLED_ACCOUNT_MESSAGE }, { status: 403 });
+      }
 
       if (participantToAdd?.teamId) {
         // Update request status to rejected since participant already joined another team
@@ -137,7 +149,7 @@ export async function POST(request: NextRequest) {
 
       // Send notification to the accepted participant
       const participantName = joinRequest.fullName || 
-        `${joinRequest.firstName} ${joinRequest.secondName} ${joinRequest.familyName}`.trim();
+        [joinRequest.firstName, joinRequest.secondName, joinRequest.familyName].filter(Boolean).join(' ').trim();
 
       // A participant joining an approved team needs login credentials. If
       // they never had a password (registered as an individual, not yet

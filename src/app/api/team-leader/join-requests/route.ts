@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import { requireActiveParticipant } from '@/lib/account-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,11 @@ export async function GET(request: NextRequest) {
 
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { participantId: string };
+
+    // Disabled accounts cannot act (see src/lib/account-status.ts)
+    const blocked_ = await requireActiveParticipant(decoded.participantId);
+    if (blocked_) return blocked_;
+
     
     // Get current participant to check if they are a team leader
     const currentParticipant = await prisma.participant.findUnique({
@@ -76,7 +82,7 @@ export async function GET(request: NextRequest) {
         email: req.email,
         university: req.university,
         professionalField: req.professionalField,
-        displayName: req.fullName || `${req.firstName} ${req.secondName} ${req.familyName}`.trim()
+        displayName: req.fullName || [req.firstName, req.secondName, req.familyName].filter(Boolean).join(' ').trim() || req.email
       }
     }));
 

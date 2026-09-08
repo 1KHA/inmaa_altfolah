@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { dispatchNotification } from '@/lib/notify';
+import { generateMeetingUrl } from '@/lib/meeting';
+import { requireActiveParticipant, isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -38,7 +40,12 @@ async function getCurrentParticipant(request: NextRequest) {
     
     const participant = await prisma.participant.findUnique({
       where: { id: participantId },
+      include: { phase: { select: { isDisabled: true } }, team: { select: { isDisabled: true, phase: { select: { isDisabled: true } } } } },
     });
+
+    // Disabled accounts resolve to null, so every method in this file
+    // (POST/GET/DELETE) rejects them exactly like an unauthenticated request.
+    if (isEffectivelyDisabled(participant)) return null;
 
     return participant;
   } catch (error) {
@@ -84,6 +91,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // A disabled mentor is not bookable, regardless of their status field.
+    if (availability.mentor.isDisabled) {
+      return NextResponse.json(
+        { error: 'هذا الموجه غير متاح حالياً' },
+        { status: 403 }
+      );
+    }
+
     // Check if the mentor is active
     if (availability.mentor.status !== 'active') {
       return NextResponse.json(
@@ -108,32 +123,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if the participant already has a booking with this mentor at the same time
+    // One active booking per mentor per participant: a participant may book
+    // several mentors, but only one (non-cancelled) session with each mentor.
     const existingBooking = await prisma.mentorBooking.findFirst({
       where: {
         participantId: participant.id,
+        status: { not: 'cancelled' },
         availability: {
           mentorId: availability.mentorId,
-          startTime: {
-            equals: availability.startTime,
-          },
         },
       },
     });
 
     if (existingBooking) {
       return NextResponse.json(
-        { message: 'لديك حجز موجود بالفعل مع هذا الموجه في نفس الوقت' },
+        { message: 'لديك حجز بالفعل مع هذا الموجه. يمكنك حجز جلسة واحدة فقط مع كل موجه.' },
         { status: 400 }
       );
     }
 
-    // Create the booking
+    // Create the booking with its own auto-generated video-meeting room
     const booking = await prisma.mentorBooking.create({
       data: {
         participantId: participant.id,
         availabilityId: availabilityId,
         status: 'booked',
+        meetingUrl: generateMeetingUrl(),
       },
       include: {
         availability: {
@@ -146,7 +161,7 @@ export async function POST(request: NextRequest) {
 
     // Create notifications for the booking
     try {
-      const participantName = `${participant.firstName} ${participant.familyName}`;
+      const participantName = participant.fullName || [participant.firstName, participant.secondName, participant.familyName].filter(Boolean).join(' ').trim() || participant.email;
       const dateTime = new Date(booking.availability.startTime).toLocaleString('ar-SA', {
         year: 'numeric',
         month: 'long',
@@ -155,20 +170,26 @@ export async function POST(request: NextRequest) {
         minute: '2-digit',
       });
 
-      // Notify the mentor about the new booking request
+      const meetingLink = booking.meetingUrl || '';
+
+      // Notify the mentor about the new booking request (with the room link)
       await dispatchNotification({
         templateKey: 'newBookingRequest',
-        variables: { participantName, dateTime },
+        variables: { participantName, dateTime, meetingLink },
         audience: { kind: 'mentor', id: booking.availability.mentor.id },
         relatedEntityType: 'booking',
         relatedEntityId: booking.id,
       });
 
-      // Booking confirmation for the participant
+      // Booking confirmation with the meeting link. When the booker belongs
+      // to a team the WHOLE team gets it — teammates attend the session too;
+      // an individual booker gets it directly.
       await dispatchNotification({
         templateKey: 'bookingConfirmation',
-        variables: { mentorName: booking.availability.mentor.name, dateTime },
-        audience: { kind: 'participant', id: participant.id },
+        variables: { mentorName: booking.availability.mentor.name, dateTime, meetingLink },
+        audience: participant.teamId
+          ? { kind: 'team', teamId: participant.teamId }
+          : { kind: 'participant', id: participant.id },
         relatedEntityType: 'booking',
         relatedEntityId: booking.id,
       });
@@ -183,6 +204,7 @@ export async function POST(request: NextRequest) {
         id: booking.id,
         status: booking.status,
         mentorName: booking.availability.mentor.name,
+        meetingUrl: booking.meetingUrl,
         startTime: booking.availability.startTime,
         endTime: booking.availability.endTime,
       },
@@ -248,6 +270,7 @@ export async function GET(request: NextRequest) {
         id: booking.id,
         status: booking.status,
         mentorName: booking.availability.mentor.name,
+        meetingUrl: booking.meetingUrl ?? null,
         startTime: booking.availability.startTime,
         endTime: booking.availability.endTime,
       } : null,

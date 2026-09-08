@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+import { evaluateSubmission } from '@/lib/milestones';
 
 // Ensure this route is dynamic
 export const dynamic = 'force-dynamic';
@@ -102,25 +103,52 @@ export async function GET() {
       return NextResponse.json(formattedMilestones);
     }
 
-    // Get all submissions for the current participant
-    const submissions = await prisma.$queryRaw`
-      SELECT "milestoneId" FROM "MilestoneSubmission" 
-      WHERE "participantId" = ${participant.id}
-    `;
+    // The participant's own submissions, with enough detail for the dashboard
+    // to show the REAL state. It previously returned only `hasSubmitted`, so a
+    // participant could not see whether they were accepted, rejected, or asked
+    // to resubmit — nor why.
+    const submissions = await prisma.milestoneSubmission.findMany({
+      where: { participantId: participant.id },
+      select: {
+        milestoneId: true,
+        reviewStatus: true,
+        reviewComment: true,
+        reviewedAt: true,
+        resubmissionCount: true,
+        resubmissionDeadline: true,
+        isLate: true,
+        submittedAt: true,
+      },
+    });
+    const byMilestone = new Map(submissions.map((sub) => [sub.milestoneId, sub]));
 
-    // Create a set of milestone IDs that the participant has submitted
-    const submittedMilestoneIds = new Set(
-      Array.isArray(submissions) 
-        ? submissions.map((sub: any) => sub.milestoneId || sub["milestoneId"]) 
-        : []
-    );
-
-    // Parse the requirements JSON string for each milestone and add hasSubmitted
-    const formattedMilestones = (milestones as MilestoneFromDB[]).map((milestone) => ({
-      ...milestone,
-      requirements: JSON.parse(milestone.requirements),
-      hasSubmitted: submittedMilestoneIds.has(milestone.id),
-    }));
+    const now = new Date();
+    const formattedMilestones = (milestones as MilestoneFromDB[]).map((milestone) => {
+      const sub = byMilestone.get(milestone.id) ?? null;
+      // Same helper the submission API enforces with, so the button state and
+      // the server's answer can never disagree.
+      const verdict = evaluateSubmission({
+        now,
+        milestone: {
+          dueDate: new Date(milestone.dueDate),
+          allowLateSubmission: Boolean((milestone as any).allowLateSubmission),
+        },
+        existing: sub,
+      });
+      return {
+        ...milestone,
+        requirements: JSON.parse(milestone.requirements),
+        hasSubmitted: Boolean(sub),
+        reviewStatus: sub?.reviewStatus ?? null,
+        reviewComment: sub?.reviewComment ?? null,
+        resubmissionCount: sub?.resubmissionCount ?? 0,
+        canSubmit: verdict.canSubmit,
+        canResubmit: verdict.canSubmit && verdict.isResubmission,
+        submitBlockedReason: verdict.reason ?? null,
+        effectiveDeadline: verdict.effectiveDeadline.toISOString(),
+        isLate: sub?.isLate ?? false,
+      };
+    });
 
     return NextResponse.json(formattedMilestones);
   } catch (error) {

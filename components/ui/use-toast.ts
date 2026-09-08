@@ -1,190 +1,114 @@
-// Adapted from https://ui.shadcn.com/
-// This file is a simplified version of the toast component that doesn't require external dependencies
+/**
+ * Toast API — a thin adapter over sonner (src/components/ui/sonner.tsx).
+ *
+ * Keeps the `useToast()` / `toast({title, description, variant})` shape the
+ * ~23 call sites across the app already use, so switching the underlying
+ * library needed no changes at those call sites, and routes each call to the
+ * right sonner variant so successes and failures finally look different.
+ *
+ * Variant mapping:
+ *   destructive          -> toast.error    (red)
+ *   success              -> toast.success  (green)
+ *   warning              -> toast.warning  (amber)
+ *   info                 -> toast.info     (blue)
+ *   default / omitted    -> inferred from the title/description text, see
+ *                           inferVariant() — legacy calls pass no variant for
+ *                           successes ("نجح", "تم ... بنجاح").
+ *
+ * New code should pass an explicit variant; inference is only a bridge for the
+ * existing call sites. See mdfiles/toast-system.md.
+ */
 
-import { useState, useEffect, useCallback } from "react"
+import { toast as sonner } from "sonner"
+
+export type ToastVariant = "default" | "destructive" | "success" | "warning" | "info"
 
 export type ToastProps = {
-  id: string
-  title?: string
-  description?: string
+  id?: string
+  title?: React.ReactNode
+  description?: React.ReactNode
   action?: React.ReactNode
-  variant?: "default" | "destructive"
+  variant?: ToastVariant
+  /** Milliseconds; falls back to the Toaster's default (5s). */
+  duration?: number
 }
 
 export type ToastActionElement = React.ReactElement
+export type ToasterToast = ToastProps & { id: string }
 
-export const TOAST_REMOVE_DELAY = 3000
+/** Errors stay up longer than successes — they usually need reading/acting on. */
+const ERROR_DURATION_MS = 7000
 
-export type ToasterToast = ToastProps & {
-  id: string
-  title?: string
-  description?: string
-  action?: React.ReactNode
-  variant?: "default" | "destructive"
+const ERROR_HINTS = ["خطأ", "فشل", "لم يتم", "غير مصرح", "تعذر", "error", "failed", "fail"]
+const WARNING_HINTS = ["تحذير", "تنبيه", "انتبه", "warning"]
+const SUCCESS_HINTS = ["نجح", "نجاح", "بنجاح", "تم ", "تمت", "success"]
+
+function textOf(value: React.ReactNode): string {
+  return typeof value === "string" || typeof value === "number" ? String(value) : ""
 }
 
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-} as const
-
-let count = 0
-
-function generateId() {
-  count = (count + 1) % Number.MAX_VALUE
-  return count.toString()
+/**
+ * Guess a variant for legacy calls that pass none.
+ * Error hints are checked FIRST on purpose: "لم يتم" (was not done) contains
+ * "تم" (done), so a success-first check would misclassify failures as wins.
+ */
+function inferVariant(title?: React.ReactNode, description?: React.ReactNode): ToastVariant {
+  const text = `${textOf(title)} ${textOf(description)}`.toLowerCase()
+  if (!text.trim()) return "default"
+  const has = (hints: string[]) => hints.some((h) => text.includes(h.toLowerCase()))
+  if (has(ERROR_HINTS)) return "destructive"
+  if (has(WARNING_HINTS)) return "warning"
+  if (has(SUCCESS_HINTS)) return "success"
+  return "default"
 }
 
-type ActionType = typeof actionTypes
+function show(props: ToastProps) {
+  const { title, description, variant, duration, action } = props
 
-type Action =
-  | {
-      type: ActionType["ADD_TOAST"]
-      toast: ToasterToast
-    }
-  | {
-      type: ActionType["UPDATE_TOAST"]
-      toast: Partial<ToasterToast>
-    }
-  | {
-      type: ActionType["DISMISS_TOAST"]
-      toastId?: string
-    }
-  | {
-      type: ActionType["REMOVE_TOAST"]
-      toastId?: string
-    }
+  const resolved = !variant || variant === "default" ? inferVariant(title, description) : variant
 
-interface State {
-  toasts: ToasterToast[]
-}
+  // sonner takes the headline as its first argument and the rest as options.
+  // Calls that pass only a description still get a readable toast.
+  const headline: React.ReactNode = title || description
+  const body = title ? description : undefined
+  const options = {
+    description: body,
+    action: action as never,
+    duration: duration ?? (resolved === "destructive" ? ERROR_DURATION_MS : undefined),
+  }
 
-const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
-
-const reducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case actionTypes.ADD_TOAST:
-      return {
-        ...state,
-        toasts: [...state.toasts, action.toast],
-      }
-
-    case actionTypes.UPDATE_TOAST:
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
-        ),
-      }
-
-    case actionTypes.DISMISS_TOAST: {
-      const { toastId } = action
-
-      // Dismiss all toasts
-      if (toastId === undefined) {
-        return {
-          ...state,
-          toasts: [],
-        }
-      }
-
-      // Dismiss a specific toast by removing it from the array
-      return {
-        ...state,
-        toasts: state.toasts.filter((t) => t.id !== toastId),
-      }
-    }
-
-    case actionTypes.REMOVE_TOAST: {
-      const { toastId } = action
-
-      // Remove all toasts
-      if (toastId === undefined) {
-        return {
-          ...state,
-          toasts: [],
-        }
-      }
-
-      // Remove a specific toast
-      return {
-        ...state,
-        toasts: state.toasts.filter((t) => t.id !== toastId),
-      }
-    }
-
+  switch (resolved) {
+    case "destructive":
+      return sonner.error(headline, options)
+    case "success":
+      return sonner.success(headline, options)
+    case "warning":
+      return sonner.warning(headline, options)
+    case "info":
+      return sonner.info(headline, options)
     default:
-      return state
+      return sonner(headline, options)
   }
 }
 
-const listeners: Array<(state: State) => void> = []
-
-let memoryState: State = { toasts: [] }
-
-function dispatch(action: Action) {
-  memoryState = reducer(memoryState, action)
-  listeners.forEach((listener) => {
-    listener(memoryState)
-  })
-}
-
-type Toast = Omit<ToasterToast, "id">
-
-function toast({ ...props }: Toast) {
-  const id = generateId()
-
-  const update = (props: ToasterToast) =>
-    dispatch({
-      type: actionTypes.UPDATE_TOAST,
-      toast: { ...props, id },
-    })
-
-  const dismiss = () => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id })
-
-  dispatch({
-    type: actionTypes.ADD_TOAST,
-    toast: {
-      ...props,
-      id,
-      title: props.title,
-      description: props.description,
-      action: props.action,
-      variant: props.variant || "default",
-    },
-  })
-
-  // Auto-dismiss after 5 seconds
-  setTimeout(() => {
-    dismiss()
-  }, 5000)
-
+function toast(props: ToastProps) {
+  const id = show(props)
   return {
-    id,
-    dismiss,
-    update,
+    id: String(id),
+    dismiss: () => sonner.dismiss(id),
+    update: (next: ToastProps) => {
+      sonner.dismiss(id)
+      show(next)
+    },
   }
 }
 
 function useToast() {
-  const [state, setState] = useState<State>(memoryState)
-
-  useEffect(() => {
-    listeners.push(setState)
-    return () => {
-      const index = listeners.indexOf(setState)
-      if (index > -1) {
-        listeners.splice(index, 1)
-      }
-    }
-  }, [state])
-
   return {
-    ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
+    dismiss: (toastId?: string) => sonner.dismiss(toastId),
+    /** Kept for API compatibility; sonner owns the rendered list. */
+    toasts: [] as ToasterToast[],
   }
 }
 

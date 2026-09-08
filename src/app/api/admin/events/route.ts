@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
 import { requireAdmin } from "@/lib/notification-auth";
+import { dispatchNotification } from "@/lib/notify";
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +87,23 @@ export async function POST(request: NextRequest) {
     const newEvent = await prisma.$queryRaw<EventFromDB[]>`
       SELECT * FROM "Event" WHERE id = ${id}
     `;
+
+    // Notify every participant about the new event (dashboard + email),
+    // mirroring the newMilestoneAvailable flow. Never blocks event creation.
+    try {
+      const eventDate = new Date(startDate).toLocaleString('ar-SA', {
+        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
+      await dispatchNotification({
+        templateKey: 'newEventAvailable',
+        variables: { eventTitle: title, eventDate, location },
+        audience: { kind: 'allParticipants' },
+        relatedEntityType: 'event',
+        relatedEntityId: id,
+      });
+    } catch (notificationError) {
+      console.error('Error creating event notifications:', notificationError);
+    }
 
     return NextResponse.json(newEvent[0], { status: 201 });
   } catch (error) {

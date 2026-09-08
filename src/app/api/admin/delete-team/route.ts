@@ -59,6 +59,15 @@ export async function POST(request: NextRequest) {
         participantId: { in: participantIds }
       }
     });
+
+    // Delete AttendanceRecords for team participants (added with the
+    // attendance feature; has no onDelete: Cascade, so it must be cleaned
+    // up here like the other dependents or the participant delete fails)
+    await prisma.attendanceRecord.deleteMany({
+      where: {
+        participantId: { in: participantIds }
+      }
+    });
     
     // 2. Now delete participants associated with the team
     await prisma.participant.deleteMany({

@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   if (!requireAdmin(cookies().get("token")?.value)) return UNAUTHORIZED();
   try {
     const body = await request.json();
-    const { title, description, dueDate, status, requirements } = body;
+    const { title, description, dueDate, status, requirements, phaseId, allowLateSubmission } = body;
 
     // Validate required fields
     if (!title || !description || !dueDate || !requirements) {
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
 
     // Create the new milestone using raw SQL with quoted table name and column names for PostgreSQL compatibility
     await prisma.$executeRaw`
-      INSERT INTO "Milestone" (id, title, description, "dueDate", status, requirements, "submissionCount", "createdAt", "updatedAt")
-      VALUES (${id}, ${title}, ${description}, ${formattedDueDate}::timestamp, ${statusValue}, ${requirementsJson}, 0, ${now}::timestamp, ${now}::timestamp)
+      INSERT INTO "Milestone" (id, title, description, "dueDate", status, requirements, "submissionCount", "phaseId", "allowLateSubmission", "createdAt", "updatedAt")
+      VALUES (${id}, ${title}, ${description}, ${formattedDueDate}::timestamp, ${statusValue}, ${requirementsJson}, 0, ${phaseId || null}, ${Boolean(allowLateSubmission)}, ${now}::timestamp, ${now}::timestamp)
     `;
 
     // Fetch the created milestone
@@ -106,7 +106,7 @@ export async function PUT(request: NextRequest) {
   if (!requireAdmin(cookies().get("token")?.value)) return UNAUTHORIZED();
   try {
     const body = await request.json();
-    const { id, title, description, dueDate, status, requirements } = body;
+    const { id, title, description, dueDate, status, requirements, phaseId, allowLateSubmission } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -132,6 +132,13 @@ export async function PUT(request: NextRequest) {
     const updatedDescription = description !== undefined ? description : currentMilestone[0].description;
     const updatedDueDate = dueDate !== undefined ? new Date(dueDate).toISOString() : currentMilestone[0].dueDate.toISOString();
     const updatedStatus = status !== undefined ? status : currentMilestone[0].status;
+    // undefined = leave alone; null = explicitly unlink the phase
+    const updatedPhaseId =
+      phaseId !== undefined ? (phaseId || null) : (currentMilestone[0] as any).phaseId ?? null;
+    const updatedAllowLate =
+      allowLateSubmission !== undefined
+        ? Boolean(allowLateSubmission)
+        : Boolean((currentMilestone[0] as any).allowLateSubmission);
     const updatedRequirements = requirements !== undefined 
       ? JSON.stringify(requirements) 
       : currentMilestone[0].requirements;
@@ -145,6 +152,8 @@ export async function PUT(request: NextRequest) {
           "dueDate" = ${updatedDueDate}::timestamp,
           status = ${updatedStatus},
           requirements = ${updatedRequirements},
+          "phaseId" = ${updatedPhaseId},
+          "allowLateSubmission" = ${updatedAllowLate},
           "updatedAt" = ${now}::timestamp
       WHERE id = ${id}
     `;

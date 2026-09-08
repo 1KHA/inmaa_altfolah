@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status'
 import jwt from 'jsonwebtoken'
 
 // Ensure this route is dynamic
@@ -27,7 +28,10 @@ export async function POST(request: NextRequest) {
     const participant = await prisma.participant.findUnique({
       where: { email },
       include: {
-        team: true,
+        // team.phase is needed by isEffectivelyDisabled — a member of a team in
+        // a disabled PHASE must not be able to log in either.
+        team: { include: { phase: { select: { isDisabled: true } } } },
+        phase: { select: { isDisabled: true } },
       },
     });
 
@@ -61,6 +65,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'Invalid credentials' },
           { status: 401 }
+        );
+      }
+
+      // Disabled by an admin — checked AFTER the password so this cannot be
+      // used to enumerate which emails exist. Covers both a directly disabled
+      // participant and a member of a disabled team.
+      if (isEffectivelyDisabled(participant)) {
+        console.log(`\u274c Account disabled: ${email}`);
+        return NextResponse.json(
+          { error: DISABLED_ACCOUNT_MESSAGE },
+          { status: 403 }
         );
       }
 
@@ -150,6 +165,12 @@ export async function POST(request: NextRequest) {
         { error: 'Invalid credentials' },
         { status: 401 }
       )
+    }
+
+    // Disabled by an admin — after the password check, same as participants.
+    if (mentor.isDisabled) {
+      console.log(`\u274c Mentor account disabled: ${email}`);
+      return NextResponse.json({ error: DISABLED_ACCOUNT_MESSAGE }, { status: 403 });
     }
 
     // Generate JWT token for mentor

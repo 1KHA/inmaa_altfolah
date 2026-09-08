@@ -145,7 +145,7 @@ export default function NotificationsList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">الإشعارات</h1>
         {unreadCount > 0 && (
           <Button variant="outline" onClick={markAllAsRead}>
@@ -164,7 +164,7 @@ export default function NotificationsList() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2 mb-6">
+          <div className="flex flex-wrap gap-2 mb-6">
             <Button
               variant={unreadOnly ? "outline" : "default"}
               size="sm"

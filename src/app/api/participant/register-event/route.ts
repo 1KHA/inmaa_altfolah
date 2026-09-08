@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { dispatchNotification } from '@/lib/notify';
+import { requireActiveParticipant, isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -38,7 +39,12 @@ async function getCurrentParticipant(request: NextRequest) {
     
     const participant = await prisma.participant.findUnique({
       where: { id: participantId },
+      include: { phase: { select: { isDisabled: true } }, team: { select: { isDisabled: true, phase: { select: { isDisabled: true } } } } },
     });
+
+    // Disabled accounts resolve to null, so every method in this file
+    // (POST/GET/DELETE) rejects them exactly like an unauthenticated request.
+    if (isEffectivelyDisabled(participant)) return null;
 
     return participant;
   } catch (error) {
@@ -147,7 +153,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Notify admins about new registration
-      const participantName = `${participant.firstName} ${participant.familyName}`;
+      const participantName = participant.fullName || [participant.firstName, participant.secondName, participant.familyName].filter(Boolean).join(' ').trim() || participant.email;
       await dispatchNotification({
         templateKey: 'newEventRegistration',
         variables: { participantName, eventTitle: event.title },

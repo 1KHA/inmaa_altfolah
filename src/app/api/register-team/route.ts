@@ -25,14 +25,19 @@ export async function POST(request: NextRequest) {
     const ideaDescription = isTeamRegistration ? formData.get('ideaDescription') as string : null;
     const hearAboutUs = isTeamRegistration ? formData.get('hearAboutUs') as string : null;
     
-    // Preferred path: the browser already uploaded the file to Supabase Storage
-    // and sends only its URL (keeps this function's payload tiny — see
-    // FUNCTION_PAYLOAD_TOO_LARGE). The raw-file branch below remains as a
-    // fallback for small files / older clients.
     const attachmentFile = formData.get('attachment') as File | null;
-    let attachmentPath: string | null = (formData.get('attachmentPath') as string | null) || null;
+    let attachmentPath: string | null = null;
 
-    if (!attachmentPath && attachmentFile) {
+    // Preferred path: the browser already uploaded the file to Supabase
+    // Storage and sends only its public URL (keeps the function body tiny —
+    // Vercel rejects bodies over ~4.5 MB before this code runs).
+    const preUploaded = String(formData.get('attachmentPath') || '').trim();
+    if (preUploaded) {
+        if (!/^https:\/\/[^\s]+\/storage\/v1\/object\/public\//.test(preUploaded)) {
+            return NextResponse.json({ error: 'رابط المرفق غير صالح' }, { status: 400 });
+        }
+        attachmentPath = preUploaded;
+    } else if (attachmentFile) {
         // Validate file size
         if (attachmentFile.size > MAX_FILE_SIZE) {
             return NextResponse.json(

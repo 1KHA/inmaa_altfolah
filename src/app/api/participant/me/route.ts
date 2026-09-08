@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import { requireActiveParticipant, isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,11 @@ export async function GET(request: NextRequest) {
       console.error('No participantId in token:', decoded);
       return NextResponse.json({ error: 'غير مصرح - participantId مفقود من الـ token' }, { status: 401 });
     }
+    // A disabled account must not keep a live dashboard session: this is the
+    // endpoint ParticipantRouteGuard polls, so 403 here bounces them to /login.
+    const blocked_ = await requireActiveParticipant(decoded.participantId);
+    if (blocked_) return blocked_;
+
     
     const participant = await prisma.participant.findUnique({
       where: { id: decoded.participantId },

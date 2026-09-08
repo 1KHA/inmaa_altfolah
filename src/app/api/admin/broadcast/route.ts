@@ -6,6 +6,13 @@ import { requireAdmin } from '@/lib/notification-auth';
 import { waitUntil } from '@vercel/functions';
 import { getEmailSettings, toSmtpConfig } from '@/lib/mailer';
 import {
+  DISABLED_PARTICIPANT_WHERE,
+  DISABLED_MENTOR_WHERE,
+  ELIGIBLE_PARTICIPANT_WHERE,
+  ELIGIBLE_MENTOR_WHERE,
+  phaseParticipantWhere,
+} from '@/lib/account-status';
+import {
   enqueueBroadcastRecipients,
   drainEmailQueue,
   ADMIN_INBOX_RECIPIENT_ID,
@@ -30,8 +37,23 @@ interface SelectedUser {
 }
 
 interface AudienceInput {
-  type: 'all-participants' | 'all-mentors' | 'all-admins' | 'selected';
+  /**
+   * `all-participants` covers ACTIVE participants only. `disabled-accounts`
+   * is the deliberate exception that lets an admin reach disabled accounts
+   * (e.g. "you did not qualify") — they receive no transactional mail, but a
+   * broadcast aimed at them still goes out. See mdfiles/disable-accounts.md.
+   */
+  type:
+    | 'all-participants'
+    | 'all-mentors'
+    | 'all-admins'
+    | 'disabled-accounts'
+    | 'phase'
+    | 'phase-failed'
+    | 'selected';
   selected?: SelectedUser[];
+  /** Required for 'phase' and 'phase-failed'. */
+  phaseId?: string;
 }
 
 interface ResolvedRecipient {
@@ -42,12 +64,51 @@ interface ResolvedRecipient {
 
 async function resolveAudience(audience: AudienceInput): Promise<ResolvedRecipient[]> {
   if (audience.type === 'all-participants') {
-    const rows = await prisma.participant.findMany({ select: { id: true, email: true } });
+    // Approved participants only: pending applicants and rejected ones are
+    // excluded, as are disabled accounts (use 'disabled-accounts' for those).
+    const rows = await prisma.participant.findMany({
+      where: ELIGIBLE_PARTICIPANT_WHERE,
+      select: { id: true, email: true },
+    });
     return rows.map((r) => ({ recipientType: 'participant', recipientId: r.id, email: r.email }));
   }
 
+  if (audience.type === 'phase' || audience.type === 'phase-failed') {
+    // Everyone governed by this phase — a team member through their team's
+    // phase, an individual through their own. Still filtered by eligibility,
+    // so disabled/unapproved accounts never receive it.
+    if (!audience.phaseId) return [];
+    const rows = await prisma.participant.findMany({
+      where: {
+        AND: [
+          ELIGIBLE_PARTICIPANT_WHERE,
+          phaseParticipantWhere(audience.phaseId, audience.type === 'phase-failed'),
+        ],
+      },
+      select: { id: true, email: true },
+    });
+    return rows.map((r) => ({ recipientType: 'participant', recipientId: r.id, email: r.email }));
+  }
+
+  if (audience.type === 'disabled-accounts') {
+    // Participants disabled directly OR through a disabled team, plus
+    // disabled mentors. This is the one channel that still reaches them.
+    const [participants, mentors] = await Promise.all([
+      prisma.participant.findMany({ where: DISABLED_PARTICIPANT_WHERE, select: { id: true, email: true } }),
+      prisma.mentor.findMany({ where: DISABLED_MENTOR_WHERE, select: { id: true, email: true } }),
+    ]);
+    return [
+      ...participants.map((r) => ({ recipientType: 'participant' as const, recipientId: r.id, email: r.email })),
+      ...mentors.map((r) => ({ recipientType: 'mentor' as const, recipientId: r.id, email: r.email })),
+    ];
+  }
+
   if (audience.type === 'all-mentors') {
-    const rows = await prisma.mentor.findMany({ select: { id: true, email: true } });
+    // Active mentors only — pending/inactive and disabled are excluded.
+    const rows = await prisma.mentor.findMany({
+      where: ELIGIBLE_MENTOR_WHERE,
+      select: { id: true, email: true },
+    });
     return rows.map((r) => ({ recipientType: 'mentor', recipientId: r.id, email: r.email }));
   }
 
@@ -110,11 +171,14 @@ export async function POST(request: NextRequest) {
     if (channels.length === 0 || !channels.every((c) => c === 'dashboard' || c === 'email')) {
       return NextResponse.json({ error: 'يرجى اختيار قناة إرسال واحدة على الأقل' }, { status: 400 });
     }
-    if (!audience || !['all-participants', 'all-mentors', 'all-admins', 'selected'].includes(audience.type)) {
+    if (!audience || !['all-participants', 'all-mentors', 'all-admins', 'disabled-accounts', 'phase', 'phase-failed', 'selected'].includes(audience.type)) {
       return NextResponse.json({ error: 'جمهور الإرسال غير صالح' }, { status: 400 });
     }
     if (audience.type === 'selected' && (!audience.selected || audience.selected.length === 0)) {
       return NextResponse.json({ error: 'يرجى اختيار مستلم واحد على الأقل' }, { status: 400 });
+    }
+    if ((audience.type === 'phase' || audience.type === 'phase-failed') && !audience.phaseId) {
+      return NextResponse.json({ error: 'يرجى اختيار المرحلة' }, { status: 400 });
     }
 
     const recipients = await resolveAudience(audience);

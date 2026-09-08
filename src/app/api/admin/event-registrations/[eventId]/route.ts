@@ -77,7 +77,7 @@ export async function GET(
       registeredAt: reg.createdAt,
       participant: {
         id: reg.participant_id,
-        name: `${reg.firstName} ${reg.secondName} ${reg.familyName}`,
+        name: reg.fullName || [reg.firstName, reg.secondName, reg.familyName].filter(Boolean).join(' ').trim() || reg.email,
         email: reg.email,
         phone: reg.phoneNumber,
         isLeader: reg.isLeader === 1 || reg.isLeader === true,
@@ -166,7 +166,7 @@ export async function PUT(
         registeredAt: regData.createdAt,
         participant: {
           id: regData.participant_id,
-          name: `${regData.firstName} ${regData.secondName} ${regData.familyName}`,
+          name: regData.fullName || [regData.firstName, regData.secondName, regData.familyName].filter(Boolean).join(' ').trim() || regData.email,
           email: regData.email,
         },
       },

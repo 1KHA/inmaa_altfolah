@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import { requireActiveMentor } from '@/lib/account-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,11 @@ export async function GET(request: NextRequest) {
       console.log(`❌ Invalid role: ${decoded.role} (expected: mentor)`);
       return NextResponse.json({ message: 'Invalid token or role' }, { status: 403 });
     }
+    // A disabled mentor must not keep a live dashboard session — this is the
+    // endpoint MentorRouteGuard polls, so 403 bounces them to /login.
+    const blocked_ = await requireActiveMentor(decoded.id);
+    if (blocked_) return blocked_;
+
 
     const mentor = await prisma.mentor.findUnique({
       where: { id: decoded.id },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { PARTICIPANT_PUBLIC_FIELDS } from '@/lib/participant-fields';
 import jwt from 'jsonwebtoken';
+import { requireActiveParticipant, isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -24,6 +25,9 @@ export async function POST(req: NextRequest) {
 
     // Get participant ID from token
     const currentUserId = decoded.participantId;
+    const blocked_ = await requireActiveParticipant(currentUserId);
+    if (blocked_) return blocked_;
+
     
     if (!currentUserId) {
       return NextResponse.json({ error: 'Participant ID not found in token.' }, { status: 401 });
@@ -97,7 +101,7 @@ export async function POST(req: NextRequest) {
     // Add a computed fullName to each participant
     const participantsWithFullName = updatedTeam.participants.map(p => ({
       ...p,
-      fullName: `${p.firstName} ${p.secondName} ${p.familyName}`,
+      fullName: p.fullName || [p.firstName, p.secondName, p.familyName].filter(Boolean).join(' ').trim() || p.email || 'غير متوفر',
     }));
 
     return NextResponse.json({

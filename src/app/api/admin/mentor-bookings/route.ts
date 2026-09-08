@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
         participant: {
           select: {
             id: true,
+            fullName: true,
             firstName: true,
             secondName: true,
             familyName: true,
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
       status: booking.status,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
+      meetingUrl: booking.meetingUrl ?? null,
       mentor: {
         id: booking.availability.mentor.id,
         name: booking.availability.mentor.name,
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
       },
       participant: {
         id: booking.participant.id,
-        name: `${booking.participant.firstName} ${booking.participant.secondName} ${booking.participant.familyName}`,
+        name: booking.participant.fullName || [booking.participant.firstName, booking.participant.secondName, booking.participant.familyName].filter(Boolean).join(' ').trim() || booking.participant.email,
         email: booking.participant.email,
         phoneNumber: booking.participant.phoneNumber,
       },

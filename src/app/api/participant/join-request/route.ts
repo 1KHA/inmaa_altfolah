@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import { dispatchNotification } from '@/lib/notify';
+import { requireActiveParticipant } from '@/lib/account-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,11 @@ export async function POST(request: NextRequest) {
 
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { participantId: string };
+
+    // Disabled accounts cannot act (see src/lib/account-status.ts)
+    const blocked_ = await requireActiveParticipant(decoded.participantId);
+    if (blocked_) return blocked_;
+
     
     // Get request body
     const { teamId, message } = await request.json();
@@ -109,7 +115,7 @@ export async function POST(request: NextRequest) {
     
     if (teamLeader) {
       const participantName = currentParticipant.fullName || 
-        `${currentParticipant.firstName} ${currentParticipant.secondName} ${currentParticipant.familyName}`.trim();
+        (currentParticipant.fullName || [currentParticipant.firstName, currentParticipant.secondName, currentParticipant.familyName].filter(Boolean).join(' ').trim());
       
       // Send notification to team leader
       await dispatchNotification({

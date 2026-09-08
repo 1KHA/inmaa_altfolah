@@ -37,15 +37,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Delete all related join requests first
-    await prisma.teamJoinRequest.deleteMany({
-      where: { participantId: participantId }
-    })
-
-    // Delete the participant
-    await prisma.participant.delete({
-      where: { id: participantId }
-    })
+    // Delete every row that references the participant, then the participant
+    // itself — atomically. Participant has NO onDelete: Cascade relations, so
+    // leaving any dependent row behind fails with a foreign-key violation
+    // (seen in production as `EventRegistration_participantId_fkey`).
+    await prisma.$transaction([
+      prisma.teamJoinRequest.deleteMany({ where: { participantId } }),
+      prisma.mentorBooking.deleteMany({ where: { participantId } }),
+      prisma.milestoneSubmission.deleteMany({ where: { participantId } }),
+      prisma.eventRegistration.deleteMany({ where: { participantId } }),
+      prisma.attendanceRecord.deleteMany({ where: { participantId } }),
+      // dashboard notifications are keyed by recipientId without an FK —
+      // remove them too so no orphaned rows are left behind
+      prisma.notification.deleteMany({
+        where: { recipientType: 'participant', recipientId: participantId },
+      }),
+      prisma.participant.delete({ where: { id: participantId } }),
+    ])
 
     return NextResponse.json({
       message: 'Participant deleted successfully'

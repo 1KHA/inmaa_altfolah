@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
           ]
         },
         include: {
-          participants: { select: PARTICIPANT_PUBLIC_FIELDS }
+          participants: { select: PARTICIPANT_PUBLIC_FIELDS },
+          phase: { select: { id: true, name: true, order: true, isDisabled: true } }
         },
         orderBy: {
           createdAt: 'desc'
@@ -61,7 +62,8 @@ export async function GET(request: NextRequest) {
       // No search term, return all teams
       teams = await prisma.team.findMany({
         include: {
-          participants: { select: PARTICIPANT_PUBLIC_FIELDS }
+          participants: { select: PARTICIPANT_PUBLIC_FIELDS },
+          phase: { select: { id: true, name: true, order: true, isDisabled: true } }
         },
         orderBy: {
           createdAt: 'desc'

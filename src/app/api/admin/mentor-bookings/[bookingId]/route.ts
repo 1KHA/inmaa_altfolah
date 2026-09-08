@@ -10,6 +10,7 @@ const bookingWithPeople = {
     select: {
       id: true,
       firstName: true,
+      fullName: true,
       secondName: true,
       familyName: true,
       email: true,
@@ -135,7 +136,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { bookin
       },
       participant: {
         id: updated.participant.id,
-        name: `${updated.participant.firstName} ${updated.participant.secondName} ${updated.participant.familyName}`,
+        name: updated.participant.fullName || [updated.participant.firstName, updated.participant.secondName, updated.participant.familyName].filter(Boolean).join(' ').trim() || updated.participant.email,
         email: updated.participant.email,
         phoneNumber: updated.participant.phoneNumber,
       },

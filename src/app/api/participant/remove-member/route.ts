@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { PARTICIPANT_PUBLIC_FIELDS } from '@/lib/participant-fields';
 import jwt from "jsonwebtoken";
+import { requireActiveParticipant, isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,9 @@ export async function POST(request: Request) {
     }
 
     const currentParticipantId = decodedToken.participantId;
+    const blocked_ = await requireActiveParticipant(currentParticipantId);
+    if (blocked_) return blocked_;
+
 
     // Get the request body
     const body = await request.json();

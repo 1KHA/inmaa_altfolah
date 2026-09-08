@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePhases } from "@/components/phases/phase-controls";
 import { Send, Search, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "../../../components/ui/use-toast";
@@ -15,6 +23,7 @@ interface PickerUser {
   type: "participant" | "mentor";
   name: string;
   email: string;
+  isDisabled?: boolean;
 }
 
 interface BroadcastRow {
@@ -40,12 +49,26 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 /** Poll the history while any broadcast is still being drained. */
 const PROGRESS_POLL_MS = 3000;
 
-type AudienceType = "all-participants" | "all-mentors" | "all-admins" | "selected";
+type AudienceType =
+  | "all-participants"
+  | "all-mentors"
+  | "all-admins"
+  | "disabled-accounts"
+  | "phase"
+  | "phase-failed"
+  | "selected";
 
 const AUDIENCE_LABELS: Record<string, string> = {
   "all-participants": "جميع المشاركين",
   "all-mentors": "جميع المرشدين",
   "all-admins": "جميع المشرفين",
+  // The one channel that still reaches disabled accounts — they receive no
+  // transactional email, but an admin can send them e.g. a rejection notice.
+  "disabled-accounts": "الحسابات المعطلة",
+  // Phase audiences reach everyone governed by a phase — a team member through
+  // their team, an individual through their own row.
+  phase: "مرحلة محددة",
+  "phase-failed": "المتعثّرون في مرحلة",
   selected: "مستخدمون محددون",
 };
 
@@ -56,6 +79,8 @@ export default function BroadcastComposer() {
   const [channelDashboard, setChannelDashboard] = useState(true);
   const [channelEmail, setChannelEmail] = useState(false);
   const [audienceType, setAudienceType] = useState<AudienceType>("all-participants");
+  const [phaseId, setPhaseId] = useState("");
+  const { phases } = usePhases();
   const [users, setUsers] = useState<PickerUser[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -149,6 +174,8 @@ export default function BroadcastComposer() {
                 return { type, id };
               }),
             }
+          : audienceType === "phase" || audienceType === "phase-failed"
+          ? { type: audienceType, phaseId }
           : { type: audienceType };
 
       const channels = [
@@ -200,7 +227,8 @@ export default function BroadcastComposer() {
     title.trim() &&
     body.trim() &&
     (channelDashboard || channelEmail) &&
-    (audienceType !== "selected" || selectedIds.size > 0);
+    (audienceType !== "selected" || selectedIds.size > 0) &&
+    ((audienceType !== "phase" && audienceType !== "phase-failed") || Boolean(phaseId));
 
   return (
     <div className="space-y-6">
@@ -264,6 +292,47 @@ export default function BroadcastComposer() {
             </div>
           </div>
 
+          {audienceType === "disabled-accounts" && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+              سيتم الإرسال إلى الحسابات المعطلة فقط (المشاركون المعطلون مباشرة أو أعضاء الفرق
+              المعطلة). هذه الحسابات لا تصلها أي رسائل تلقائية — هذه الرسالة الجماعية هي الوسيلة
+              الوحيدة للتواصل معها.
+            </p>
+          )}
+
+          {(audienceType === "phase" || audienceType === "phase-failed") && (
+            <div className="grid gap-2">
+              <Label htmlFor="broadcast-phase">المرحلة</Label>
+              {phases.length === 0 ? (
+                <p className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700">
+                  لا توجد مراحل بعد. أنشئ مرحلة من صفحة &quot;المراحل&quot; أولاً.
+                </p>
+              ) : (
+                <>
+                  <Select value={phaseId || undefined} onValueChange={setPhaseId}>
+                    <SelectTrigger id="broadcast-phase" className="w-full">
+                      <SelectValue placeholder="اختر المرحلة…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {phases.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                          {p.isDisabled ? " (معطّلة)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {audienceType === "phase"
+                      ? "يشمل كل فريق ومشارك في هذه المرحلة (أعضاء الفرق عبر فرقهم)."
+                      : "يشمل من عليهم علامة \"متعثّر\" في هذه المرحلة فقط."}{" "}
+                    الحسابات المعطلة أو غير المعتمدة لا تصلها الرسالة.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
           {audienceType === "selected" && (
             <div className="border rounded-lg p-3 space-y-3">
               <div className="relative">
@@ -294,6 +363,11 @@ export default function BroadcastComposer() {
                         <span className="text-muted-foreground" dir="ltr">
                           {u.email}
                         </span>
+                        {u.isDisabled && (
+                          <span className="px-1.5 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
+                            معطل
+                          </span>
+                        )}
                         <span className="mr-auto px-1.5 py-0.5 rounded-full text-xs bg-muted">
                           {u.type === "participant" ? "مشارك" : "مرشد"}
                         </span>
@@ -350,6 +424,10 @@ export default function BroadcastComposer() {
                       audienceLabel =
                         a.type === "selected"
                           ? `${a.selected?.length ?? 0} مستخدم محدد`
+                          : a.type === "phase" || a.type === "phase-failed"
+                          ? `${AUDIENCE_LABELS[a.type]}: ${
+                              phases.find((p) => p.id === a.phaseId)?.name ?? "—"
+                            }`
                           : AUDIENCE_LABELS[a.type] || a.type;
                       channelsLabel = (JSON.parse(b.channels) as string[])
                         .map((c) => (c === "dashboard" ? "لوحة" : "بريد"))

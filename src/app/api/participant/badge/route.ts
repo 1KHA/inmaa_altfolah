@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/notification-auth';
 import { getOrCreateBadgeCode } from '@/lib/badge';
+import { requireActiveParticipant } from '@/lib/account-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,10 @@ export async function GET() {
     if (!participantId) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
+
+    const blocked_ = await requireActiveParticipant(participantId);
+    if (blocked_) return blocked_;
+
 
     const participant = await prisma.participant.findUnique({
       where: { id: participantId },
