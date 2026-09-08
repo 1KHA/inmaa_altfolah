@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Search, 
   Filter, 
@@ -29,12 +30,14 @@ import {
   Users,
   Mail,
   Calendar,
-  Award,
   Clock,
   Edit,
   Trash2,
   UserCheck,
-  UserX
+  UserX,
+  Ban,
+  RotateCcw,
+  Video,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -54,11 +57,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useToast } from '../../../../components/ui/use-toast';
+import MentorMessageDialog from '@/components/admin/MentorMessageDialog';
 import { Label } from '@/components/ui/label';
 import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/ar'; // Import Arabic locale
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { SLOT_STEP_MINUTES, SLOT_TIMESLOTS_PER_HOUR } from '@/lib/constants';
 
 moment.locale('ar'); // Set moment to use Arabic
 const localizer = momentLocalizer(moment);
@@ -93,18 +98,26 @@ interface Mentor {
   specialty: string;
   phone: string;
   status: 'pending' | 'active' | 'inactive';
+  isDisabled?: boolean;
   createdAt: string;
   updatedAt: string;
-  // The following fields are for display and might not be in the DB model directly
-  assignedTeams?: number;
-  availability?: string;
-  sessionsCompleted?: number;
-  rating?: number;
+  // Computed server-side from real bookings/availability (see
+  // GET /api/admin/mentors). Absent for non-admin callers.
+  assignedTeams?: number;      // distinct teams this mentor has sessions with
+  availability?: string | null; // متاح | متاح جزئياً | مشغول, from FUTURE slots
+  sessionsCompleted?: number;  // non-cancelled bookings whose slot has ended
+  sessionsUpcoming?: number;
+  sessionsTotal?: number;
+  availableSlots?: number;
+  upcomingSlots?: number;
   teams?: string[];
 }
 
 export default function MentorsPage() {
   const [mentors, setMentors] = useState<Mentor[]>([]);
+  // Bulk disable/enable selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
@@ -117,6 +130,7 @@ export default function MentorsPage() {
   const [mentorForAvailability, setMentorForAvailability] = useState<Mentor | null>(null);
   const [availabilityEvents, setAvailabilityEvents] = useState<AvailabilityEvent[]>([]);
   const [slotToAdd, setSlotToAdd] = useState<{ start: Date; end: Date } | null>(null);
+  const [mentorToMessage, setMentorToMessage] = useState<Mentor | null>(null);
   const [eventToDelete, setEventToDelete] = useState<AvailabilityEvent | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
@@ -232,16 +246,10 @@ export default function MentorsPage() {
         throw new Error('Failed to fetch mentors');
       }
       const data = await response.json();
-      // Add mock display data for now
-      const mentorsWithMockData = data.map((mentor: Mentor) => ({
-        ...mentor,
-        assignedTeams: Math.floor(Math.random() * 5),
-        availability: ['متاح', 'مشغول', 'متاح جزئياً'][Math.floor(Math.random() * 3)],
-        sessionsCompleted: Math.floor(Math.random() * 20),
-        rating: parseFloat((Math.random() * (5 - 3.5) + 3.5).toFixed(1)),
-        teams: ['فريق ألفا', 'فريق بيتا'].slice(0, Math.floor(Math.random() * 3)),
-      }));
-      setMentors(mentorsWithMockData);
+      // assignedTeams / availability / sessions now come from the API, computed
+      // from real bookings and availability slots. They used to be generated
+      // here with Math.random() and re-rolled on every fetch.
+      setMentors(data);
     } catch (error) {
       console.error(error);
       toast({
@@ -343,9 +351,8 @@ export default function MentorsPage() {
         throw new Error(errorData.message || 'Failed to update mentor status');
       }
 
-      // Patch the single row instead of refetching: fetchMentors() re-rolls the
-      // mock display data (rating/availability/teams), which would make the
-      // whole table jump on every activation.
+      // Patch the single row instead of refetching — cheaper than a round trip,
+      // and the stats are unaffected by a status change.
       setMentors((prev) =>
         prev.map((m) => (m.id === mentor.id ? { ...m, status: nextStatus } : m))
       );
@@ -415,6 +422,47 @@ export default function MentorsPage() {
     setAvailabilityDialogOpen(true);
   };
 
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  /** Disable or re-enable every ticked mentor in one request. */
+  const handleBulkDisable = async (disabled: boolean) => {
+    if (selectedIds.size === 0) return;
+    try {
+      setBulkBusy(true);
+      const res = await fetch('/api/admin/accounts/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ mentorIds: Array.from(selectedIds), disabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشل تنفيذ العملية');
+      toast({
+        title: 'نجح',
+        description: disabled
+          ? `تم تعطيل ${data.mentorsUpdated} موجه`
+          : `تم تفعيل ${data.mentorsUpdated} موجه`,
+      });
+      setSelectedIds(new Set());
+      fetchMentors();
+    } catch (err) {
+      toast({
+        title: 'خطأ',
+        description: err instanceof Error ? err.message : 'فشل تنفيذ العملية',
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const filteredMentors = mentors.filter(mentor => {
     const matchesSearch = mentor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          mentor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -436,7 +484,7 @@ export default function MentorsPage() {
     }
   };
 
-  const getAvailabilityBadge = (availability?: string) => {
+  const getAvailabilityBadge = (availability?: string | null) => {
     switch (availability) {
       case 'متاح':
         return <Badge className="bg-green-100 text-green-800">متاح</Badge>;
@@ -455,6 +503,7 @@ export default function MentorsPage() {
     status: string;
     createdAt: string;
     updatedAt: string;
+    meetingUrl?: string | null;
     mentor: { id: string; name: string; email: string; specialty: string };
     participant: { id: string; name: string; email: string; phoneNumber: string };
     availability: { id: string; startTime: string; endTime: string };
@@ -603,8 +652,8 @@ export default function MentorsPage() {
   };
 
   return (
-    <div className="p-8" dir="rtl">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-0 md:p-8" dir="rtl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
         <h1 className="text-3xl font-bold text-blue-800">إدارة الموجهين</h1>
         <div className="flex gap-4">
           <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
@@ -623,7 +672,7 @@ export default function MentorsPage() {
               </DialogHeader>
               <form onSubmit={handleAddMentor}>
                 <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                     <Label htmlFor="name" className="text-right">
                       الاسم
                     </Label>
@@ -635,7 +684,7 @@ export default function MentorsPage() {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                     <Label htmlFor="email" className="text-right">
                       البريد الإلكتروني
                     </Label>
@@ -648,7 +697,7 @@ export default function MentorsPage() {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                     <Label htmlFor="specialty" className="text-right">
                       التخصص
                     </Label>
@@ -660,7 +709,7 @@ export default function MentorsPage() {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                     <Label htmlFor="phone" className="text-right">
                       رقم الجوال
                     </Label>
@@ -672,7 +721,7 @@ export default function MentorsPage() {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                     <Label htmlFor="password" className="text-right">
                       كلمة المرور
                     </Label>
@@ -734,19 +783,22 @@ export default function MentorsPage() {
           </CardContent>
         </Card>
         
+        {/* Replaced "متوسط التقييم": there is no rating model in the schema, so
+            the old average was a mean of Math.random() values. This shows a
+            real number instead. */}
         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-yellow-50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Award className="h-5 w-5 text-yellow-500" />
-              متوسط التقييم
+              <Users className="h-5 w-5 text-yellow-500" />
+              الفرق المخدومة
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-yellow-600">
-              {(mentors.reduce((total, mentor) => total + (mentor.rating || 0), 0) / (mentors.length || 1)).toFixed(1)}/5
+              {new Set(mentors.flatMap((m) => m.teams || [])).size}
             </div>
             <p className="text-xs text-muted-foreground">
-              بناءً على تقييمات المشاركين
+              عدد الفرق التي لديها جلسات مع الموجهين
             </p>
           </CardContent>
         </Card>
@@ -772,7 +824,7 @@ export default function MentorsPage() {
       {/* Filters and Search */}
       <Card className="mb-8 border-0 shadow-sm overflow-hidden">
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 h-4 w-4" />
@@ -785,7 +837,7 @@ export default function MentorsPage() {
               </div>
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[180px] border-blue-100 focus:border-blue-300 rounded-full">
+              <SelectTrigger className="w-full md:w-[180px] border-blue-100 focus:border-blue-300 rounded-full">
                 <SelectValue placeholder="حالة الموجه" />
               </SelectTrigger>
               <SelectContent>
@@ -803,52 +855,90 @@ export default function MentorsPage() {
         </CardContent>
       </Card>
 
+      {/* Bulk disable/enable bar — appears once any mentor is ticked */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
+          <span className="text-sm font-medium">تم اختيار {selectedIds.size} موجه</span>
+          <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={() => handleBulkDisable(true)}>
+            <Ban className="ml-1 h-4 w-4" />
+            تعطيل المحدد
+          </Button>
+          <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => handleBulkDisable(false)}>
+            <RotateCcw className="ml-1 h-4 w-4" />
+            إعادة التفعيل
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+            إلغاء التحديد
+          </Button>
+        </div>
+      )}
+
       {/* Mentors Table */}
       <Card className="border-0 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           <Table className="border-collapse">
             <TableHeader>
               <TableRow className="bg-blue-50 hover:bg-blue-50">
+                <TableHead className="w-10">
+                  <Checkbox
+                    aria-label="تحديد الكل"
+                    checked={filteredMentors.length > 0 && filteredMentors.every((m) => selectedIds.has(m.id))}
+                    onCheckedChange={(checked: boolean | 'indeterminate') =>
+                      setSelectedIds(checked === true ? new Set(filteredMentors.map((m) => m.id)) : new Set())
+                    }
+                  />
+                </TableHead>
                 <TableHead>الاسم</TableHead>
                 <TableHead>التخصص</TableHead>
                 <TableHead>الفرق المعينة</TableHead>
                 <TableHead>التوفر</TableHead>
                 <TableHead>الجلسات</TableHead>
-                <TableHead>التقييم</TableHead>
                 <TableHead>الحالة</TableHead>
                 <TableHead className="text-left">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredMentors.map((mentor) => (
-                <TableRow key={mentor.id} className="hover:bg-gray-50 transition-colors duration-150">
+                <TableRow
+                  key={mentor.id}
+                  className={`hover:bg-gray-50 transition-colors duration-150 ${mentor.isDisabled ? 'bg-red-50/60' : ''}`}
+                >
+                  <TableCell>
+                    <Checkbox
+                      aria-label="تحديد الموجه"
+                      checked={selectedIds.has(mentor.id)}
+                      onCheckedChange={() => toggleRow(mentor.id)}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">
-                    <div>{mentor.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span>{mentor.name}</span>
+                      {mentor.isDisabled && (
+                        <span className="px-1.5 py-0.5 rounded-full text-xs bg-red-100 text-red-700">معطل</span>
+                      )}
+                    </div>
                     <div className="text-sm text-gray-500">{mentor.email}</div>
                   </TableCell>
                   <TableCell>{mentor.specialty}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-gray-500" />
-                      <span>{mentor.assignedTeams} فرق</span>
+                      <span title={(mentor.teams || []).join('، ') || 'لا توجد فرق'}>
+                        {mentor.assignedTeams ?? 0} فرق
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>{getAvailabilityBadge(mentor.availability)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gray-500" />
-                      <span>{mentor.sessionsCompleted}</span>
+                      <span title={`مكتملة ${mentor.sessionsCompleted ?? 0} · قادمة ${mentor.sessionsUpcoming ?? 0}`}>
+                        {mentor.sessionsCompleted ?? 0}
+                        {(mentor.sessionsUpcoming ?? 0) > 0 && (
+                          <span className="text-xs text-muted-foreground"> (+{mentor.sessionsUpcoming} قادمة)</span>
+                        )}
+                      </span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    {mentor.rating && mentor.rating > 0 ? (
-                      <div className="flex items-center gap-1">
-                        <Award className="h-4 w-4 text-yellow-500" />
-                        <span>{mentor.rating}/5</span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
                   </TableCell>
                   <TableCell>{getStatusBadge(mentor.status)}</TableCell>
                   <TableCell>
@@ -884,6 +974,14 @@ export default function MentorsPage() {
                       >
                         <Clock className="h-4 w-4" />
                         <span>إدارة الوقت</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 flex items-center gap-1"
+                        onClick={() => setMentorToMessage(mentor)}
+                      >
+                        <Mail className="h-4 w-4" />
+                        <span>إرسال رسالة</span>
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -990,6 +1088,19 @@ export default function MentorsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2 justify-center">
+                        {booking.meetingUrl && (
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200 flex items-center gap-1 px-3 py-1 h-8"
+                            title="رابط اجتماع الجلسة"
+                          >
+                            <a href={booking.meetingUrl} target="_blank" rel="noopener noreferrer">
+                              <Video className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -1030,7 +1141,7 @@ export default function MentorsPage() {
           {selectedBooking && (
             <form onSubmit={handleEditBooking}>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                   <Label htmlFor="edit-status" className="text-right">
                     الحالة
                   </Label>
@@ -1048,7 +1159,7 @@ export default function MentorsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                   <Label htmlFor="edit-availability" className="text-right">
                     إعادة جدولة الموعد
                   </Label>
@@ -1137,7 +1248,7 @@ export default function MentorsPage() {
           {mentorToEdit && (
             <form onSubmit={handleUpdateMentor}>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                   <Label htmlFor="edit-name" className="text-right">
                     الاسم
                   </Label>
@@ -1149,7 +1260,7 @@ export default function MentorsPage() {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                   <Label htmlFor="edit-email" className="text-right">
                     البريد الإلكتروني
                   </Label>
@@ -1162,7 +1273,7 @@ export default function MentorsPage() {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                   <Label htmlFor="edit-specialty" className="text-right">
                     التخصص
                   </Label>
@@ -1174,7 +1285,7 @@ export default function MentorsPage() {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                   <Label htmlFor="edit-phone" className="text-right">
                     رقم الجوال
                   </Label>
@@ -1186,7 +1297,7 @@ export default function MentorsPage() {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                   <Label htmlFor="edit-status" className="text-right">
                     الحالة
                   </Label>
@@ -1248,7 +1359,7 @@ export default function MentorsPage() {
             </Button>
           </div>
           {showDatePicker && (
-            <div className="flex justify-center gap-4 mb-4 p-4 bg-gray-100 rounded-md">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-4 p-4 bg-gray-100 rounded-md">
               <Select
                 value={String(calendarDate.getFullYear())}
                 onValueChange={(value) => handleDateChange(new Date(parseInt(value), calendarDate.getMonth(), calendarDate.getDate()))}
@@ -1293,6 +1404,8 @@ export default function MentorsPage() {
           <div style={{ height: '70vh', backgroundColor: 'white', padding: '20px', borderRadius: '8px' }}>
             <BigCalendar
               localizer={localizer}
+              step={SLOT_STEP_MINUTES}
+              timeslots={SLOT_TIMESLOTS_PER_HOUR}
               events={availabilityEvents}
               startAccessor="start"
               endAccessor="end"
@@ -1362,6 +1475,7 @@ export default function MentorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <MentorMessageDialog mentor={mentorToMessage} onClose={() => setMentorToMessage(null)} />
     </div>
   );
 }

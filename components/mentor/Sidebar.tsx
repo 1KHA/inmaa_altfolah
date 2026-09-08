@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSidebar } from "@/contexts/sidebar-context"
 import { motion } from "framer-motion"
 import { 
   Home, 
@@ -99,7 +100,8 @@ const HIDDEN_HREFS = new Set([
 ])
 
 export default function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  // Shared with the layout so the content margin follows the collapse state
+  const { isCollapsed, toggleSidebar } = useSidebar()
   const pathname = usePathname()
   const { hasPermission, loading } = usePermissions()
 
@@ -117,14 +119,15 @@ export default function Sidebar() {
   return (
     <motion.aside
       className={cn(
-        "fixed top-12 left-0 bg-card text-card-foreground border-r h-[calc(100vh-3rem)]",
+        // The mentor header is h-16 (64px): start right below it, not at 48px
+        "fixed top-16 left-0 z-10 bg-card text-card-foreground border-r h-[calc(100vh-4rem)]",
         isCollapsed ? "w-16" : "w-64",
       )}
       animate={{ width: isCollapsed ? 64 : 256 }}
     >
       <div className="flex flex-col h-full text-left">
         <div className="flex items-center justify-between p-4 border-b">
-          <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)}>
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label={isCollapsed ? "توسيع القائمة" : "طي القائمة"}>
             {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>

@@ -18,6 +18,7 @@ import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { Checkbox } from "../../../../components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
+import { TEAM_MAX_MEMBERS } from "@/lib/constants";
 import { Alert, AlertDescription } from "../../../../components/ui/alert";
 import { Progress } from "../../../../components/ui/progress";
 import { Textarea } from "../../../../components/ui/textarea";
@@ -91,6 +92,13 @@ export default function TeamManagementPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isTeamEditModalOpen, setIsTeamEditModalOpen] = useState(false);
+  // Admin-controlled window for adding members (fetched once; the server
+  // enforces it again on submit)
+  const [addWindow, setAddWindow] = useState<{
+    allowed: boolean;
+    message?: string;
+    memberAddEnd?: string | null;
+  } | null>(null);
   const [editedParticipant, setEditedParticipant] = useState<Participant | null>(null);
   const [newParticipant, setNewParticipant] = useState(initialParticipantState);
   const [editedTeam, setEditedTeam] = useState<Partial<TeamData> | null>(null);
@@ -119,6 +127,10 @@ export default function TeamManagementPage() {
 
   useEffect(() => {
     fetchTeamDetails();
+    fetch('/api/participant/member-add-window')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setAddWindow(d))
+      .catch(() => {});
   }, []);
 
   const handleDeleteParticipant = async (participantId: string) => {
@@ -199,6 +211,26 @@ export default function TeamManagementPage() {
     }
   };
 
+  const openAddMemberDialog = () => {
+    if (addWindow && !addWindow.allowed) {
+      toast({
+        title: "غير مسموح",
+        description: addWindow.message || 'انتهى الوقت المسموح ولا يمكن إضافة أعضاء للفريق بعد الآن.',
+        variant: "destructive",
+      });
+      return;
+    }
+    if (teamData && teamData.participants.length >= TEAM_MAX_MEMBERS) {
+      toast({
+        title: "غير مسموح",
+        description: `وصل الفريق إلى الحد الأقصى لعدد الأعضاء (${TEAM_MAX_MEMBERS} عضواً).`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsAddModalOpen(true);
+  };
+
   const handleAddParticipant = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
@@ -211,7 +243,7 @@ export default function TeamManagementPage() {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Failed to add member');
         }
-        toast({ title: "تمت الإضافة بنجاح", description: "تمت إضافة العضو الجديد للفريق." });
+        toast({ title: "تمت الإضافة بنجاح", description: "تمت إضافة العضو الجديد للفريق، وسيصله بريد إلكتروني ببيانات الدخول إلى حسابه." });
         fetchTeamDetails();
         setIsAddModalOpen(false);
         setNewParticipant(initialParticipantState);
@@ -249,21 +281,21 @@ export default function TeamManagementPage() {
   const { currentUser } = teamData;
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-2 sm:p-6" dir="rtl">
+    <div className="w-full max-w-full space-y-4 sm:space-y-6 p-0 sm:p-2 md:p-4" dir="rtl">
       <Tabs defaultValue="team-info" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="team-info">معلومات الفريق</TabsTrigger>
-          <TabsTrigger value="members">الأعضاء</TabsTrigger>
+        <TabsList className="grid w-full h-auto grid-cols-2 p-1">
+          <TabsTrigger value="team-info" className="whitespace-normal py-2 text-xs sm:text-sm">معلومات الفريق</TabsTrigger>
+          <TabsTrigger value="members" className="whitespace-normal py-2 text-xs sm:text-sm">الأعضاء</TabsTrigger>
         </TabsList>
 
         <TabsContent value="team-info" className="mt-6">
           <Card>
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-xl sm:text-2xl">فريق: {teamData.teamName}</CardTitle>
+        <CardHeader className="flex flex-col sm:flex-row-reverse items-start sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle className="text-xl sm:text-2xl leading-snug break-words">فريق: {teamData.teamName}</CardTitle>
             <CardDescription>تفاصيل الفريق والفكرة</CardDescription>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:shrink-0">
             {currentUser.isLeader && (
               <Button 
                 onClick={() => {
@@ -287,58 +319,64 @@ export default function TeamManagementPage() {
                 تعديل معلومات الفريق
               </Button>
             )}
+            {currentUser.isLeader && (
+              <Button onClick={openAddMemberDialog} className="w-full sm:w-auto">
+                <Plus className="ml-2 h-4 w-4" />
+                إضافة عضو
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-3 sm:p-6">
             <div className="space-y-4 sm:space-y-6 text-right">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 p-3 sm:p-4 border rounded-lg bg-muted/10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 p-3 sm:p-4 border rounded-lg bg-muted/10 min-w-0 [&>div]:min-w-0">
                     <div className="space-y-2">
                         <Label>اسم الفكرة</Label>
-                        <p className="font-medium">{teamData.ideaName}</p>
+                        <p className="font-medium break-words">{teamData.ideaName}</p>
                     </div>
                     <div className="space-y-2">
                         <Label>التحدي</Label>
-                        <p className="font-medium">{teamData.challenge}</p>
+                        <p className="font-medium break-words">{teamData.challenge}</p>
                     </div>
                     <div className="space-y-2">
                         <Label>مرحلة الفكرة</Label>
-                        <p className="font-medium">{teamData.ideaStage}</p>
+                        <p className="font-medium break-words">{teamData.ideaStage}</p>
                     </div>
                     <div className="space-y-2">
                         <Label>حالة الفريق</Label>
-                        <p className="font-medium">{teamData.status}</p>
+                        <p className="font-medium break-words">{teamData.status}</p>
                     </div>
                 </div>
 
                 <div className="space-y-4 p-3 sm:p-4 border rounded-lg bg-muted/10">
                     <div className="space-y-2">
                         <Label>وصف الفكرة</Label>
-                        <p className="font-medium leading-relaxed">{teamData.ideaDescription}</p>
+                        <p className="font-medium leading-relaxed break-words whitespace-pre-wrap">{teamData.ideaDescription}</p>
                     </div>
                     <div className="space-y-2">
                         <Label>سبب اختيار التحدي</Label>
-                        <p className="font-medium leading-relaxed">{teamData.challengeReason}</p>
+                        <p className="font-medium leading-relaxed break-words whitespace-pre-wrap">{teamData.challengeReason}</p>
                     </div>
                     <div className="space-y-2">
                         <Label>الحل المقترح</Label>
-                        <p className="font-medium leading-relaxed">{teamData.ideaSolution}</p>
+                        <p className="font-medium leading-relaxed break-words whitespace-pre-wrap">{teamData.ideaSolution}</p>
                     </div>
                     <div className="space-y-2">
                         <Label>النتائج المتوقعة</Label>
-                        <p className="font-medium leading-relaxed">{teamData.ideaResults}</p>
+                        <p className="font-medium leading-relaxed break-words whitespace-pre-wrap">{teamData.ideaResults}</p>
                     </div>
                 </div>
 
                 <div className="p-3 sm:p-4 border rounded-lg bg-muted/10">
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                             <Label>هل شاركت الفكرة من قبل؟</Label>
                             <span className="font-medium">{teamData.hasParticipated ? 'نعم' : 'لا'}</span>
                         </div>
                         {teamData.hasParticipated && (
                             <div className="space-y-2">
                                 <Label>تفاصيل المشاركة السابقة</Label>
-                                <p className="font-medium">{teamData.participationDetails}</p>
+                                <p className="font-medium break-words">{teamData.participationDetails}</p>
                             </div>
                         )}
                         {teamData.attachmentPath && (
@@ -362,88 +400,173 @@ export default function TeamManagementPage() {
 
         <TabsContent value="members" className="mt-6">
           <Card>
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div>
-                <CardTitle>أعضاء الفريق</CardTitle>
-                <CardDescription>{teamData.participants.length} من الأعضاء</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6">
-              {/* One responsive card per member: 1 column by default, 2 on xl, 3 on 2xl
-                  (the dashboard sidebar takes 256px, so breakpoints are set on the
-                  remaining content width, not the viewport). */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+        <CardHeader className="flex flex-col sm:flex-row-reverse items-start sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle>أعضاء الفريق <span className="text-sm font-normal text-muted-foreground">({teamData.participants.length}/{TEAM_MAX_MEMBERS})</span></CardTitle>
+            {addWindow?.allowed && addWindow.memberAddEnd && (
+              <p className="text-xs text-muted-foreground mt-1">
+                إضافة الأعضاء متاحة حتى {new Date(addWindow.memberAddEnd).toLocaleString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+            {addWindow && !addWindow.allowed && (
+              <p className="text-xs text-red-600 mt-1">{addWindow.message}</p>
+            )}
+          </div>
+          {currentUser.isLeader && (
+            <Button onClick={openAddMemberDialog} className="w-full sm:w-auto shrink-0">
+              <Plus className="ml-2 h-4 w-4" />
+              إضافة عضو
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="p-2 sm:p-6">
+          {/* Card view: phones, tablets and small laptops (below xl) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 xl:hidden">
+            {teamData.participants.map((participant) => {
+              const canDelete = currentUser.isLeader && currentUser.id !== participant.id;
+              
+              return (
+                <Card key={participant.id} className="overflow-hidden min-w-0">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start gap-2 mb-3">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-lg leading-snug break-words">{participant.fullName}</h3>
+                        <p className="text-sm text-muted-foreground break-all">{participant.email}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {participant.isLeader && (
+                          <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 whitespace-nowrap">قائد</span>
+                        )}
+                        <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${participant.canAttend ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {participant.canAttend ? 'يمكنه الحضور' : 'لا يمكنه الحضور'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm break-words [&>div]:min-w-0">
+                      <div>
+                        <span className="text-muted-foreground">رقم الهوية:</span>
+                        <p>{participant.nationalId}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">رقم الهاتف:</span>
+                        <p>{participant.phoneNumber}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">الجنسية:</span>
+                        <p>{participant.nationality}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">الإقامة:</span>
+                        <p>{participant.residence}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">المؤهل:</span>
+                        <p>{participant.education}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">التخصص:</span>
+                        <p>{participant.major}</p>
+                      </div>
+                    </div>
+                    
+                    {canDelete && (
+                      <div className="mt-4 flex justify-end">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedParticipant(participant);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="text-xs"
+                        >
+                          <Trash className="h-3 w-3 mr-1" />
+                          إزالة العضو
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          
+          {/* Table view: wide desktops only (xl and up) */}
+          <div className="hidden xl:block w-full overflow-x-auto rounded-lg border">
+              <table className="w-full min-w-[1000px] text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">الاسم الكامل</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">البريد الإلكتروني</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">رقم الهوية</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">تاريخ الميلاد</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">رقم الهاتف</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">المؤهل</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">الجامعة</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">التخصص</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">الحالة الوظيفية</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">الجنسية</th>
+                  <th className="p-2 sm:p-4 text-right font-medium text-muted-foreground whitespace-nowrap">الإقامة</th>
+                  <th className="p-2 sm:p-4 text-center font-medium text-muted-foreground whitespace-nowrap">يمكنه الحضور</th>
+                  <th className="p-2 sm:p-4 text-center font-medium text-muted-foreground whitespace-nowrap">قائد</th>
+                  <th className="p-2 sm:p-4 text-center font-medium text-muted-foreground whitespace-nowrap">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
                 {teamData.participants.map((participant) => {
+                  const canEdit = currentUser.isLeader;
                   const canDelete = currentUser.isLeader && currentUser.id !== participant.id;
-                  const details: [string, string][] = [
-                    [fieldLabels.nationalId, participant.nationalId],
-                    [fieldLabels.dob, participant.dob],
-                    [fieldLabels.phoneNumber, participant.phoneNumber],
-                    [fieldLabels.education, participant.education],
-                    [fieldLabels.university, participant.university],
-                    [fieldLabels.major, participant.major],
-                    [fieldLabels.employmentStatus, participant.employmentStatus],
-                    [fieldLabels.nationality, participant.nationality],
-                    [fieldLabels.residence, participant.residence],
-                  ];
 
                   return (
-                    <Card key={participant.id} className="min-w-0 overflow-hidden">
-                      <CardContent className="p-4 sm:p-5">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h3 className="font-semibold text-base sm:text-lg leading-snug break-words">
-                              {participant.fullName}
-                            </h3>
-                            <a
-                              href={`mailto:${participant.email}`}
-                              className="block text-sm text-muted-foreground break-all text-right hover:underline"
-                              dir="ltr"
-                            >
-                              {participant.email}
-                            </a>
-                          </div>
-                          <div className="flex flex-wrap justify-end gap-1 shrink-0">
-                            {participant.isLeader && (
-                              <span className="px-2 py-1 rounded-full text-xs whitespace-nowrap bg-blue-100 text-blue-800">قائد</span>
-                            )}
-                            <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${participant.canAttend ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                              {participant.canAttend ? 'يمكنه الحضور' : 'لا يمكنه الحضور'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <dl className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                          {details.map(([label, value]) => (
-                            <div key={label} className="min-w-0">
-                              <dt className="text-xs text-muted-foreground">{label}</dt>
-                              <dd className="font-medium break-words">{value || '—'}</dd>
-                            </div>
-                          ))}
-                        </dl>
-
-                        {canDelete && (
-                          <div className="mt-4 pt-4 border-t flex justify-end">
+                    <tr key={participant.id} className="border-t hover:bg-muted/10 transition-colors">
+                      <td className="p-2 sm:p-4 text-right">{participant.fullName}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.email}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.nationalId}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.dob}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.phoneNumber}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.education}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.university}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.major}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.employmentStatus}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.nationality}</td>
+                      <td className="p-2 sm:p-4 text-right">{participant.residence}</td>
+                      <td className="p-2 sm:p-4 text-center">
+                        <span className={`px-2 py-1 rounded-full text-xs ${participant.canAttend ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {participant.canAttend ? 'نعم' : 'لا'}
+                        </span>
+                      </td>
+                      <td className="p-2 sm:p-4 text-center">
+                        {participant.isLeader && (
+                          <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">قائد</span>
+                        )}
+                      </td>
+                      <td className="p-2 sm:p-4">
+                        <div className="flex gap-2 justify-center">
+                          {canDelete && (
                             <Button
-                              variant="destructive"
-                              size="sm"
+                              variant="ghost"
+                              size="icon"
+                              title="حذف"
                               onClick={() => {
                                 setSelectedParticipant(participant);
                                 setIsDeleteModalOpen(true);
                               }}
+                              className="text-red-500 hover:text-red-600"
                             >
-                              <Trash className="h-3.5 w-3.5 ml-1" />
-                              إزالة العضو
+                              <Trash className="h-4 w-4" />
                             </Button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })}
-              </div>
-            </CardContent>
-          </Card>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
         </TabsContent>
       </Tabs>
 

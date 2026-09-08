@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Search, Download, Trash, Edit, Eye, Check, X, UserPlus } from "lucide-react";
+import { Search, Download, Trash, Edit, Eye, Check, X, UserPlus, Ban, RotateCcw } from "lucide-react";
 import * as XLSX from 'xlsx';
 import {
   Dialog,
@@ -17,12 +17,14 @@ import { useToast } from "../../../../components/ui/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { usePhases, PhaseBadge, PhaseBulkActions, PhaseRowMove, PhaseFilter, matchesPhaseFilter } from "@/components/phases/phase-controls";
 
 // Define types for our data
 interface IndividualParticipant {
   id: string;
   email: string;
   status: string; // pending, approved, rejected
+  isDisabled?: boolean;
   teamId: null;
   // New CSV fields
   fullName?: string;
@@ -48,6 +50,11 @@ interface IndividualParticipant {
   residence?: string;
   canAttend?: boolean;
   createdAt: string;
+  // Phase membership. These rows are individuals (teamId is null), so the
+  // participant's own phase IS their phase — no team to read through.
+  phaseId?: string | null;
+  phaseStatus?: string | null;
+  phase?: { id: string; name: string; order: number; isDisabled: boolean } | null;
 }
 
 export default function ParticipantsPage() {
@@ -60,6 +67,11 @@ export default function ParticipantsPage() {
 
   // State for modals
   const [selectedParticipant, setSelectedParticipant] = useState<IndividualParticipant | null>(null);
+  // Bulk disable/enable selection (ids of rows ticked in the table)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const { phases } = usePhases();
+  const [phaseFilter, setPhaseFilter] = useState("all");
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -276,9 +288,51 @@ export default function ParticipantsPage() {
     }
   };
 
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  /** Disable or re-enable every ticked participant in one request. */
+  const handleBulkDisable = async (disabled: boolean) => {
+    if (selectedIds.size === 0) return;
+    try {
+      setBulkBusy(true);
+      const res = await fetch('/api/admin/accounts/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ participantIds: Array.from(selectedIds), disabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشل تنفيذ العملية');
+      toast({
+        title: 'نجح',
+        description: disabled
+          ? `تم تعطيل ${data.participantsUpdated} حساب`
+          : `تم تفعيل ${data.participantsUpdated} حساب`,
+      });
+      setSelectedIds(new Set());
+      fetchIndividualParticipants(searchQuery);
+    } catch (err) {
+      toast({
+        title: 'خطأ',
+        description: err instanceof Error ? err.message : 'فشل تنفيذ العملية',
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   // Filter participants based on search query and selected status
   const filteredParticipants = individualParticipants
     .filter(participant => selectedStatus === "all" || participant.status === selectedStatus)
+    .filter(participant => matchesPhaseFilter(participant, phaseFilter))
     .filter(participant => {
       const displayName = participant.fullName || `${participant.firstName || ''} ${participant.secondName || ''} ${participant.familyName || ''}`.trim();
       return displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -352,7 +406,7 @@ export default function ParticipantsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">المشاركون الأفراد</h1>
         <Button onClick={() => setIsCreateModalOpen(true)}>
           <UserPlus className="ml-2 h-4 w-4" />
@@ -400,12 +454,46 @@ export default function ParticipantsPage() {
                 <option value="approved">معتمد</option>
                 <option value="rejected">مرفوض</option>
               </select>
+              <PhaseFilter value={phaseFilter} onChange={setPhaseFilter} phases={phases} />
               <Button variant="outline" className="gap-2" onClick={handleExportToExcel}>
                 <Download className="h-4 w-4" />
                 تصدير
               </Button>
             </div>
           </div>
+
+          {selectedIds.size > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
+              <span className="text-sm font-medium">تم اختيار {selectedIds.size} مشارك</span>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={bulkBusy}
+                onClick={() => handleBulkDisable(true)}
+              >
+                <Ban className="ml-1 h-4 w-4" />
+                تعطيل المحدد
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={bulkBusy}
+                onClick={() => handleBulkDisable(false)}
+              >
+                <RotateCcw className="ml-1 h-4 w-4" />
+                إعادة التفعيل
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                إلغاء التحديد
+              </Button>
+              <PhaseBulkActions
+                ids={Array.from(selectedIds)}
+                kind="participant"
+                phases={phases}
+                onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
+              />
+            </div>
+          )}
 
           {loading ? (
             <p className="text-center p-4">جاري تحميل البيانات...</p>
@@ -416,25 +504,72 @@ export default function ParticipantsPage() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-muted">
+                    <th className="border p-2 w-10 text-center">
+                      <Checkbox
+                        aria-label="تحديد الكل"
+                        checked={
+                          filteredParticipants.length > 0 &&
+                          filteredParticipants.every((p) => selectedIds.has(p.id))
+                        }
+                        onCheckedChange={(checked) =>
+                          setSelectedIds(
+                            checked === true
+                              ? new Set(filteredParticipants.map((p) => p.id))
+                              : new Set()
+                          )
+                        }
+                      />
+                    </th>
                     <th className="border p-2 text-right">الاسم</th>
                     <th className="border p-2 text-right">البريد الإلكتروني</th>
                     <th className="border p-2 text-right">الجامعة</th>
                     <th className="border p-2 text-right">التخصص</th>
                     <th className="border p-2 text-right">المدينة</th>
                     <th className="border p-2 text-right">الحالة</th>
+                    <th className="border p-2 text-right">المرحلة</th>
                     <th className="border p-2 text-right">تاريخ التسجيل</th>
                     <th className="border p-2 text-right">الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredParticipants.map((participant) => (
-                    <tr key={participant.id} className="hover:bg-muted/50">
-                      <td className="border p-2">{getDisplayName(participant)}</td>
+                    <tr
+                      key={participant.id}
+                      className={`hover:bg-muted/50 ${participant.isDisabled ? 'bg-red-50/60' : ''}`}
+                    >
+                      <td className="border p-2 text-center">
+                        <Checkbox
+                          aria-label="تحديد المشارك"
+                          checked={selectedIds.has(participant.id)}
+                          onCheckedChange={() => toggleRow(participant.id)}
+                        />
+                      </td>
+                      <td className="border p-2">
+                        {getDisplayName(participant)}
+                        {participant.isDisabled && (
+                          <span className="mr-2 px-1.5 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
+                            معطل
+                          </span>
+                        )}
+                      </td>
                       <td className="border p-2">{participant.email}</td>
                       <td className="border p-2">{participant.university || 'غير متوفر'}</td>
                       <td className="border p-2">{participant.universityMajor || participant.major || 'غير متوفر'}</td>
                       <td className="border p-2">{participant.city || participant.residence || 'غير متوفر'}</td>
                       <td className="border p-2">{getStatusBadge(participant.status)}</td>
+                      <td className="border p-2">
+                        <div className="flex items-center gap-1">
+                          <PhaseBadge phase={participant.phase} phaseStatus={participant.phaseStatus} />
+                          {phases.length > 0 && (
+                            <PhaseRowMove
+                              id={participant.id}
+                              kind="participant"
+                              disabled={!participant.phaseId}
+                              onDone={() => fetchIndividualParticipants(searchQuery)}
+                            />
+                          )}
+                        </div>
+                      </td>
                       <td className="border p-2">
                         {new Date(participant.createdAt).toLocaleDateString('ar-SA')}
                       </td>
@@ -468,6 +603,16 @@ export default function ParticipantsPage() {
                               </button>
                             </>
                           )}
+                          <button
+                            className={`p-1 rounded-md hover:bg-muted ${participant.isDisabled ? 'text-green-600' : 'text-amber-600'}`}
+                            title={participant.isDisabled ? 'إعادة تفعيل الحساب' : 'تعطيل الحساب'}
+                            onClick={async () => {
+                              setSelectedIds(new Set([participant.id]));
+                              await handleBulkDisable(!participant.isDisabled);
+                            }}
+                          >
+                            {participant.isDisabled ? <RotateCcw className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                          </button>
                           <button
                             className="p-1 rounded-md hover:bg-muted text-red-500"
                             title="حذف"

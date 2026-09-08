@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSearchParams } from "next/navigation";
 
@@ -25,6 +26,7 @@ type Submission = {
   reviewedAt: string | null;
   participant: {
     id: string;
+    fullName?: string | null;
     firstName: string;
     secondName: string;
     familyName: string;
@@ -62,6 +64,9 @@ export default function MilestoneSubmissionsPage() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<string>('accepted');
+  // Only used when asking for a resubmission: gives the team a window that
+  // overrides the milestone's own (possibly passed) due date.
+  const [resubmissionDeadline, setResubmissionDeadline] = useState<string>('');
   const [reviewComment, setReviewComment] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState<boolean | null>(null);
@@ -108,6 +113,7 @@ export default function MilestoneSubmissionsPage() {
     setSelectedSubmission(submission);
     setReviewStatus(submission.reviewStatus || 'accepted');
     setReviewComment(submission.reviewComment || '');
+    setResubmissionDeadline('');
     setReviewSuccess(null);
     setReviewMessage('');
     setIsReviewDialogOpen(true);
@@ -132,6 +138,10 @@ export default function MilestoneSubmissionsPage() {
           body: JSON.stringify({
             reviewStatus,
             reviewComment,
+            resubmissionDeadline:
+              reviewStatus === 'needs_resubmission' && resubmissionDeadline
+                ? new Date(resubmissionDeadline).toISOString()
+                : undefined,
           }),
         }
       );
@@ -140,7 +150,13 @@ export default function MilestoneSubmissionsPage() {
 
       if (response.ok) {
         setReviewSuccess(true);
-        setReviewMessage(result.message || 'تم تحديث المراجعة بنجاح');
+        setReviewMessage(
+          result.phaseAdvanced
+            ? `تم تحديث المراجعة — وتم نقل الفريق إلى: ${result.advancedTo}`
+            : result.phaseReason
+              ? `تم تحديث المراجعة — دون نقل المرحلة (${result.phaseReason})`
+              : result.message || 'تم تحديث المراجعة بنجاح'
+        );
         
         // Update the submissions list
         setSubmissions(submissions.map(sub => 
@@ -189,6 +205,8 @@ export default function MilestoneSubmissionsPage() {
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">مقبول</Badge>;
       case "rejected":
         return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">مرفوض</Badge>;
+      case "needs_resubmission":
+        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">مطلوب إعادة تسليم</Badge>;
       case "pending":
         return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">قيد المراجعة</Badge>;
       default:
@@ -198,7 +216,7 @@ export default function MilestoneSubmissionsPage() {
 
   // Get participant full name
   const getParticipantName = (participant: Submission['participant']) => {
-    return `${participant.firstName} ${participant.secondName} ${participant.familyName}`;
+    return participant.fullName || [participant.firstName, participant.secondName, participant.familyName].filter(Boolean).join(' ').trim() || participant.email || 'غير متوفر';
   };
 
   // Format file size
@@ -210,7 +228,7 @@ export default function MilestoneSubmissionsPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">مراجعة التسليمات</h1>
           {milestone && (
@@ -351,14 +369,47 @@ export default function MilestoneSubmissionsPage() {
                       <Label htmlFor="rejected" className="text-red-600">مرفوض</Label>
                     </div>
                     <div className="flex items-center space-x-2 space-x-reverse">
+                      <RadioGroupItem value="needs_resubmission" id="needs_resubmission" />
+                      <Label htmlFor="needs_resubmission" className="text-amber-600">
+                        طلب إعادة تسليم
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 space-x-reverse">
                       <RadioGroupItem value="pending" id="pending" />
                       <Label htmlFor="pending" className="text-blue-600">قيد المراجعة</Label>
                     </div>
                   </RadioGroup>
+                  <p className="text-xs text-muted-foreground">
+                    {reviewStatus === 'accepted'
+                      ? 'القبول ينقل الفريق تلقائياً إلى المرحلة التالية إذا كان التسليم مرتبطاً بمرحلته الحالية.'
+                      : reviewStatus === 'rejected'
+                      ? 'الرفض يضع على الفريق علامة "متعثّر" في مرحلته الحالية.'
+                      : reviewStatus === 'needs_resubmission'
+                      ? 'يعيد فتح التسليم للفريق دون تغيير مرحلته، ويُرسل لهم الملاحظات.'
+                      : 'إعادة التسليم إلى "قيد المراجعة" لا تغيّر المرحلة ولا تُرسل إشعاراً.'}
+                  </p>
                 </div>
+
+                {reviewStatus === 'needs_resubmission' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="resub-deadline">مهلة إعادة التسليم (اختياري)</Label>
+                    <Input
+                      id="resub-deadline"
+                      type="datetime-local"
+                      value={resubmissionDeadline}
+                      onChange={(e) => setResubmissionDeadline(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      إذا تُركت فارغة، يبقى الموعد النهائي الأصلي للتسليم سارياً — وإن كان قد
+                      انتهى فلن يتمكن الفريق من إعادة التسليم.
+                    </p>
+                  </div>
+                )}
                 
                 <div className="space-y-2">
-                  <Label htmlFor="comment">ملاحظات (اختياري)</Label>
+                  <Label htmlFor="comment">
+                    ملاحظات {reviewStatus === 'needs_resubmission' ? '(مطلوبة)' : '(اختياري)'}
+                  </Label>
                   <Textarea
                     id="comment"
                     value={reviewComment}

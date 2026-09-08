@@ -7,6 +7,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { useEffect, useState } from "react";
+import { usePhases } from "@/components/phases/phase-controls";
 import { 
   Dialog, 
   DialogContent, 
@@ -18,6 +19,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Define the Milestone type
 type Milestone = {
@@ -29,6 +37,8 @@ type Milestone = {
   requirements: string[];
   submissionCount: number;
   submissionLink?: string | null;
+  phaseId?: string | null;
+  allowLateSubmission?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,7 +59,10 @@ export default function MilestonesPage() {
     description: "",
     dueDate: "",
     requirements: [] as string[],
+    phaseId: "",
+    allowLateSubmission: false,
   });
+  const { phases } = usePhases();
   const [newRequirement, setNewRequirement] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -102,6 +115,8 @@ export default function MilestonesPage() {
       description: milestone.description,
       dueDate: localDatetime,
       requirements: [...milestone.requirements],
+      phaseId: milestone.phaseId || "",
+      allowLateSubmission: Boolean(milestone.allowLateSubmission),
     });
     setDialogType("edit");
   };
@@ -164,6 +179,8 @@ export default function MilestonesPage() {
           description: editForm.description,
           dueDate: new Date(editForm.dueDate).toISOString(),
           requirements: editForm.requirements,
+          phaseId: editForm.phaseId || null,
+          allowLateSubmission: editForm.allowLateSubmission,
         }),
       });
       
@@ -223,7 +240,7 @@ export default function MilestonesPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">التسليمات</h1>
         <Link href="/admin-hackton-dashboard/milestones/create">
           <Button className="gap-2">
@@ -471,6 +488,44 @@ export default function MilestonesPage() {
                   onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
                   required
                 />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-phase">المرحلة (اختياري)</Label>
+              <Select
+                value={editForm.phaseId || "none"}
+                onValueChange={(v) => setEditForm({ ...editForm, phaseId: v === "none" ? "" : v })}
+                disabled={phases.length === 0}
+              >
+                <SelectTrigger id="edit-phase" className="w-full">
+                  <SelectValue placeholder="بدون ربط بمرحلة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون ربط بمرحلة</SelectItem>
+                  {phases.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                قبول التسليم ينقل الفريق إلى المرحلة التالية تلقائياً، ورفضه يضع علامة &quot;متعثّر&quot;.
+              </p>
+            </div>
+
+            <div className="flex items-start gap-2 rounded-md border p-3">
+              <input
+                id="edit-allow-late"
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                checked={editForm.allowLateSubmission}
+                onChange={(e) => setEditForm({ ...editForm, allowLateSubmission: e.target.checked })}
+              />
+              <div>
+                <Label htmlFor="edit-allow-late" className="cursor-pointer">السماح بالتسليم المتأخر</Label>
+                <p className="text-xs text-muted-foreground">
+                  بدون تفعيله، لن يتمكن المشاركون من التسليم بعد انتهاء الموعد النهائي.
+                </p>
               </div>
             </div>
 

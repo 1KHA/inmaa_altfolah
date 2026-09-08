@@ -1,7 +1,27 @@
 'use client'
 
+/**
+ * Admin "create team" form.
+ *
+ * Posts to the SAME endpoint as the public registration page
+ * (`POST /api/register-team`), so this form must send exactly what that route
+ * reads. It previously collected the old pre-2026 schema
+ * (firstName/secondName/familyName/nationalId/dob/…, challenge, ideaName,
+ * ideaSolution, ideaResults, ideaStage, hasParticipated…) and never sent
+ * `hackathonTrack` or `isTeamRegistration`, so every submission failed with
+ * 400 "Hackathon track selection is required." — admin team creation was
+ * entirely broken.
+ *
+ * Fields the API actually persists (see src/app/api/register-team/route.ts):
+ *   team        : teamName, hackathonTrack, ideaDescription, hearAboutUs, attachment
+ *   participant : fullName, contactNumber, email, gender, isUniversityStudent,
+ *                 universityMajor, university, professionalField, city,
+ *                 canAttendHackathon
+ * Everything else it hardcodes, so anything not in that list is dropped here
+ * rather than collected and silently discarded.
+ */
+
 import { useState } from 'react'
-import { HACKATHON_TRACKS } from '@/lib/tracks'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,63 +29,54 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CHALLENGES } from '@/lib/challenges'
 import { Checkbox } from '@/../../components/ui/checkbox'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useToast } from '@/../../components/ui/use-toast'
+import { prepareUpload, validateUploadFile, UPLOAD_ACCEPT, UPLOAD_HINT } from '@/lib/client-upload'
 
+/** Mirrors the participant shape the API reads. */
 interface Participant {
-  firstName: string
-  secondName: string
-  familyName: string
-  nationalId: string
-  dob: string
+  fullName: string
+  contactNumber: string
   email: string
-  phoneNumber: string
-  education: string
+  gender: string
+  isUniversityStudent: boolean
+  universityMajor: string
   university: string
-  major: string
-  employmentStatus: string
-  nationality: string
-  residence: string
-  canAttend: boolean
+  professionalField: string
+  city: string
+  canAttendHackathon: boolean
 }
 
 const initialParticipantState: Participant = {
-  firstName: '',
-  secondName: '',
-  familyName: '',
-  nationalId: '',
-  dob: '',
+  fullName: '',
+  contactNumber: '',
   email: '',
-  phoneNumber: '',
-  education: '',
+  gender: '',
+  isUniversityStudent: false,
+  universityMajor: '',
   university: '',
-  major: '',
-  employmentStatus: '',
-  nationality: '',
-  residence: '',
-  canAttend: false,
+  professionalField: '',
+  city: '',
+  canAttendHackathon: false,
 }
 
 const initialFormState = {
   teamName: '',
   hackathonTrack: '',
-  challenge: '',
-  challengeReason: '',
-  ideaName: '',
   ideaDescription: '',
-  ideaSolution: '',
-  ideaResults: '',
-  ideaStage: '',
-  attachmentsLink: '',
-  hasParticipated: false,
-  participationDetails: '',
-  leaderInfo: initialParticipantState,
-  members: Array(2).fill(null).map(() => initialParticipantState),
+  hearAboutUs: '',
+  leaderInfo: { ...initialParticipantState },
+  // members EXCLUDES the leader. memberCount is the TOTAL team size, matching
+  // the public form; the API accepts 2 or 3 total (1–2 members + leader).
+  members: [{ ...initialParticipantState }],
   memberCount: 2,
 }
 
-type FormState = typeof initialFormState;
+type FormState = typeof initialFormState
+
+/** Same options the public registration form offers. */
+const PROFESSIONAL_FIELDS = ['ذكاء اصناعي', 'علم البيانات', 'برمجة']
 
 export default function AdminCreateTeamPage() {
   const router = useRouter()
@@ -79,10 +90,7 @@ export default function AdminCreateTeamPage() {
   }
 
   const handleLeaderChange = (field: keyof Participant, value: string | boolean) => {
-    setFormState((prev) => ({
-      ...prev,
-      leaderInfo: { ...prev.leaderInfo, [field]: value },
-    }))
+    setFormState((prev) => ({ ...prev, leaderInfo: { ...prev.leaderInfo, [field]: value } }))
   }
 
   const handleMemberChange = (index: number, field: keyof Participant, value: string | boolean) => {
@@ -93,18 +101,14 @@ export default function AdminCreateTeamPage() {
     })
   }
 
+  /** value = TOTAL team size (leader + members). */
   const handleMemberCountChange = (value: string) => {
-    const count = parseInt(value)
+    const total = parseInt(value, 10)
+    const needed = total - 1
     setFormState((prev) => {
-      const currentMembers = prev.members
-      if (count > currentMembers.length) {
-        const newMembers = [...currentMembers]
-        for (let i = currentMembers.length; i < count; i++) {
-          newMembers.push(initialParticipantState)
-        }
-        return { ...prev, memberCount: count, members: newMembers }
-      }
-      return { ...prev, memberCount: count, members: currentMembers.slice(0, count) }
+      const members = [...prev.members]
+      while (members.length < needed) members.push({ ...initialParticipantState })
+      return { ...prev, memberCount: total, members: members.slice(0, needed) }
     })
   }
 
@@ -112,42 +116,37 @@ export default function AdminCreateTeamPage() {
     e.preventDefault()
     setIsSubmitting(true)
 
+    // Mirrors the public form's payload — the API requires registrationType,
+    // isTeamRegistration and hackathonTrack.
     const formData = new FormData()
-    // Append all form fields to FormData, excluding memberCount
-    Object.entries(formState).forEach(([key, value]) => {
-        if (key === 'leaderInfo' || key === 'members') {
-            formData.append(key, JSON.stringify(value));
-        } else if (key !== 'memberCount') {
-            formData.append(key, String(value));
-        }
-    });
-    
-    // The API branches on these: without them an admin-created team was posted
-    // as an individual registration and rejected.
-    formData.set('registrationType', 'team');
-    formData.set('isTeamRegistration', 'true');
-
-    // Manually append the actual members array based on memberCount
-    formData.set('members', JSON.stringify(formState.members.slice(0, formState.memberCount)));
-
-
+    formData.append('registrationType', 'team')
+    formData.append('isTeamRegistration', 'true')
+    formData.append('teamName', formState.teamName)
+    formData.append('hackathonTrack', formState.hackathonTrack)
+    formData.append('ideaDescription', formState.ideaDescription)
+    formData.append('hearAboutUs', formState.hearAboutUs)
+    formData.append('memberCount', String(formState.memberCount))
+    formData.append('leaderInfo', JSON.stringify(formState.leaderInfo))
+    formData.append('members', JSON.stringify(formState.members.slice(0, formState.memberCount - 1)))
     if (attachmentFile) {
-      formData.append('attachment', attachmentFile)
+      // Direct-to-storage upload; the API gets only the URL (function bodies
+      // are capped at ~4.5 MB by Vercel — see src/lib/client-upload.ts).
+      const outcome = await prepareUpload(attachmentFile, 'teams')
+      if (outcome.mode === 'error') {
+        toast({ title: 'خطأ في المرفق', description: outcome.message, variant: 'destructive' })
+        setIsSubmitting(false)
+        return
+      }
+      if (outcome.mode === 'direct') formData.append('attachmentPath', outcome.publicUrl)
+      else formData.append('attachment', attachmentFile)
     }
 
     try {
-      const response = await fetch('/api/register-team', {
-        method: 'POST',
-        body: formData,
-      })
-
+      const response = await fetch('/api/register-team', { method: 'POST', body: formData })
       const data = await response.json()
 
       if (response.ok) {
-        toast({
-          title: 'نجح!',
-          description: 'تم إنشاء الفريق بنجاح',
-        })
+        toast({ title: 'نجح!', description: 'تم إنشاء الفريق بنجاح' })
         router.push('/admin-hackton-dashboard/teams')
       } else {
         toast({
@@ -174,66 +173,82 @@ export default function AdminCreateTeamPage() {
   ) => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
-        <Label htmlFor={`${prefix}-firstName`}>الاسم الأول</Label>
-        <Input id={`${prefix}-firstName`} required value={participant.firstName} onChange={(e) => updateFn('firstName', e.target.value)} />
-      </div>
-      <div>
-        <Label htmlFor={`${prefix}-secondName`}>الاسم الثاني</Label>
-        <Input id={`${prefix}-secondName`} required value={participant.secondName} onChange={(e) => updateFn('secondName', e.target.value)} />
-      </div>
-      <div>
-        <Label htmlFor={`${prefix}-familyName`}>اسم العائلة</Label>
-        <Input id={`${prefix}-familyName`} required value={participant.familyName} onChange={(e) => updateFn('familyName', e.target.value)} />
-      </div>
-      <div>
-        <Label htmlFor={`${prefix}-nationalId`}>رقم الهوية</Label>
-        <Input id={`${prefix}-nationalId`} required value={participant.nationalId} onChange={(e) => updateFn('nationalId', e.target.value)} />
-      </div>
-      <div>
-        <Label htmlFor={`${prefix}-dob`}>تاريخ الميلاد</Label>
-        <Input id={`${prefix}-dob`} type="date" required value={participant.dob} onChange={(e) => updateFn('dob', e.target.value)} />
+        <Label htmlFor={`${prefix}-fullName`}>الاسم كاملًا</Label>
+        <Input id={`${prefix}-fullName`} required value={participant.fullName} onChange={(e) => updateFn('fullName', e.target.value)} />
       </div>
       <div>
         <Label htmlFor={`${prefix}-email`}>البريد الإلكتروني</Label>
         <Input id={`${prefix}-email`} type="email" required value={participant.email} onChange={(e) => updateFn('email', e.target.value)} dir="ltr" />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-phoneNumber`}>رقم الجوال</Label>
-        <Input id={`${prefix}-phoneNumber`} type="tel" required value={participant.phoneNumber} onChange={(e) => updateFn('phoneNumber', e.target.value)} dir="ltr" />
+        <Label htmlFor={`${prefix}-contactNumber`}>رقم التواصل</Label>
+        <Input
+          id={`${prefix}-contactNumber`}
+          type="tel"
+          required
+          value={participant.contactNumber}
+          onChange={(e) => updateFn('contactNumber', e.target.value.replace(/\D/g, ''))}
+          dir="ltr"
+        />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-education`}>المؤهل التعليمي</Label>
-        <Input id={`${prefix}-education`} required value={participant.education} onChange={(e) => updateFn('education', e.target.value)} />
+        <Label>جنس المتقدم</Label>
+        <Select required onValueChange={(value) => updateFn('gender', value)} value={participant.gender}>
+          <SelectTrigger><SelectValue placeholder="اختر الجنس..." /></SelectTrigger>
+          <SelectContent className="text-right" dir="rtl">
+            <SelectItem value="ذكر" className="text-right">ذكر</SelectItem>
+            <SelectItem value="أنثى" className="text-right">أنثى</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div>
-        <Label htmlFor={`${prefix}-university`}>الجامعة أو الجهة</Label>
+        <Label htmlFor={`${prefix}-university`}>اذكر جامعتك</Label>
         <Input id={`${prefix}-university`} required value={participant.university} onChange={(e) => updateFn('university', e.target.value)} />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-major`}>التخصص</Label>
-        <Input id={`${prefix}-major`} required value={participant.major} onChange={(e) => updateFn('major', e.target.value)} />
+        <Label htmlFor={`${prefix}-universityMajor`}>اذكر تخصصك الجامعي</Label>
+        <Input id={`${prefix}-universityMajor`} required value={participant.universityMajor} onChange={(e) => updateFn('universityMajor', e.target.value)} />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-employmentStatus`}>الحالة الوظيفية</Label>
-        <Input id={`${prefix}-employmentStatus`} required value={participant.employmentStatus} onChange={(e) => updateFn('employmentStatus', e.target.value)} />
+        <Label>ماهو مجالك المهني؟</Label>
+        <Select required onValueChange={(value) => updateFn('professionalField', value)} value={participant.professionalField}>
+          <SelectTrigger><SelectValue placeholder="اختر مجالك المهني..." /></SelectTrigger>
+          <SelectContent className="text-right" dir="rtl">
+            {PROFESSIONAL_FIELDS.map((f) => (
+              <SelectItem key={f} value={f} className="text-right">{f}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div>
-        <Label htmlFor={`${prefix}-nationality`}>الجنسية</Label>
-        <Input id={`${prefix}-nationality`} required value={participant.nationality} onChange={(e) => updateFn('nationality', e.target.value)} />
+        {/* Stored in Participant.city — the public form labels this column the
+            same way, so keep them consistent. */}
+        <Label htmlFor={`${prefix}-city`}>أدخل رابط الGithub</Label>
+        <Input id={`${prefix}-city`} required value={participant.city} onChange={(e) => updateFn('city', e.target.value)} dir="ltr" />
       </div>
-      <div>
-        <Label htmlFor={`${prefix}-residence`}>منطقة الإقامة</Label>
-        <Input id={`${prefix}-residence`} required value={participant.residence} onChange={(e) => updateFn('residence', e.target.value)} />
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={`${prefix}-isUniversityStudent`}
+          checked={participant.isUniversityStudent}
+          onCheckedChange={(checked: boolean | 'indeterminate') => updateFn('isUniversityStudent', !!checked)}
+        />
+        <Label htmlFor={`${prefix}-isUniversityStudent`} className="cursor-pointer">هل أنت طالب في الجامعة؟</Label>
       </div>
-      <div className="flex items-center space-x-2">
-        <Checkbox id={`${prefix}-canAttend`} checked={participant.canAttend} onCheckedChange={(checked: boolean | 'indeterminate') => updateFn('canAttend', !!checked)} />
-        <Label htmlFor={`${prefix}-canAttend`}>هل يستطيع الحضور إلى مقر الهاكثون في الأيام الحضورية؟</Label>
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={`${prefix}-canAttendHackathon`}
+          checked={participant.canAttendHackathon}
+          onCheckedChange={(checked: boolean | 'indeterminate') => updateFn('canAttendHackathon', !!checked)}
+        />
+        <Label htmlFor={`${prefix}-canAttendHackathon`} className="cursor-pointer">
+          هل تستطيع التواجد خلال فترة التحدي في مقر - وادي مكة؟
+        </Label>
       </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" dir="rtl">
       <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader>
@@ -242,135 +257,92 @@ export default function AdminCreateTeamPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Team Leader Information */}
+              {/* Team Leader */}
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold border-b pb-2">معلومات قائد الفريق</h3>
                 {renderParticipantFields(formState.leaderInfo, handleLeaderChange, 'leader')}
               </div>
 
-              <>
-                {/* Idea Information */}
-                <div className="space-y-6">
-                    <h3 className="text-xl font-semibold border-b pb-2">معلومات الفكرة</h3>
-                    
-                    <div>
-                      <Label htmlFor="team-name">اسم الفريق</Label>
-                      <Input id="team-name" required value={formState.teamName} onChange={(e) => handleStateChange('teamName', e.target.value)} />
-                    </div>
+              {/* Team + idea */}
+              <div className="space-y-6">
+                <h3 className="text-xl font-semibold border-b pb-2">معلومات الفريق والفكرة</h3>
 
-                    <div>
-                      <Label>المسار</Label>
-                      <Select
-                        required
-                        value={formState.hackathonTrack}
-                        onValueChange={(value) => {
-                          // `challenge` is the legacy mirror of the track; the API
-                          // stores both, so keep them identical here too.
-                          handleStateChange('hackathonTrack', value)
-                          handleStateChange('challenge', value)
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="اختر المسار..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {HACKATHON_TRACKS.map((track) => (
-                            <SelectItem key={track} value={track}>{track}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div>
+                  <Label htmlFor="team-name">اسم الفريق</Label>
+                  <Input id="team-name" required value={formState.teamName} onChange={(e) => handleStateChange('teamName', e.target.value)} />
+                </div>
 
-                    <div>
-                      <Label htmlFor="challenge-reason">لماذا اخترت هذا التحدي؟</Label>
-                      <Textarea id="challenge-reason" required value={formState.challengeReason} onChange={(e) => handleStateChange('challengeReason', e.target.value)} />
-                    </div>
+                <div>
+                  <Label>أي مسار من مسارات التحدي</Label>
+                  <Select required onValueChange={(value) => handleStateChange('hackathonTrack', value)} value={formState.hackathonTrack}>
+                    <SelectTrigger><SelectValue placeholder="اختر المسار..." /></SelectTrigger>
+                    <SelectContent className="text-right" dir="rtl">
+                      {CHALLENGES.map((challenge) => (
+                        <SelectItem key={challenge} value={challenge} className="text-right">
+                          {challenge}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div>
-                      <Label htmlFor="idea-name">ما اسم الفكرة الابتكارية (عنوان قصير)</Label>
-                      <Input id="idea-name" required value={formState.ideaName} onChange={(e) => handleStateChange('ideaName', e.target.value)} />
-                    </div>
+                <div>
+                  <Label htmlFor="idea-description">صف الفكرة</Label>
+                  <Textarea id="idea-description" required rows={4} value={formState.ideaDescription} onChange={(e) => handleStateChange('ideaDescription', e.target.value)} />
+                </div>
 
-                    <div>
-                      <Label htmlFor="idea-description">ماهو وصف الفكرة الابتكارية</Label>
-                      <Textarea id="idea-description" required value={formState.ideaDescription} onChange={(e) => handleStateChange('ideaDescription', e.target.value)} />
-                    </div>
+                <div>
+                  <Label htmlFor="hear-about-us">من أين سمعت عنا</Label>
+                  <Input id="hear-about-us" value={formState.hearAboutUs} onChange={(e) => handleStateChange('hearAboutUs', e.target.value)} />
+                </div>
 
-                    <div>
-                      <Label htmlFor="idea-solution">ما هو الحل للمشكلة الابتكارية</Label>
-                      <Textarea id="idea-solution" required value={formState.ideaSolution} onChange={(e) => handleStateChange('ideaSolution', e.target.value)} />
-                    </div>
+                <div>
+                  <Label htmlFor="attachments-file">إضافة مرفقات</Label>
+                  <Input
+                    id="attachments-file"
+                    type="file"
+                    accept={UPLOAD_ACCEPT}
+                    onChange={(e) => {
+                      const file = e.target.files ? e.target.files[0] : null
+                      if (file) {
+                        const problem = validateUploadFile(file)
+                        if (problem) {
+                          toast({ title: 'ملف غير مقبول', description: problem, variant: 'destructive' })
+                          e.target.value = ''
+                          setAttachmentFile(null)
+                          return
+                        }
+                      }
+                      setAttachmentFile(file)
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">{UPLOAD_HINT}</p>
+                </div>
+              </div>
 
-                    <div>
-                      <Label htmlFor="idea-results">النتائج المتوقعة / المخرجات للفكرة الابتكارية</Label>
-                      <Textarea id="idea-results" required value={formState.ideaResults} onChange={(e) => handleStateChange('ideaResults', e.target.value)} />
-                    </div>
+              {/* Team size — the API accepts 2 or 3 members in total */}
+              <div>
+                <Label htmlFor="member-count">عدد أعضاء الفريق (شاملاً القائد)</Label>
+                <Select value={String(formState.memberCount)} onValueChange={handleMemberCountChange}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="text-right" dir="rtl">
+                    <SelectItem value="2" className="text-right">2 أعضاء</SelectItem>
+                    <SelectItem value="3" className="text-right">3 أعضاء</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                    <div>
-                      <Label>مرحلة الفكرة الابتكارية</Label>
-                      <RadioGroup required value={formState.ideaStage} onValueChange={(value) => handleStateChange('ideaStage', value)} className="flex space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="idea" id="r1" />
-                          <Label htmlFor="r1">فكرة</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="prototype" id="r2" />
-                          <Label htmlFor="r2">منتج اولي</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="ready" id="r3" />
-                          <Label htmlFor="r3">منتج جاهز</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="attachments-file">إضافة مرفقات</Label>
-                      <Input id="attachments-file" type="file" onChange={(e) => setAttachmentFile(e.target.files ? e.target.files[0] : null)} />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="has-participated" checked={formState.hasParticipated} onCheckedChange={(checked) => handleStateChange('hasParticipated', !!checked)} />
-                        <Label htmlFor="has-participated">هل تم مشاركة الفكرة / او حققت الفكرة جوائز داخل السعودية؟</Label>
-                      </div>
-                      {formState.hasParticipated && (
-                        <div>
-                          <Label htmlFor="participation-details">الرجاء ذكر (اسم التحدي / الهاكثون والمركز)</Label>
-                          <Input id="participation-details" required={formState.hasParticipated} value={formState.participationDetails} onChange={(e) => handleStateChange('participationDetails', e.target.value)} />
-                        </div>
-                      )}
-                    </div>
+              {/* Members (excluding the leader) */}
+              <div className="space-y-6">
+                <h3 className="text-xl font-semibold border-b pb-2">معلومات أعضاء الفريق</h3>
+                {formState.members.slice(0, formState.memberCount - 1).map((member: Participant, index: number) => (
+                  <div key={index} className="p-4 border rounded-lg space-y-4">
+                    <h4 className="font-medium text-lg">العضو {index + 1}</h4>
+                    {renderParticipantFields(member, (field, value) => handleMemberChange(index, field, value), `member-${index}`)}
                   </div>
+                ))}
+              </div>
 
-                  {/* Number of Team Members */}
-                  <div>
-                    <Label htmlFor="member-count">عدد أعضاء الفريق (باستثناء القائد)</Label>
-                    <Select value={String(formState.memberCount)} onValueChange={handleMemberCountChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="2">2 أعضاء</SelectItem>
-                        <SelectItem value="3">3 أعضاء</SelectItem>
-                        <SelectItem value="4">4 أعضاء</SelectItem>
-                        <SelectItem value="5">5 أعضاء</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Team Members Information */}
-                  <div className="space-y-6">
-                    <h3 className="text-xl font-semibold border-b pb-2">معلومات أعضاء الفريق</h3>
-                    {formState.members.slice(0, formState.memberCount).map((member: Participant, index: number) => (
-                      <div key={index} className="p-4 border rounded-lg space-y-4">
-                        <h4 className="font-medium text-lg">العضو {index + 1}</h4>
-                        {renderParticipantFields(member, (field, value) => handleMemberChange(index, field, value), `member-${index}`)}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              
               <Button type="submit" className="w-full text-lg py-3" disabled={isSubmitting}>
                 {isSubmitting ? 'جاري الإنشاء...' : 'إنشاء الفريق'}
               </Button>

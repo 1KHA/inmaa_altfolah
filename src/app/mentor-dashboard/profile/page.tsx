@@ -155,7 +155,7 @@ function MentorProfile() {
   }
 
   return (
-    <div className="p-8" dir="rtl">
+    <div className="p-0 md:p-8" dir="rtl">
       <Card className="max-w-4xl mx-auto">
         <CardHeader className="flex flex-col md:flex-row items-center gap-6 space-y-0">
           <Avatar className="h-24 w-24">

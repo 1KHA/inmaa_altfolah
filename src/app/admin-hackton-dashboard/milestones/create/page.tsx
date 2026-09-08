@@ -6,9 +6,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowRight, Calendar, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { usePhases } from "@/components/phases/phase-controls";
 
 export default function CreateMilestonePage() {
   const router = useRouter();
@@ -18,6 +26,12 @@ export default function CreateMilestonePage() {
     dueDate: "",
     requirements: "",
   });
+
+  // Linking a milestone to a phase is what makes accepting a submission
+  // advance the team automatically. Leaving it empty keeps the old behaviour.
+  const { phases } = usePhases();
+  const [phaseId, setPhaseId] = useState("");
+  const [allowLateSubmission, setAllowLateSubmission] = useState(false);
   
   // State for individual requirements
   const [requirements, setRequirements] = useState<string[]>([]);
@@ -69,6 +83,8 @@ export default function CreateMilestonePage() {
           dueDate: formattedDate,
           status: "upcoming",
           requirements: requirements,
+          phaseId: phaseId || null,
+          allowLateSubmission,
         }),
       });
       
@@ -92,7 +108,7 @@ export default function CreateMilestonePage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">إنشاء تسليم جديد</h1>
         <Link href="/admin-hackton-dashboard/milestones">
           <Button variant="outline">
@@ -139,6 +155,46 @@ export default function CreateMilestonePage() {
                   onChange={(e) => setMilestone({ ...milestone, dueDate: e.target.value })}
                   required
                 />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="milestone-phase">المرحلة (اختياري)</Label>
+              <Select
+                value={phaseId || "none"}
+                onValueChange={(v) => setPhaseId(v === "none" ? "" : v)}
+                disabled={phases.length === 0}
+              >
+                <SelectTrigger id="milestone-phase" className="w-full">
+                  <SelectValue placeholder="بدون ربط بمرحلة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون ربط بمرحلة</SelectItem>
+                  {phases.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                عند ربط التسليم بمرحلة، قبول التسليم ينقل الفريق تلقائياً إلى المرحلة التالية،
+                ورفضه يضع عليه علامة &quot;متعثّر&quot;.
+              </p>
+            </div>
+
+            <div className="flex items-start gap-2 rounded-md border p-3">
+              <input
+                id="allow-late"
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                checked={allowLateSubmission}
+                onChange={(e) => setAllowLateSubmission(e.target.checked)}
+              />
+              <div>
+                <Label htmlFor="allow-late" className="cursor-pointer">السماح بالتسليم المتأخر</Label>
+                <p className="text-xs text-muted-foreground">
+                  بدون تفعيل هذا الخيار، لن يتمكن المشاركون من التسليم بعد انتهاء الموعد النهائي.
+                  التسليمات المتأخرة تُعلَّم بوسم &quot;متأخر&quot;.
+                </p>
               </div>
             </div>
 

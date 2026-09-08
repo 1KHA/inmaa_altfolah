@@ -137,7 +137,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="overview" onValueChange={handleTabChange}>
+      {/* dir="rtl": Radix Tabs stamps dir="ltr" on its root when no dir is given,
+          which flipped this whole dashboard to LTR — icons laid out left-to-right
+          while the Arabic text stayed right-aligned, so every list row had its
+          icon stranded on the far side of the card. */}
+      <Tabs defaultValue="overview" dir="rtl" onValueChange={handleTabChange}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="overview">النظرة العامة</TabsTrigger>
           <TabsTrigger value="statistics">الإحصائيات</TabsTrigger>
@@ -315,12 +319,15 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   {stats?.upcomingEventsList && stats.upcomingEventsList.length > 0 ? (
                     stats.upcomingEventsList.map((event) => (
-                      <div key={event.id} className="flex items-center">
-                        <div className="bg-primary/10 p-2 rounded-full ml-4">
+                      // gap-4 instead of ml-4: logical spacing that is correct in RTL and
+                      // LTR. flex-1 + min-w-0 makes the text fill the row instead of
+                      // shrink-wrapping against the icon and leaving the card half empty.
+                      <div key={event.id} className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-2 rounded-full shrink-0">
                           <Calendar className="h-4 w-4 text-primary" />
                         </div>
-                        <div>
-                          <h4 className="text-sm font-medium">{event.title}</h4>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-medium truncate">{event.title}</h4>
                           <p className="text-xs text-muted-foreground">
                             {new Date(event.startDate).toLocaleDateString('ar-SA', {
                               year: 'numeric',
@@ -386,12 +393,15 @@ export default function DashboardPage() {
                       }
                       
                       return (
-                        <div key={notification.id} className="flex items-center justify-between">
-                          <div className={`${bgColor} p-2 rounded-full ml-4`}>
+                        // justify-between pushed the text to the far edge, away from its
+                        // own icon; same gap/flex-1 treatment as the events card so the
+                        // two cards in this row match.
+                        <div key={notification.id} className="flex items-center gap-4">
+                          <div className={`${bgColor} p-2 rounded-full shrink-0`}>
                             <IconComponent className={`h-4 w-4 ${textColor}`} />
                           </div>
-                          <div>
-                            <h4 className="text-sm font-medium">{notification.title}</h4>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-medium truncate">{notification.title}</h4>
                             <p className="text-xs text-muted-foreground">
                               {timeAgo}
                             </p>
@@ -445,11 +455,11 @@ export default function DashboardPage() {
                     }
                     
                     return (
-                      <div key={submission.id} className="flex justify-between items-center">
-                        <div className="bg-primary/10 p-2 rounded-full ml-4">
+                      <div key={submission.id} className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-2 rounded-full shrink-0">
                           <FileText className="h-4 w-4 text-primary" />
                         </div>
-                        <div className="flex-1 mr-4">
+                        <div className="min-w-0 flex-1">
                           <div className="flex justify-between">
                             <h4 className="text-sm font-medium">{submission.milestoneTitle}</h4>
                             <span className={`text-sm font-medium ${statusColor}`}>{statusText}</span>

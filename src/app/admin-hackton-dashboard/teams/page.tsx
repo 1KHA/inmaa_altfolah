@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { HACKATHON_TRACKS } from '@/lib/tracks';
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Filter, Download, Trash, Edit, Eye, UserPlus, Check, X, Users } from "lucide-react";
+import { Plus, Search, Filter, Download, Trash, Edit, Eye, UserPlus, Check, X, Users, Ban, RotateCcw } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CHALLENGES } from "@/lib/challenges";
 import { useToast } from "@/../../components/ui/use-toast";
 import * as XLSX from 'xlsx';
 import AutoTeamCreationModal from "@/../../components/admin/AutoTeamCreationModal";
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePhases, PhaseBadge, PhaseBulkActions, PhaseRowMove, PhaseFilter, matchesPhaseFilter } from "@/components/phases/phase-controls";
 
 interface Participant {
   id: string;
@@ -59,7 +61,12 @@ interface Participant {
 }
 
 interface Team {
+  isDisabled?: boolean;
   id: string;
+  // Phase membership — the team's phase is also every member's phase.
+  phaseId?: string | null;
+  phaseStatus?: string | null;
+  phase?: { id: string; name: string; order: number; isDisabled: boolean } | null;
   teamName?: string;
   status: string;
   hackathonTrack?: string;
@@ -91,6 +98,13 @@ export default function TeamsPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  // Bulk disable/enable selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  // Phases: the list feeds the filter and the bulk bar; the filter is applied
+  // client-side alongside the existing status/track filters.
+  const { phases } = usePhases();
+  const [phaseFilter, setPhaseFilter] = useState("all");
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -390,6 +404,50 @@ export default function TeamsPage() {
   };
 
   // Function to handle exporting teams data to Excel
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  /**
+   * Disable or re-enable every ticked team in one request. Disabling a team
+   * disables all of its members with it (see src/lib/account-status.ts).
+   */
+  const handleBulkDisable = async (disabled: boolean) => {
+    if (selectedIds.size === 0) return;
+    try {
+      setBulkBusy(true);
+      const res = await fetch('/api/admin/accounts/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ teamIds: Array.from(selectedIds), disabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشل تنفيذ العملية');
+      toast({
+        title: 'نجح',
+        description: disabled
+          ? `تم تعطيل ${data.teamsUpdated} فريق (وجميع أعضائه)`
+          : `تم تفعيل ${data.teamsUpdated} فريق`,
+      });
+      setSelectedIds(new Set());
+      fetchTeams();
+    } catch (err) {
+      toast({
+        title: 'خطأ',
+        description: err instanceof Error ? err.message : 'فشل تنفيذ العملية',
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const handleExportToExcel = () => {
     try {
       // Create a detailed worksheet with all teams data
@@ -535,6 +593,7 @@ export default function TeamsPage() {
     }
   };
 
+
   // Reset all filters
   const resetFilters = () => {
     setStatusFilter([]);
@@ -570,7 +629,8 @@ export default function TeamsPage() {
       (teamTypeFilter === "individual" && team.participants.length === 1);
 
     return matchesBasicFilter && matchesStatusFilter && 
-           matchesTrackFilter && matchesTeamTypeFilter;
+           matchesTrackFilter && matchesTeamTypeFilter &&
+           matchesPhaseFilter(team, phaseFilter);
   });
 
   if (loading) {
@@ -579,7 +639,7 @@ export default function TeamsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">الفرق</h1>
         <div className="flex gap-2">
           <Button onClick={() => router.push('/admin-hackton-dashboard/teams/create')}>
@@ -633,6 +693,7 @@ export default function TeamsPage() {
                 <option value="pending">قيد الانتظار</option>
                 <option value="rejected">المرفوضة</option>
               </select>
+              <PhaseFilter value={phaseFilter} onChange={setPhaseFilter} phases={phases} />
               <Button 
                 variant="outline" 
                 className="gap-2" 
@@ -648,16 +709,49 @@ export default function TeamsPage() {
             </div>
           </div>
 
+          {selectedIds.size > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
+              <span className="text-sm font-medium">تم اختيار {selectedIds.size} فريق</span>
+              <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={() => handleBulkDisable(true)}>
+                <Ban className="ml-1 h-4 w-4" />
+                تعطيل المحدد
+              </Button>
+              <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => handleBulkDisable(false)}>
+                <RotateCcw className="ml-1 h-4 w-4" />
+                إعادة التفعيل
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                إلغاء التحديد
+              </Button>
+              <PhaseBulkActions
+                ids={Array.from(selectedIds)}
+                kind="team"
+                phases={phases}
+                onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
+              />
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-muted">
-                  <th className="border p-2 text-right">اسم الفريق</th>
+                  <th className="border p-2 w-10 text-center">
+                    <Checkbox
+                      aria-label="تحديد الكل"
+                      checked={filteredTeams.length > 0 && filteredTeams.every((t) => selectedIds.has(t.id))}
+                      onCheckedChange={(checked: boolean | 'indeterminate') =>
+                        setSelectedIds(checked === true ? new Set(filteredTeams.map((t) => t.id)) : new Set())
+                      }
+                    />
+                  </th>
+                  <th className="border p-2 text-right w-48">اسم الفريق</th>
                   <th className="border p-2 text-right">اسم الفكرة</th>
                   <th className="border p-2 text-right">المسار</th>
                   <th className="border p-2 text-right">الأعضاء</th>
                   <th className="border p-2 text-right">قائد الفريق</th>
                   <th className="border p-2 text-right">الحالة</th>
+                  <th className="border p-2 text-right">المرحلة</th>
                   <th className="border p-2 text-right">تاريخ الإنشاء</th>
                   <th className="border p-2 text-right">الإجراءات</th>
                 </tr>
@@ -667,8 +761,27 @@ export default function TeamsPage() {
                   const leader = team.participants.find(p => p.isLeader);
                   return (
                     <React.Fragment key={team.id}>
-                      <tr className="hover:bg-muted/50">
-                        <td className="border p-2">{team.teamName}</td>
+                      <tr className={`hover:bg-muted/50 ${team.isDisabled ? 'bg-red-50/60' : ''}`}>
+                        <td className="border p-2 text-center">
+                          <Checkbox
+                            aria-label="تحديد الفريق"
+                            checked={selectedIds.has(team.id)}
+                            onCheckedChange={() => toggleRow(team.id)}
+                          />
+                        </td>
+                        <td className="border p-2 max-w-[12rem]">
+                          <div className="flex items-center gap-2">
+                            {/* min-w-0 lets truncate actually shrink inside the flex row */}
+                            <span className="truncate min-w-0" title={team.teamName}>
+                              {team.teamName}
+                            </span>
+                            {team.isDisabled && (
+                              <span className="shrink-0 px-1.5 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
+                                معطل
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="border p-2">{team.ideaName}</td>
                         <td className="border p-2">{team.hackathonTrack}</td>
                         <td className="border p-2">
@@ -694,6 +807,19 @@ export default function TeamsPage() {
                           {team.status === "approved" ? "معتمد" : 
                            team.status === "rejected" ? "مرفوض" : "قيد الانتظار"}
                         </span>
+                      </td>
+                      <td className="border p-2">
+                        <div className="flex items-center gap-1">
+                          <PhaseBadge phase={team.phase} phaseStatus={team.phaseStatus} />
+                          {phases.length > 0 && (
+                            <PhaseRowMove
+                              id={team.id}
+                              kind="team"
+                              disabled={!team.phaseId}
+                              onDone={() => fetchTeams(searchQuery)}
+                            />
+                          )}
+                        </div>
                       </td>
                       <td className="border p-2">
                         {new Date(team.createdAt).toLocaleDateString('ar-SA')}
@@ -769,7 +895,7 @@ export default function TeamsPage() {
                       </tr>
                       {expandedTeam === team.id && (
                         <tr className="bg-muted/20">
-                          <td colSpan={8} className="p-0">
+                          <td colSpan={10} className="p-0">
                             <div className="p-4">
                               <div className="flex justify-between items-center mb-4">
                                 <h4 className="font-bold">أعضاء الفريق:</h4>
@@ -928,7 +1054,7 @@ export default function TeamsPage() {
           {/* Teams per Track */}
           <h3 className="text-lg font-semibold mb-4">الفرق حسب المسار</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {HACKATHON_TRACKS.map(track => (
+            {CHALLENGES.map(track => (
               <div key={track} className="bg-muted p-4 rounded-lg text-center">
                 <h3 className="text-2xl font-bold">
                   {teams.filter(team => team.hackathonTrack === track).length}
@@ -1116,7 +1242,7 @@ export default function TeamsPage() {
                       className="w-full rounded-md border border-input p-2"
                     >
                       <option value="">اختر المسار</option>
-                      {HACKATHON_TRACKS.map(track => (
+                      {CHALLENGES.map(track => (
                         <option key={track} value={track}>{track}</option>
                       ))}
                     </select>
@@ -1371,7 +1497,7 @@ export default function TeamsPage() {
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-right"
               >
                 <option value="">جميع المسارات</option>
-                {HACKATHON_TRACKS.map((track) => (
+                {CHALLENGES.map((track) => (
                   <option key={track} value={track}>
                     {track}
                   </option>

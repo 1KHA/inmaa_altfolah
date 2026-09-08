@@ -152,7 +152,7 @@ export default function TeamsPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
+    <div className="w-full max-w-full space-y-4 sm:space-y-6 p-0 sm:p-2 md:p-4" dir="rtl">
       <div className="flex flex-col gap-3 sm:gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">الفرق المتاحة</h1>
@@ -186,27 +186,27 @@ export default function TeamsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-3 sm:gap-4 lg:gap-6">
           {filteredTeams.map((team) => (
-            <Card key={team.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-xl mb-2">{team.teamName}</CardTitle>
-                    <CardDescription className="text-sm">
+            <Card key={team.id} className="flex flex-col min-w-0 hover:shadow-lg transition-shadow">
+              <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg sm:text-xl mb-2 leading-snug break-words">{team.teamName}</CardTitle>
+                    <CardDescription className="text-sm break-words">
                       قائد الفريق: {team.leaderName}
                     </CardDescription>
                   </div>
-                  <Badge variant="secondary" className="flex items-center gap-1">
+                  <Badge variant="secondary" className="flex items-center gap-1 shrink-0 whitespace-nowrap">
                     <Users className="h-3 w-3" />
                     {team.memberCount}/{team.maxMembers}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="flex flex-1 flex-col gap-4 p-4 pt-0 sm:p-6 sm:pt-0">
                 <div>
                   <h4 className="font-medium mb-1">الفكرة:</h4>
-                  <p className="text-sm text-muted-foreground line-clamp-3">
+                  <p className="text-sm text-muted-foreground line-clamp-3 break-words">
                     {team.ideaDescription || team.ideaName}
                   </p>
                 </div>
@@ -214,7 +214,7 @@ export default function TeamsPage() {
                 {team.challenge && (
                   <div>
                     <h4 className="font-medium mb-1">التحدي:</h4>
-                    <p className="text-sm text-muted-foreground">{team.challenge}</p>
+                    <p className="text-sm text-muted-foreground break-words">{team.challenge}</p>
                   </div>
                 )}
 
@@ -227,7 +227,7 @@ export default function TeamsPage() {
 
                 <Button 
                   onClick={() => openJoinModal(team)}
-                  className="w-full"
+                  className="w-full mt-auto"
                   disabled={team.memberCount >= team.maxMembers}
                 >
                   <Send className="h-4 w-4 ml-2" />

@@ -146,7 +146,7 @@ export default function JudgesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">الحكام</h1>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
@@ -163,7 +163,7 @@ export default function JudgesPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                 <label htmlFor="name" className="text-right">
                   الاسم
                 </label>
@@ -176,7 +176,7 @@ export default function JudgesPage() {
                   className="col-span-3"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                 <label htmlFor="email" className="text-right">
                   البريد الإلكتروني
                 </label>
@@ -190,7 +190,7 @@ export default function JudgesPage() {
                   className="col-span-3"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                 <label htmlFor="phone" className="text-right">
                   رقم الهاتف
                 </label>
@@ -203,7 +203,7 @@ export default function JudgesPage() {
                   className="col-span-3"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                 <label htmlFor="specialty" className="text-right">
                   التخصص
                 </label>
@@ -216,7 +216,7 @@ export default function JudgesPage() {
                   className="col-span-3"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                 <label htmlFor="organization" className="text-right">
                   المنظمة
                 </label>

@@ -14,21 +14,24 @@ import {
   BarChart3,
   Bell,
   Flag,
-  ScanLine,
   Settings,
-  LogOut
-} from "lucide-react";
+  ScanLine,
+  LogOut, Upload, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
+// Exported so the TopBar hamburger renders the same list on mobile
+// instead of keeping its own copy.
+export const navItems = [
   { name: "لوحة التحكم", href: "/admin-hackton-dashboard", icon: Home },
   { name: "الفعاليات", href: "/admin-hackton-dashboard/events", icon: Calendar },
   { name: "المشاركون", href: "/admin-hackton-dashboard/participants", icon: Users },
   { name: "الفرق", href: "/admin-hackton-dashboard/teams", icon: UserCheck },
+  { name: "المراحل", href: "/admin-hackton-dashboard/phases", icon: Layers },
   { name: "المرشدون", href: "/admin-hackton-dashboard/mentors", icon: BookOpen },
   { name: "التسليمات", href: "/admin-hackton-dashboard/milestones", icon: Flag },
   { name: "تسجيل الحضور", href: "/admin-hackton-dashboard/attendance", icon: ScanLine },
   { name: "الإشعارات", href: "/admin-hackton-dashboard/notifications", icon: Bell },
+  { name: "استيراد البيانات", href: "/admin-hackton-dashboard/import", icon: Upload },
   { name: "الإعدادات والرسائل", href: "/admin-hackton-dashboard/settings", icon: Settings },
 ];
 

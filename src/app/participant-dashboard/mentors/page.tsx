@@ -19,7 +19,6 @@ import {
   Users,
   Mail,
   Calendar,
-  Award,
   Clock,
   Phone,
   Briefcase,
@@ -39,10 +38,31 @@ import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/ar'; // Import Arabic locale
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { SLOT_STEP_MINUTES, SLOT_TIMESLOTS_PER_HOUR } from '@/lib/constants';
 import { Alert, AlertDescription } from '../../../../components/ui/alert';
 
 moment.locale('ar'); // Set moment to use Arabic
 const localizer = momentLocalizer(moment);
+
+// ---- mobile slot-list helpers (the week calendar is unusable on phones) ----
+const fmtSlotTime = (d: Date | string) =>
+  new Date(d).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+
+function groupSlotsByDay(events: AvailabilityEvent[]) {
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+  );
+  const groups: { day: string; slots: AvailabilityEvent[] }[] = [];
+  for (const e of sorted) {
+    const day = new Date(e.start).toLocaleDateString('ar-SA', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+    const last = groups[groups.length - 1];
+    if (last && last.day === day) last.slots.push(e);
+    else groups.push({ day, slots: [e] });
+  }
+  return groups;
+}
 
 const messages = {
   allDay: 'يوم كامل',
@@ -76,32 +96,10 @@ interface Booking {
   startTime: string;
   endTime: string;
   status: string;
+  meetingUrl?: string | null;
   createdAt: string;
 }
 
-// Define the MentorBooking type for all bookings of a mentor
-interface MentorBooking {
-  id: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  availability: {
-    id: string;
-    startTime: string;
-    endTime: string;
-  };
-  participant: {
-    id: string;
-    name: string;
-    email: string;
-    phoneNumber: string;
-  };
-  mentor: {
-    id: string;
-    name: string;
-    specialty: string;
-  };
-}
 
 // Define the Mentor type
 interface Mentor {
@@ -113,9 +111,11 @@ interface Mentor {
   status: 'pending' | 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
-  // The following fields are for display and might not be in the DB model directly
-  rating?: number;
-  isAvailableNow?: boolean;
+  // Real availability summary computed server-side from FUTURE slots
+  // (GET /api/admin/mentors — participant branch). Never mock data.
+  availability?: string | null; // متاح | متاح جزئياً | مشغول | null (no slots)
+  availableSlots?: number;
+  upcomingSlots?: number;
 }
 
 export default function MentorsPage() {
@@ -132,9 +132,6 @@ export default function MentorsPage() {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
-  const [mentorBookings, setMentorBookings] = useState<MentorBooking[]>([]);
-  const [mentorBookingsLoading, setMentorBookingsLoading] = useState(false);
-  const [isMentorBookingsDialogOpen, setMentorBookingsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchMyBookings = async () => {
@@ -160,30 +157,6 @@ export default function MentorsPage() {
     }
   };
 
-  const fetchMentorBookings = async (mentorId: string) => {
-    try {
-      setMentorBookingsLoading(true);
-      const response = await fetch(`/api/mentor/bookings?mentorId=${mentorId}`);
-      
-      if (!response.ok) {
-        throw new Error('فشل في جلب حجوزات الموجه');
-      }
-      
-      const data = await response.json();
-      setMentorBookings(data);
-      setMentorBookingsDialogOpen(true);
-    } catch (error) {
-      console.error('Error fetching mentor bookings:', error);
-      toast({
-        title: "خطأ",
-        description: "فشل في جلب حجوزات الموجه",
-        variant: "destructive",
-      });
-    } finally {
-      setMentorBookingsLoading(false);
-    }
-  };
-
   const fetchMentors = async () => {
     try {
       setLoading(true);
@@ -200,15 +173,10 @@ export default function MentorsPage() {
       // Filter only active mentors
       const activeMentors = data.filter((mentor: Mentor) => mentor.status === 'active');
       
-      // Add mock rating data for display purposes
-      const mentorsWithRating = activeMentors.map((mentor: Mentor) => ({
-        ...mentor,
-        rating: parseFloat((Math.random() * (5 - 3.5) + 3.5).toFixed(1)),
-        isAvailableNow: Math.random() > 0.5, // Random availability for demo
-      }));
-      
-      setMentors(mentorsWithRating);
-      setFilteredMentors(mentorsWithRating);
+      // availability/availableSlots come from the API, computed from real
+      // future slots — this used to be Math.random() mock data.
+      setMentors(activeMentors);
+      setFilteredMentors(activeMentors);
       setProgress(100);
     } catch (error) {
       console.error(error);
@@ -269,6 +237,19 @@ export default function MentorsPage() {
         description: "حدث خطأ أثناء جلب المواعيد.",
         variant: "destructive",
       });
+    }
+  };
+
+  const getAvailabilityBadge = (mentor: Mentor) => {
+    switch (mentor.availability) {
+      case 'متاح':
+        return <Badge className="bg-green-100 text-green-800">متاح ({mentor.availableSlots})</Badge>;
+      case 'متاح جزئياً':
+        return <Badge className="bg-yellow-100 text-yellow-800">متاح جزئياً ({mentor.availableSlots})</Badge>;
+      case 'مشغول':
+        return <Badge className="bg-red-100 text-red-800">مشغول</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800">لا توجد مواعيد</Badge>;
     }
   };
 
@@ -440,9 +421,22 @@ export default function MentorsPage() {
                         {formattedDate} • {formattedStartTime} - {formattedEndTime}
                       </div>
                     </div>
-                    <Badge className="bg-green-100 text-green-800 ml-2">
-                      {booking.status === 'booked' ? 'محجوز' : booking.status}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2 ml-2 shrink-0">
+                      <Badge className="bg-green-100 text-green-800">
+                        {booking.status === 'booked' ? 'محجوز' : booking.status}
+                      </Badge>
+                      {booking.meetingUrl && booking.status === 'booked' && (
+                        <Button
+                          asChild
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 h-8 text-xs"
+                        >
+                          <a href={booking.meetingUrl} target="_blank" rel="noopener noreferrer">
+                            دخول الاجتماع
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -492,27 +486,29 @@ export default function MentorsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
-              {mentors.filter(m => m.isAvailableNow).length}
+              {mentors.filter(m => (m.availableSlots ?? 0) > 0).length}
             </div>
             <p className="text-xs text-muted-foreground">
-              موجه متاح حالياً للمساعدة
+              موجه لديه مواعيد متاحة للحجز
             </p>
           </CardContent>
         </Card>
         
+        {/* Replaced "متوسط التقييم": no rating system exists, the number was
+            random. This counts real bookable slots instead. */}
         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-yellow-50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Award className="h-5 w-5 text-yellow-500" />
-              متوسط التقييم
+              <Calendar className="h-5 w-5 text-yellow-500" />
+              مواعيد متاحة للحجز
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-yellow-600">
-              {(mentors.reduce((total, mentor) => total + (mentor.rating || 0), 0) / (mentors.length || 1)).toFixed(1)}/5
+              {mentors.reduce((total, mentor) => total + (mentor.availableSlots ?? 0), 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              بناءً على تقييمات المشاركين
+              موعد قادم غير محجوز لدى جميع الموجهين
             </p>
           </CardContent>
         </Card>
@@ -546,8 +542,7 @@ export default function MentorsPage() {
                 <TableRow className="bg-blue-50 hover:bg-blue-50">
                   <TableHead>الاسم</TableHead>
                   <TableHead className="hidden sm:table-cell">التخصص</TableHead>
-                  <TableHead className="hidden sm:table-cell">التقييم</TableHead>
-                  <TableHead className="hidden sm:table-cell">الحالة</TableHead>
+                  <TableHead className="hidden sm:table-cell">التوفر</TableHead>
                   <TableHead className="text-left">المواعيد</TableHead>
                 </TableRow>
               </TableHeader>
@@ -564,9 +559,7 @@ export default function MentorsPage() {
                         <Phone className="h-3 w-3" /> {mentor.phone}
                       </div>
                       <div className="sm:hidden text-xs text-gray-500 mt-1">
-                        <Badge className={mentor.isAvailableNow ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
-                          {mentor.isAvailableNow ? "متاح الآن" : "غير متاح حالياً"}
-                        </Badge>
+                        {getAvailabilityBadge(mentor)}
                       </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
@@ -576,21 +569,7 @@ export default function MentorsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      {mentor.rating && mentor.rating > 0 ? (
-                        <div className="flex items-center gap-1">
-                          <Award className="h-4 w-4 text-yellow-500" />
-                          <span>{mentor.rating}/5</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-500">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {mentor.isAvailableNow ? (
-                        <Badge className="bg-green-100 text-green-800">متاح الآن</Badge>
-                      ) : (
-                        <Badge className="bg-gray-100 text-gray-800">غير متاح حالياً</Badge>
-                      )}
+                      {getAvailabilityBadge(mentor)}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col sm:flex-row items-center gap-2 justify-end">
@@ -604,23 +583,13 @@ export default function MentorsPage() {
                           <span className="hidden sm:inline">عرض المواعيد</span>
                           <span className="sm:hidden">المواعيد</span>
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="bg-green-50 text-green-600 hover:bg-green-100 border-green-200 flex items-center gap-1 w-full sm:w-auto text-xs sm:text-sm"
-                          onClick={() => fetchMentorBookings(mentor.id)}
-                        >
-                          <Users className="h-4 w-4" />
-                          <span className="hidden sm:inline">الحجوزات</span>
-                          <span className="sm:hidden">الحجوزات</span>
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
                     لا يوجد موجهين متطابقين مع البحث
                   </TableCell>
                 </TableRow>
@@ -640,11 +609,77 @@ export default function MentorsPage() {
               المواعيد المتاحة للموجه خلال الأسبوع الحالي
             </DialogDescription>
           </DialogHeader>
-          <div style={{ height: '70vh', backgroundColor: 'white', padding: '20px', borderRadius: '8px' }}>
+          {/* Mobile: tappable slot list grouped by day */}
+          <div className="md:hidden max-h-[65vh] overflow-y-auto space-y-4 py-1">
+            {availabilityEvents.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#60a5fa]"></span>متاح</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#f87171]"></span>محجوز</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#4ade80]"></span>محجوز بواسطتك</span>
+                </div>
+                {groupSlotsByDay(availabilityEvents).map((group) => (
+                  <div key={group.day}>
+                    <div className="text-sm font-semibold text-muted-foreground mb-2">{group.day}</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {group.slots.map((ev) => {
+                        const isSelected = selectedEvent?.id === ev.id;
+                        return (
+                          <button
+                            key={ev.id}
+                            type="button"
+                            onClick={() => handleSelectEvent(ev)}
+                            className={`rounded-lg border p-2 text-center transition-colors ${
+                              isSelected
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : ev.isBooked
+                                  ? ev.isOwnBooking
+                                    ? 'bg-green-50 border-green-300 text-green-700'
+                                    : 'bg-red-50 border-red-200 text-red-400'
+                                  : 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100'
+                            }`}
+                          >
+                            <span className="block text-sm font-medium" dir="ltr">
+                              {fmtSlotTime(ev.start)} – {fmtSlotTime(ev.end)}
+                            </span>
+                            <span className="block text-[11px] mt-0.5">
+                              {ev.isBooked ? (ev.isOwnBooking ? 'محجوز بواسطتك' : 'محجوز') : isSelected ? 'تم الاختيار' : 'متاح'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {selectedEvent && !selectedEvent.isBooked && (
+                  <div className="sticky bottom-0 bg-background border-t pt-3 pb-1">
+                    <Button
+                      onClick={bookAppointment}
+                      disabled={bookingLoading}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      {bookingLoading ? 'جاري الحجز...' : 'حجز هذا الموعد'}
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10">
+                <Calendar className="h-12 w-12 text-gray-300 mb-3" />
+                <p className="text-gray-500">لا توجد مواعيد متاحة حالياً</p>
+                <p className="text-gray-400 text-sm mt-1">يرجى التحقق لاحقاً أو التواصل مع الموجه مباشرة</p>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: week calendar (unchanged) */}
+          <div className="hidden md:block" style={{ height: '70vh', backgroundColor: 'white', padding: '20px', borderRadius: '8px' }}>
             {availabilityEvents.length > 0 ? (
               <>
                 <BigCalendar
                   localizer={localizer}
+                  step={SLOT_STEP_MINUTES}
+                  timeslots={SLOT_TIMESLOTS_PER_HOUR}
                   events={availabilityEvents.map(event => ({
                     ...event,
                     title: event.title,
@@ -715,106 +750,6 @@ export default function MentorsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Mentor Bookings Dialog */}
-      <Dialog open={isMentorBookingsDialogOpen} onOpenChange={setMentorBookingsDialogOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-4xl rounded-lg border-0 shadow-lg">
-          <DialogHeader>
-            <DialogTitle>الجلسات المحجوزة مع الموجه</DialogTitle>
-            <DialogDescription>
-              جميع الجلسات المحجوزة مع هذا الموجه
-            </DialogDescription>
-          </DialogHeader>
-          
-          {mentorBookingsLoading ? (
-            <div className="py-8 text-center">
-              <Progress value={70} className="w-full h-2 mb-4" />
-              <p className="text-muted-foreground">جاري تحميل الحجوزات...</p>
-            </div>
-          ) : mentorBookings.length > 0 ? (
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto p-2">
-              {mentorBookings.map((booking) => {
-                // Format dates
-                const startDate = new Date(booking.availability.startTime);
-                const endDate = new Date(booking.availability.endTime);
-                const formattedDate = startDate.toLocaleDateString('ar-SA', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                });
-                const formattedStartTime = startDate.toLocaleTimeString('ar-SA', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                });
-                const formattedEndTime = endDate.toLocaleTimeString('ar-SA', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                });
-
-                // Check if this booking belongs to the current participant
-                const isCurrentParticipantBooking = myBookings.some(myBooking => myBooking.id === booking.id);
-
-                return (
-                  <div 
-                    key={booking.id} 
-                    className={`flex items-center p-4 rounded-lg shadow-sm border ${
-                      isCurrentParticipantBooking 
-                        ? 'bg-blue-50 border-blue-200' 
-                        : 'bg-white border-gray-200'
-                    }`}
-                  >
-                    <div className={`mr-4 p-2 rounded-full ${
-                      isCurrentParticipantBooking 
-                        ? 'bg-blue-100' 
-                        : 'bg-gray-100'
-                    }`}>
-                      <Users className={`h-6 w-6 ${
-                        isCurrentParticipantBooking 
-                          ? 'text-blue-600' 
-                          : 'text-gray-600'
-                      }`} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">
-                        {booking.participant.name}
-                        {isCurrentParticipantBooking && (
-                          <Badge className="mr-2 bg-blue-100 text-blue-800">أنت</Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                        <Mail className="h-3 w-3" /> {booking.participant.email}
-                      </div>
-                      <div className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                        <Phone className="h-3 w-3" /> {booking.participant.phoneNumber}
-                      </div>
-                      <div className="text-sm text-gray-500 mt-2">
-                        {formattedDate} • {formattedStartTime} - {formattedEndTime}
-                      </div>
-                    </div>
-                    <Badge className={`ml-2 ${
-                      booking.status === 'booked' 
-                        ? 'bg-green-100 text-green-800' 
-                        : booking.status === 'cancelled' 
-                          ? 'bg-red-100 text-red-800' 
-                          : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {booking.status === 'booked' ? 'محجوز' : 
-                       booking.status === 'cancelled' ? 'ملغي' : 
-                       booking.status === 'completed' ? 'مكتمل' : booking.status}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="py-12 text-center">
-              <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">لا توجد حجوزات لهذا الموجه</p>
-              <p className="text-gray-400 text-sm mt-2">يمكنك حجز موعد مع هذا الموجه من خلال زر "عرض المواعيد"</p>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -26,7 +26,8 @@ import {
   CalendarClock,
   CheckCircle2,
   XCircle,
-  User
+  User,
+  Video,
 } from 'lucide-react';
 import { Alert, AlertDescription } from '../../../../components/ui/alert';
 import { useToast } from '../../../../components/ui/use-toast';
@@ -49,6 +50,7 @@ import {
 interface MentorBooking {
   id: string;
   status: string;
+  meetingUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   availability: {
@@ -193,8 +195,8 @@ export default function MentorSessionsPage() {
   }
 
   return (
-    <div className="p-8" dir="rtl">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-0 md:p-8" dir="rtl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
         <h1 className="text-3xl font-bold text-blue-800">الجلسات المحجوزة</h1>
         <Button 
           variant="outline" 
@@ -278,7 +280,7 @@ export default function MentorSessionsPage() {
       {/* Search and Filter */}
       <Card className="mb-8 border-0 shadow-sm overflow-hidden">
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 h-4 w-4" />
@@ -375,6 +377,17 @@ export default function MentorSessionsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2 justify-end">
+                              {booking.meetingUrl && booking.status === 'booked' && (
+                                <Button
+                                  asChild
+                                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                                >
+                                  <a href={booking.meetingUrl} target="_blank" rel="noopener noreferrer">
+                                    <Video className="h-4 w-4" />
+                                    <span>دخول الاجتماع</span>
+                                  </a>
+                                </Button>
+                              )}
                               <Button 
                                 variant="outline" 
                                 className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 flex items-center gap-1"

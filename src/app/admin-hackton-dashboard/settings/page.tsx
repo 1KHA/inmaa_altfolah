@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "../../../../components/ui/use-toast";
 import TemplateEditor from "@/components/notifications/template-editor";
 import BroadcastComposer from "@/components/notifications/broadcast-composer";
+import MemberWindowSettings from "@/components/admin/MemberWindowSettings";
 
 interface EmailSettingsForm {
   host: string;
@@ -170,10 +171,11 @@ export default function SettingsPage() {
       <h1 className="text-3xl font-bold">الإعدادات والرسائل</h1>
 
       <Tabs defaultValue="smtp" dir="rtl">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="smtp">إعدادات البريد (SMTP)</TabsTrigger>
           <TabsTrigger value="templates">قوالب الإشعارات</TabsTrigger>
           <TabsTrigger value="broadcast">إرسال رسالة</TabsTrigger>
+          <TabsTrigger value="team">إعدادات الفرق</TabsTrigger>
         </TabsList>
 
         <TabsContent value="smtp">
@@ -297,6 +299,10 @@ export default function SettingsPage() {
 
         <TabsContent value="broadcast">
           <BroadcastComposer />
+        </TabsContent>
+
+        <TabsContent value="team">
+          <MemberWindowSettings />
         </TabsContent>
       </Tabs>
     </div>

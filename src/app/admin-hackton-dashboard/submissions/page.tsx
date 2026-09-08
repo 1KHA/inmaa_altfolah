@@ -204,7 +204,7 @@ export default function SubmissionsPage() {
   };
 
   return (
-    <div className="p-8" dir="rtl">
+    <div className="p-0 md:p-8" dir="rtl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">المشاريع المقدمة</h1>
         <p className="text-gray-600">إدارة ومراجعة المشاريع المقدمة للهاكاثون</p>
@@ -271,7 +271,7 @@ export default function SubmissionsPage() {
           </div>
         </div>
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder="الفئة" />
           </SelectTrigger>
           <SelectContent>
@@ -283,7 +283,7 @@ export default function SubmissionsPage() {
           </SelectContent>
         </Select>
         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder="الحالة" />
           </SelectTrigger>
           <SelectContent>
@@ -413,7 +413,7 @@ export default function SubmissionsPage() {
           </DialogHeader>
           {selectedSubmission && (
             <Tabs defaultValue="overview" className="mt-4">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full h-auto grid-cols-2 sm:grid-cols-4">
                 <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
                 <TabsTrigger value="team">الفريق</TabsTrigger>
                 <TabsTrigger value="files">الملفات</TabsTrigger>

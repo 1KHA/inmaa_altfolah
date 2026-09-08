@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import * as XLSX from "xlsx";
-import { Camera, Download, RotateCcw, ScanLine, Search } from "lucide-react";
+import { Camera, Download, RotateCcw, ScanLine, Search, Volume2, VolumeX } from "lucide-react";
+import { playScanSound, unlockScanAudio, isScanSoundMuted, setScanSoundMuted } from "@/lib/scan-sounds";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,15 @@ export default function AttendancePage() {
   const [eventId, setEventId] = useState<string>("");
   const [date, setDate] = useState<string>("");
   const [cameraOn, setCameraOn] = useState(false);
+  // Audible scan feedback (preference remembered per browser)
+  const [soundMuted, setSoundMuted] = useState(false);
+  useEffect(() => { setSoundMuted(isScanSoundMuted()); }, []);
+  const toggleSound = () => {
+    const next = !soundMuted;
+    setSoundMuted(next);
+    setScanSoundMuted(next);
+    if (!next) { unlockScanAudio(); playScanSound("success"); } // preview when turning on
+  };
   const [manualCode, setManualCode] = useState("");
   const [result, setResult] = useState<ScanResult | null>(null);
   const [sessionScans, setSessionScans] = useState<SessionScan[]>([]);
@@ -146,6 +156,14 @@ export default function AttendancePage() {
   }, [fetchData]);
 
   const showResult = (r: ScanResult) => {
+    // distinct tones: success chirp / duplicate double-blip / error buzz
+    playScanSound(
+      r.kind === "rejected"
+        ? "error"
+        : r.kind === "alreadyAttended" || r.kind === "alreadyCheckedIn"
+          ? "duplicate"
+          : "success"
+    );
     setResult(r);
     if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
     resultTimerRef.current = setTimeout(() => setResult(null), 4000);
@@ -424,9 +442,21 @@ export default function AttendancePage() {
             </>
           ) : (
             <div className="text-center">
-              <Button onClick={() => setCameraOn(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={() => { unlockScanAudio(); setCameraOn(true); }} className="bg-blue-600 hover:bg-blue-700">
                 <Camera className="ml-2 h-4 w-4" />
                 تشغيل الكاميرا للمسح
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={toggleSound}
+                className="mr-2"
+                title={soundMuted ? "تشغيل صوت المسح" : "كتم صوت المسح"}
+                aria-pressed={!soundMuted}
+              >
+                {soundMuted ? <VolumeX className="ml-1 h-4 w-4" /> : <Volume2 className="ml-1 h-4 w-4" />}
+                {soundMuted ? "الصوت مكتوم" : "صوت المسح"}
               </Button>
             </div>
           )}

@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  Search,
   Menu,
   X,
   User,
   LogOut,
   Settings,
   HelpCircle,
+  Home,
+  ListChecks,
+  CalendarClock,
+  Bell,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -19,22 +23,29 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import EventTimeline from "@/components/ui/event-timeline";
 import NotificationDropdown from "@/components/ui/notification-dropdown";
+import DashboardMobileMenu from "@/components/ui/dashboard-mobile-menu";
 import { useAuth } from "@/contexts/auth-context";
 
+const MOBILE_NAV_ITEMS = [
+  { name: "لوحة التحكم", href: "/mentor-dashboard", icon: Home },
+  { name: "جلسات الإرشاد", href: "/mentor-dashboard/sessions", icon: ListChecks },
+  { name: "إدارة التوفر", href: "/mentor-dashboard/availability", icon: CalendarClock },
+  { name: "الإشعارات", href: "/mentor-dashboard/notifications", icon: Bell },
+  { name: "الملف الشخصي", href: "/mentor-dashboard/profile", icon: User },
+];
+
 export default function TopBar() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // Handle search functionality
-      setSearchQuery("");
-    }
-  };
-
   const { logout } = useAuth();
+  const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close the mobile drawer whenever navigation happens.
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
 
   const handleLogout = async () => {
     // Must go through the auth context: it calls /api/logout to clear the
@@ -63,23 +74,18 @@ export default function TopBar() {
 
           <Link href="/mentor-dashboard" className="flex items-center">
             <span className="text-xl font-bold">منصة دِيَم</span>
-            <span className="ml-1 rounded-md bg-primary-foreground/20 px-1.5 py-0.5 text-xs font-medium">
+            <span className="ml-1 hidden sm:inline rounded-md bg-primary-foreground/20 px-1.5 py-0.5 text-xs font-medium">
               لوحة المرشد
             </span>
           </Link>
         </div>
 
-        <div className="hidden md:flex md:flex-1 md:justify-center md:px-4">
-          <form onSubmit={handleSearch} className="relative w-full max-w-md">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-foreground/60" />
-            <input
-              type="search"
-              placeholder="بحث في لوحة التحكم..."
-              className="w-full rounded-md border border-primary-foreground/20 bg-primary-foreground/10 py-2 pr-10 pl-4 text-right text-primary-foreground placeholder:text-primary-foreground/60"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
+        {/* Hackathon journey timeline (replaces the old search bar) */}
+        <div className="hidden md:flex md:flex-1 md:justify-center md:px-4 min-w-0">
+          <EventTimeline />
+        </div>
+        <div className="flex flex-1 justify-center px-2 min-w-0 md:hidden">
+          <EventTimeline variant="chip" />
         </div>
 
         <div className="flex items-center gap-2">
@@ -126,20 +132,14 @@ export default function TopBar() {
         </div>
       </div>
 
-      {isMobileMenuOpen && (
-        <div className="border-t border-primary-foreground/20 p-4 md:hidden">
-          <form onSubmit={handleSearch} className="relative mb-4">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-foreground/60" />
-            <input
-              type="search"
-              placeholder="بحث في لوحة التحكم..."
-              className="w-full rounded-md border border-primary-foreground/20 bg-primary-foreground/10 py-2 pr-10 pl-4 text-right text-primary-foreground placeholder:text-primary-foreground/60"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
-        </div>
-      )}
+      {/* Mobile navigation drawer — same pattern as the admin dashboard */}
+      <DashboardMobileMenu
+        open={isMobileMenuOpen}
+        items={MOBILE_NAV_ITEMS}
+        pathname={pathname}
+        onNavigate={() => setIsMobileMenuOpen(false)}
+        onLogout={handleLogout}
+      />
     </header>
   );
 }
