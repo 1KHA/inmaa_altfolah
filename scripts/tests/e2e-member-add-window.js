@@ -83,7 +83,8 @@ async function main() {
   // ============ settings API ============
   section('admin team-settings API');
   const g = await api('/api/admin/team-settings', { cookie: aCookie });
-  check('GET returns 200 with maxMembers=30', g.status === 200 && g.json?.maxMembers === 30, JSON.stringify(g.json));
+  // This hackathon caps teams at 5 (TEAM_MAX_MEMBERS); upstream ships 30.
+  check('GET returns 200 with maxMembers=5', g.status === 200 && g.json?.maxMembers === 5, JSON.stringify(g.json));
   check('GET without admin -> 401/403', [401, 403].includes((await api('/api/admin/team-settings', { cookie: lCookie })).status));
   const badPut = await setWindow(new Date(Date.now() + 864e5).toISOString(), new Date(Date.now() + 1000).toISOString());
   check('PUT with end <= start -> 400', badPut.status === 400, `status=${badPut.status}`);
@@ -184,7 +185,7 @@ async function main() {
   section('30-member cap');
   const current = await prisma.participant.count({ where: { teamId: team.id } });
   const fillers = [];
-  for (let i = current; i < 30; i++) {
+  for (let i = current; i < 5; i++) {
     fillers.push({ fullName: `${TAG} حشو ${i}`, email: `${TAG}-fill${i}@t.test`, status: 'approved', teamId: team.id });
   }
   if (fillers.length) await prisma.participant.createMany({ data: fillers });
@@ -192,8 +193,8 @@ async function main() {
   fillerRows.forEach((r) => { if (!made.participants.includes(r.id)) made.participants.push(r.id); });
 
   const add5 = await api('/api/participant/add-member', { method: 'POST', cookie: lCookie, body: memberBody() });
-  check('31st member is refused (400) with cap message',
-    add5.status === 400 && !!add5.json?.error && add5.json.error.includes('30'), `status=${add5.status} ${JSON.stringify(add5.json)}`);
+  check('member beyond the cap is refused (400) with cap message',
+    add5.status === 400 && !!add5.json?.error && add5.json.error.includes('5'), `status=${add5.status} ${JSON.stringify(add5.json)}`);
 
   // ============ guard rails ============
   section('guard rails');
