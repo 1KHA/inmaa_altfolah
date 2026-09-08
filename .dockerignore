@@ -1,0 +1,21 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.docker.example
+npm-debug.log*
+tsconfig.tsbuildinfo
+
+# Not needed inside the image
+newlandpage
+oldmdfiles
+mdfiles
+memory-bank
+prisma/dev.db
+test-auth.js
+*.md
+!README.md
+Dockerfile
+docker-compose.yml
+.dockerignore

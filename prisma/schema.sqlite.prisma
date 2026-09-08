@@ -15,6 +15,13 @@ model Team {
   id                   String    @id @default(cuid())
   teamName             String?
   status               String    @default("pending") // pending, approved, rejected
+  // Disabling a team disables every member with it (see src/lib/account-status.ts).
+  isDisabled           Boolean   @default(false)
+  disabledAt           DateTime?
+  phaseId              String?
+  phase                Phase?    @relation(fields: [phaseId], references: [id])
+  phaseStatus          String    @default("active") // active | failed
+  phaseUpdatedAt       DateTime?
   hackathonTrack       String?   // NEW: أي مسار من مسارات الهاكاثون؟
   ideaDescription      String?   // SIMPLIFIED: صف الفكرة
   hearAboutUs          String?   // NEW: من أين سمعت عنا
@@ -56,6 +63,17 @@ model Participant {
   isLeader             Boolean               @default(false)
   passwordHash         String?
   status               String                @default("pending") // pending, approved, rejected (for individual participants)
+  // Account disabled by an admin: cannot log in, cannot act, and receives no
+  // transactional email/notifications. Independent of `status` (which is the
+  // application review outcome) so re-enabling restores the previous state.
+  // A participant is EFFECTIVELY disabled when this is true OR their team is
+  // disabled — see src/lib/account-status.ts.
+  isDisabled           Boolean               @default(false)
+  disabledAt           DateTime?
+  phaseId              String?
+  phase                Phase?                @relation(fields: [phaseId], references: [id])
+  phaseStatus          String                @default("active") // active | failed
+  phaseUpdatedAt       DateTime?
   teamId               String?               // Make optional for individual participants
   team                 Team?                 @relation(fields: [teamId], references: [id])
   createdAt            DateTime              @default(now())
@@ -96,6 +114,10 @@ model Mentor {
   specialty      String
   phone          String
   status         String               @default("pending") // pending, active, inactive
+  // Disabled by an admin: cannot log in, cannot act, receives no transactional
+  // email, and is not bookable. See src/lib/account-status.ts.
+  isDisabled     Boolean              @default(false)
+  disabledAt     DateTime?
   passwordHash   String?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
@@ -119,6 +141,9 @@ model MentorBooking {
   availabilityId String
   availability   MentorAvailability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
   status         String             @default("booked") // booked, cancelled, completed
+  // Auto-generated video-meeting room for this session (Jitsi by default —
+  // see src/lib/meeting.ts). Sent to the mentor and the booking team by email.
+  meetingUrl     String?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 }
@@ -129,6 +154,12 @@ model Milestone {
   description     String
   dueDate         DateTime
   status          String                @default("upcoming") // upcoming, active, completed, overdue
+  // Tying a milestone to a phase is what enables auto-advance on acceptance.
+  // A milestone with no phase behaves exactly as before and moves nobody.
+  phaseId         String?
+  phase           Phase?                @relation(fields: [phaseId], references: [id])
+  // Escape hatch: accept uploads after dueDate, flagged isLate on the submission.
+  allowLateSubmission Boolean           @default(false)
   requirements    String                // JSON string of requirements array
   submissionCount Int                   @default(0)
   submissionLink  String?
@@ -146,7 +177,12 @@ model MilestoneSubmission {
   filePath      String
   fileName      String
   submittedAt   DateTime    @default(now())
-  reviewStatus  String?     // accepted, rejected, pending
+  reviewStatus  String?     // pending | accepted | rejected | needs_resubmission
+  // Resubmission: the row is updated in place, keeping @@unique([participantId, milestoneId]).
+  resubmissionCount       Int       @default(0)
+  resubmissionRequestedAt DateTime?
+  resubmissionDeadline    DateTime? // overrides milestone.dueDate for this submission
+  isLate                  Boolean   @default(false)
   reviewComment String?     // Admin's comment on the submission
   reviewedAt    DateTime?   // When the submission was reviewed
 
@@ -167,6 +203,9 @@ model Event {
   status       String             @default("upcoming") // upcoming, active, completed, cancelled
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
+  // Last time an admin sent a manual reminder for this event — powers the
+  // "already sent X ago" warning and the server-side re-send cooldown.
+  lastReminderAt DateTime?
   registrations EventRegistration[]
 }
 
@@ -321,4 +360,34 @@ model AttendanceRecord {
   @@unique([participantId, checkinDate]) // NULLs distinct: only constrains general rows
   @@index([eventId])
   @@index([checkinDate])
+}
+
+// Admin-controlled window during which team leaders may add members.
+// Null start/end = unrestricted on that side. Single default row.
+model TeamSettings {
+  id             String    @id @default(cuid())
+  memberAddStart DateTime?
+  memberAddEnd   DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+/// An ordered stage of the hackathon. Teams and participants sit in exactly one
+/// phase; milestones can be tied to a phase to advance their owners on
+/// acceptance. See mdfiles/phases-plan.md.
+model Phase {
+  id           String    @id @default(cuid())
+  name         String    @unique
+  order        Int       @unique // 1,2,3 — defines what "next"/"previous" mean
+  description  String?
+  // Disabling a phase disables every member with it, derived exactly like a
+  // disabled team (see src/lib/account-status.ts) — member rows are untouched.
+  isDisabled   Boolean   @default(false)
+  disabledAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  teams        Team[]
+  participants Participant[]
+  milestones   Milestone[]
+
+  @@index([order])
 }

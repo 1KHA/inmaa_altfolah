@@ -1,0 +1,65 @@
+# Project name — controls container/volume/network prefixes
+# (otherwise the folder name is used)
+name: mayda-hackathon
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mayda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-mayda}
+    volumes:
+      # Named volume — survives container removal. Lives under
+      # /var/lib/docker/volumes/ on the host. See DEPLOYMENT.md for backups.
+      - pgdata:/var/lib/postgresql/data
+    # NOTE: no `ports:` on purpose — the database is only reachable from the
+    # app over the internal compose network, never from the internet.
+    # Exposed on the host so the e2e suites (which run outside the container)
+    # can talk to the same database. Loopback only.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mayda} -d ${POSTGRES_DB:-mayda}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build:
+      context: .
+      args:
+        # Baked into the client bundle at build time — rebuild to change.
+        NEXT_PUBLIC_REGISTRATION_CLOSED: ${NEXT_PUBLIC_REGISTRATION_CLOSED:-false}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
+    image: mayda-hackathon-app:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mayda}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mayda}
+      DIRECT_URL: postgresql://${POSTGRES_USER:-mayda}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mayda}
+      DATABASE_TYPE: postgresql
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      SEED_ON_START: ${SEED_ON_START:-true}
+      # File-upload storage (Supabase) — leave empty to disable uploads
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      # Mailchimp Transactional (Mandrill) — leave empty to keep using SMTP.
+      # When BOTH key and MAIL_FROM are set, all email sends via the Mandrill
+      # HTTPS API instead. See mdfiles/Mandrill_Implementation.md.
+      MAILCHIMP_API_KEY: ${MAILCHIMP_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
+    ports:
+      # Host port 3011 by default: 3000/3001 are commonly taken by other local
+      # projects (and by `npm run dev`), so the stack never fights for them.
+      - "${APP_PORT:-3011}:3000"
+
+volumes:
+  pgdata:
