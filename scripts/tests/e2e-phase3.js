@@ -82,10 +82,13 @@ async function main() {
 
   const m1Mail = await inboxFor(`${TAG}-m1@t.test`);
   const m2Mail = await inboxFor(`${TAG}-m2@t.test`);
-  check('both team members received the email (one BCC batch)', m1Mail.length === 1 && m2Mail.length === 1,
+  check('both team members received the email (one credentials email each)', m1Mail.length === 1 && m2Mail.length === 1,
     `m1=${m1Mail.length} m2=${m2Mail.length}`);
-  check('  delivered as ONE SMTP message', (await mp('/api/v1/messages')).total === 1);
-  check('  subject matches template', m1Mail[0]?.Subject === 'تم قبول فريقك!', m1Mail[0]?.Subject);
+  // Per-member credentials emails (commit cdecf61): each member gets their
+  // own message with their own password, so TWO SMTP messages — not one BCC.
+  check('  delivered as TWO SMTP messages (per-member credentials)', (await mp('/api/v1/messages')).total === 2);
+  check('  subject matches credentials template',
+    m1Mail[0]?.Subject === `تم قبول فريق <b>&${TAG}</b> — بيانات الدخول إلى حسابك`, m1Mail[0]?.Subject);
 
   const full = await mp(`/api/v1/message/${m1Mail[0].ID}`);
   check('  RTL wrapper in HTML', full.HTML.includes('dir="rtl"'));
@@ -97,9 +100,9 @@ async function main() {
   check('  both rows stamped emailStatus=sent', rows.length === 2 && rows.every(r => r.emailStatus === 'sent'),
     rows.map(r => r.emailStatus).join(','));
   const approvalLogs = await prisma.emailLog.findMany({ where: { templateKey: 'teamApproval' } });
-  check('  ONE EmailLog row (recipientCount=2, messageId set)',
-    approvalLogs.length === 1 && approvalLogs[0].recipientCount === 2 &&
-    approvalLogs[0].status === 'sent' && Boolean(approvalLogs[0].messageId),
+  check('  one EmailLog row per member (recipientCount=1, messageId set)',
+    approvalLogs.length === 2 && approvalLogs.every(l => l.recipientCount === 1 &&
+      l.status === 'sent' && Boolean(l.messageId)),
     JSON.stringify(approvalLogs.map(l => ({ n: l.recipientCount, s: l.status }))));
 
   // ============ admin shared inbox: ONE email, all rows stamped ============

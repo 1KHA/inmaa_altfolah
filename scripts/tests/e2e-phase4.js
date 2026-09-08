@@ -35,6 +35,19 @@ const mp = async (p) => (await fetch(MAILPIT + p)).json();
 const clearMp = async () => { await fetch(MAILPIT + '/api/v1/messages', { method: 'DELETE' }); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+
+// Broadcast counts are stamped by the background queue drainer, not in the
+// POST response (email-queue design, commit d65697b). Poll the row instead.
+async function broadcastRowDone(id, timeoutMs = 8000) {
+  const t0 = Date.now();
+  for (;;) {
+    const row = await prisma.broadcast.findUnique({ where: { id } });
+    if (row && row.status !== 'queued' && row.status !== 'sending') return row;
+    if (Date.now() - t0 > timeoutMs) return row;
+    await wait(250);
+  }
+}
+
 async function main() {
   const admin = await prisma.admin.findFirst({ select: { id: true, username: true } });
   const admins = await prisma.admin.findMany({ select: { id: true } });
@@ -110,7 +123,8 @@ async function main() {
     Array.from(addressed).join(','));
   check('  custom email subject used', (inbox2.messages || []).every(m => m.Subject === `${TAG} موضوع مخصص`),
     inbox2.messages?.[0]?.Subject);
-  check('  emailSentCount = 2', b2.json.broadcast.emailSentCount === 2, String(b2.json.broadcast?.emailSentCount));
+  const b2Row = await broadcastRowDone(b2.json.broadcast.id);
+  check('  emailSentCount = 2 (stamped by the queue drainer)', b2Row?.emailSentCount === 2, String(b2Row?.emailSentCount));
   check('  NO dashboard rows (email-only)',
     (await prisma.notification.count({ where: { relatedEntityId: b2.json.broadcast.id } })) === 0);
   const b2Logs = await prisma.emailLog.findMany({ where: { broadcastId: b2.json.broadcast.id } });
@@ -128,9 +142,10 @@ async function main() {
   await wait(600);
   check('  2 mentor dashboard rows stamped sent',
     (await prisma.notification.count({ where: { relatedEntityId: b3.json.broadcast.id, emailStatus: 'sent' } })) === 2);
-  check('  counts: notif=2 sent=2 failed=0',
-    b3.json.broadcast.notificationCount === 2 && b3.json.broadcast.emailSentCount === 2 && b3.json.broadcast.emailFailedCount === 0,
-    JSON.stringify({ n: b3.json.broadcast.notificationCount, s: b3.json.broadcast.emailSentCount, f: b3.json.broadcast.emailFailedCount }));
+  const b3Row = await broadcastRowDone(b3.json.broadcast.id);
+  check('  counts: notif=2 sent=2 failed=0 (from the drained row)',
+    b3Row?.notificationCount === 2 && b3Row?.emailSentCount === 2 && b3Row?.emailFailedCount === 0,
+    JSON.stringify({ n: b3Row?.notificationCount, s: b3Row?.emailSentCount, f: b3Row?.emailFailedCount }));
 
   section('broadcast to all admins -> shared inbox');
   await clearMp();
@@ -141,8 +156,12 @@ async function main() {
   check('broadcast succeeds', b4.status === 200 && b4.json.success);
   await wait(600);
   const adminInbox = await mp('/api/v1/messages?limit=10');
+  const b4Addressed = adminInbox.total === 1
+    ? [...(adminInbox.messages[0].To || []), ...(adminInbox.messages[0].Bcc || [])].map(t => t.Address)
+    : [];
   check('ONE email to shared inbox for all admins', adminInbox.total === 1 &&
-    adminInbox.messages[0].To.some(t => t.Address === 'admins@example.test'), `total=${adminInbox.total}`);
+    b4Addressed.includes('admins@example.test'),
+    `total=${adminInbox.total} to=${b4Addressed.join(',')}`);
   check(`  ${admins.length} admin dashboard rows stamped sent`,
     (await prisma.notification.count({ where: { relatedEntityId: b4.json.broadcast.id, recipientType: 'admin', emailStatus: 'sent' } })) === admins.length);
 

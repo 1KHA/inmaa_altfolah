@@ -127,8 +127,16 @@ async function main() {
 
   check('root layout mounts <Toaster /> (the shadcn one)', /<Toaster\s*\/>/.test(rootLayout));
 
-  const adminLayout = fs.readFileSync(path.join(REPO, 'src/app/admin-hackton-dashboard/layout.tsx'), 'utf8');
-  check('<AdminToaster /> is still mounted for the dashboard (unchanged)', /<AdminToaster\s*\/>/.test(adminLayout));
+  // The 'fixed toast' migration (commit 0589301) replaced the dashboard-local
+  // <AdminToaster /> with the single root-layout <Toaster /> above, which is
+  // mounted for EVERY page — /admin-login included. That one assertion already
+  // covers what the old per-dashboard check guarded, so all that remains to
+  // pin here is that no page still dispatches into the removed legacy toaster.
+  const stripComments = (src) => src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  const legacyCallers = ['src/app/admin-login/page.tsx', 'src/app/admin-hackton-dashboard/layout.tsx']
+    .map((f) => stripComments(fs.readFileSync(path.join(REPO, f), 'utf8')));
+  check('no page mounts or dispatches to the removed legacy AdminToaster',
+    legacyCallers.every((src) => !/<AdminToaster\s*\/>/.test(src) && !/^\s*showAdminToast\(/m.test(src)));
 
   check('/admin-login no longer CALLS showAdminToast (it had no renderer)',
     !/^\s*showAdminToast\(/m.test(adminLoginSrc));

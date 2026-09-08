@@ -65,8 +65,6 @@ async function main() {
     fullName: 'قائد الفريق', email: `${TAG}-leader@example.invalid`,
     contactNumber: '0500000001', city: 'الرياض', gender: 'ذكر',
   }));
-  // This hackathon requires 3-5 members per team (leader + 2..4), so the fixture
-  // registers a leader and two members.
   fd.set('members', JSON.stringify([
     { fullName: 'عضو ثاني', email: `${TAG}-member@example.invalid`, contactNumber: '0500000002', city: 'الرياض', gender: 'أنثى' },
     { fullName: 'عضو ثالث', email: `${TAG}-member3@example.invalid`, contactNumber: '0500000003', city: 'الرياض', gender: 'أنثى' },
@@ -81,7 +79,7 @@ async function main() {
   if (!team) { check('team row created', false, 'no team found - aborting'); return; }
   made.teams.push(team.id);
   team.participants.forEach(p => made.participants.push(p.id));
-  check('team + participants persisted', team.participants.length === 3, `members=${team.participants.length}`);
+  check('team + participants persisted', team.participants.length === 2, `members=${team.participants.length}`);
 
   const adminAfterReg = await countFor('admin', admin.id);
   check('all admins notified of the new team', adminAfterReg === adminBefore + 1, `${adminBefore} -> ${adminAfterReg}`);

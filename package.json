@@ -20,7 +20,8 @@
     "db:switch:local": "cross-env DATABASE_TYPE=sqlite node scripts/switch-db.js sqlite",
     "db:switch:prod": "cross-env DATABASE_TYPE=postgresql node scripts/switch-db.js postgresql",
     "storage:setup": "node scripts/setup-supabase-storage.js",
-    "test:e2e": "node scripts/tests/run-all.js"
+    "test:e2e": "node scripts/tests/run-all.js",
+    "export:texts": "node scripts/export-notification-texts.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
