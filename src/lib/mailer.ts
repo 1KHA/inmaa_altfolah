@@ -6,7 +6,9 @@ import { getAppBaseUrl } from './credentials';
 import {
   isMandrillConfigured,
   sendViaMandrill,
+  sendViaMandrillMerge,
   summarizeRejections,
+  MANDRILL_MERGE_BATCH_SIZE,
   type RecipientFailure,
 } from './mandrill';
 
@@ -58,6 +60,69 @@ export const MANDRILL_BATCH_SIZE = 500;
 /** Per-call recipient cap for whichever transport is active right now. */
 export function getBatchSize(): number {
   return isMandrillConfigured() ? MANDRILL_BATCH_SIZE : BCC_BATCH_SIZE;
+}
+
+/**
+ * How many INDIVIDUAL emails (each with its own content) one send call may
+ * carry: Mandrill takes 100 per merge-var call; SMTP has to send them one by
+ * one, so a small batch keeps the queue's time-budget checks frequent.
+ */
+export const SMTP_INDIVIDUAL_BATCH_SIZE = 5;
+export function getIndividualBatchSize(): number {
+  return isMandrillConfigured() ? MANDRILL_MERGE_BATCH_SIZE : SMTP_INDIVIDUAL_BATCH_SIZE;
+}
+
+export interface IndividualEmail {
+  to: string;
+  subject: string;
+  bodyText: string;
+}
+
+/**
+ * Send a batch of emails that each have their OWN subject/body (credentials):
+ * one merge-var API call on Mandrill, a sequential loop on SMTP. Returns one
+ * aggregated per-recipient result, exactly like sendEmail().
+ */
+export async function sendIndividualEmails(params: {
+  config: SmtpConfig;
+  items: IndividualEmail[];
+  audience?: EmailAudience;
+}): Promise<SendEmailResult> {
+  const { config, items, audience } = params;
+  if (items.length === 0) return { ok: false, error: 'no recipients', accepted: [], rejected: [] };
+
+  if (isMandrillConfigured()) {
+    const supportText = renderSupportChannelsText(audience);
+    console.log(`📧 Email transport: mandrill merge batch (${items.length} individual recipients)`);
+    const result = await sendViaMandrillMerge(
+      items.map((i) => ({
+        email: i.to,
+        subject: i.subject,
+        html: renderEmailHtml(i.subject, i.bodyText, audience),
+        text: supportText ? `${i.bodyText}\n\n${supportText}` : i.bodyText,
+      })),
+      process.env.MAIL_FROM_NAME || config.fromName
+    );
+    if (result.error) console.error(`[email] mandrill merge ${result.ok ? 'partial' : 'failed'}: ${result.error}`);
+    return result;
+  }
+
+  const accepted: string[] = [];
+  const rejected: RecipientFailure[] = [];
+  let messageId: string | undefined;
+  for (const item of items) {
+    const r = await sendEmail({ config, to: item.to, subject: item.subject, title: item.subject, bodyText: item.bodyText, audience });
+    accepted.push(...r.accepted);
+    rejected.push(...r.rejected);
+    if (!messageId && r.messageId) messageId = r.messageId;
+  }
+  return {
+    ok: accepted.length > 0,
+    messageId,
+    error: rejected.length > 0 ? `SMTP ${summarizeRejections(rejected, items.length)}` : undefined,
+    accepted,
+    rejected,
+  };
 }
 
 export async function getEmailSettings(): Promise<EmailSettingsRow | null> {
@@ -121,16 +186,50 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/** Who an email is addressed to — selects the support-channels footer. */
+export type EmailAudience = 'participant' | 'mentor' | 'admin';
+
+export const SUPPORT_EMAIL = 'wmvc@wadimakkah.sa';
+export const SUPPORT_PHONE = '966545671998';
+const SUPPORT_PHONE_URL = 'tel:+966545671998';
+
+const FOOTER_LINK_STYLE = 'color:#620f10;text-decoration:none';
+
+/**
+ * Support-channels lines for the grey footer, same style as the automated
+ * message line. Participants get email + Telegram; mentors get email +
+ * WhatsApp; admins/unknown get nothing extra.
+ */
+function renderSupportChannelsHtml(audience?: EmailAudience): string {
+  if (audience !== 'participant' && audience !== 'mentor') return '';
+  const mail = `<a href="mailto:${SUPPORT_EMAIL}" style="${FOOTER_LINK_STYLE}" dir="ltr">${SUPPORT_EMAIL}</a>`;
+  const phone = `<a href="${SUPPORT_PHONE_URL}" style="${FOOTER_LINK_STYLE}" dir="ltr">${SUPPORT_PHONE}</a>`;
+  return (
+    `<div style="margin-top:8px">للاستفسار يرجى التواصل عبر القنوات التالية:</div>` +
+    `<div>البريد: ${mail}</div>` +
+    `<div>الهاتف: ${phone}</div>`
+  );
+}
+
+/** Plain-text twin of the support-channels footer (for the text/plain part). */
+export function renderSupportChannelsText(audience?: EmailAudience): string {
+  if (audience !== 'participant' && audience !== 'mentor') return '';
+  return `للاستفسار يرجى التواصل عبر القنوات التالية:
+البريد: ${SUPPORT_EMAIL}
+الهاتف: ${SUPPORT_PHONE}`;
+}
+
 /**
  * Wrap already-escaped plain-text content in the fixed RTL HTML shell.
  * `dir`/alignment live on an inner div because Gmail strips <html>/<head>
- * attributes.
+ * attributes. `audience` picks the support-channels footer.
  */
-export function renderEmailHtml(title: string, bodyText: string): string {
+export function renderEmailHtml(title: string, bodyText: string, audience?: EmailAudience): string {
   const bodyHtml = escapeHtml(bodyText).replace(/\r?\n/g, '<br>');
   const titleHtml = escapeHtml(title);
   // Email clients require absolute image URLs.
   const baseUrl = getAppBaseUrl();
+  const supportHtml = renderSupportChannelsHtml(audience);
 
   return `<style>
   /* Phones get the smaller logo strip. Inline styles carry the desktop size, so
@@ -160,8 +259,7 @@ export function renderEmailHtml(title: string, bodyText: string): string {
     </div>
     <div style="height:3px;background:#fccd8d"></div>
     <div style="padding:12px 24px;background:#fff2e9;color:#7b5b4a;font-size:12px;line-height:1.8">
-      هذه رسالة آلية من منصة جائزة مايدة محي الدين ناظر للابتكار — يرجى عدم الرد عليها.<br>
-      للتواصل: <a href="mailto:wmvc@wadimakkah.sa" style="color:#620f10;text-decoration:none">wmvc@wadimakkah.sa</a>
+      هذه رسالة آلية من منصة جائزة مايدة محي الدين ناظر للابتكار — يرجى عدم الرد عليها.${supportHtml}
     </div>
   </div>
 </div>`;
@@ -191,10 +289,14 @@ export interface SendEmailParams {
   subject: string;
   title: string;    // heading inside the HTML shell
   bodyText: string; // plain text; escaped + <br>-converted here
+  /** Selects the support-channels footer (participant / mentor). */
+  audience?: EmailAudience;
 }
 
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
-  const { config, to, bcc, subject, title, bodyText } = params;
+  const { config, to, bcc, subject, title, bodyText, audience } = params;
+  const supportText = renderSupportChannelsText(audience);
+  const text = supportText ? `${bodyText}\n\n${supportText}` : bodyText;
 
   if (isMandrillConfigured()) {
     console.log(`📧 Email transport: mandrill (to=${to ?? 'sender'}, bcc=${bcc?.length ?? 0})`);
@@ -202,8 +304,8 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
       to,
       bcc,
       subject,
-      html: renderEmailHtml(title, bodyText),
-      text: bodyText,
+      html: renderEmailHtml(title, bodyText, audience),
+      text,
       fromName: process.env.MAIL_FROM_NAME || config.fromName,
     });
     // `error` is also set on PARTIAL success (some recipients rejected) — log it either way.
@@ -220,8 +322,8 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
       ...(to ? { to } : { to: config.fromEmail }), // BCC-only sends address the sender
       ...(bcc && bcc.length > 0 ? { bcc } : {}),
       subject,
-      html: renderEmailHtml(title, bodyText),
-      text: bodyText,
+      html: renderEmailHtml(title, bodyText, audience),
+      text,
     });
 
     // nodemailer reports the SMTP envelope verdict per address. The sender

@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { sanitizeStorageFilename } from './storage-keys';
 
 // Default bucket name - make sure this bucket exists in your Supabase project
 const DEFAULT_BUCKET = 'uploads';
@@ -121,6 +122,8 @@ async function ensureFolderExists(folder: string): Promise<void> {
 
 export async function uploadToStorage(file: File | Buffer, filename: string, folder: string = ''): Promise<string> {
   try {
+    // Storage rejects non-ASCII keys ("Invalid key") — never trust the caller's name.
+    filename = sanitizeStorageFilename(filename);
     // Initialize Supabase client when the function is called
     const supabase = getSupabaseClient();
     

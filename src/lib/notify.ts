@@ -5,9 +5,12 @@ import {
   getEmailSettings,
   toSmtpConfig,
   sendEmail,
+  sendIndividualEmails,
   chunkRecipients,
+  type IndividualEmail,
   type SmtpConfig,
   type SendEmailResult,
+  type EmailAudience,
 } from './mailer';
 
 /**
@@ -161,6 +164,47 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       actionUrl: '/participant-dashboard',
     }),
     def({
+      key: 'emailChanged',
+      label: 'تغيير البريد الإلكتروني (بيانات دخول جديدة)',
+      category: 'participant',
+      // Sent to the NEW address when an admin/leader changes a participant's email;
+      // a fresh password is issued so the person can sign in with the new email.
+      variables: ['participantName', 'email', 'password', 'loginUrl', 'oldEmail'],
+      type: 'info',
+      dashboardTitle: 'تم تحديث بريدك الإلكتروني',
+      dashboardMessage: 'تم تغيير بريدك الإلكتروني إلى {{email}} وأُرسلت بيانات الدخول الجديدة إليه.',
+      emailSubject: 'تم تحديث بريدك الإلكتروني — بيانات الدخول الجديدة',
+      emailBody:
+        'مرحباً {{participantName}}،\n\nتم تحديث البريد الإلكتروني لحسابك في منصة الهاكاثون من {{oldEmail}} إلى {{email}}.\n\nبيانات الدخول الجديدة:\nالبريد الإلكتروني: {{email}}\nكلمة المرور: {{password}}\n\nرابط تسجيل الدخول: {{loginUrl}}\n\nهذه البيانات خاصة بك ولا تشاركها مع أحد. يمكنك تغيير كلمة المرور في أي وقت عبر خيار "نسيت كلمة المرور" في صفحة الدخول.',
+      actionUrl: '/participant-dashboard',
+    }),
+    def({
+      key: 'accountReactivated',
+      label: 'إعادة تفعيل الحساب (بيانات دخول جديدة)',
+      category: 'participant',
+      // Per-recipient: a fresh password is issued when the admin re-enables the account.
+      variables: ['participantName', 'email', 'password', 'loginUrl', 'teamName'],
+      type: 'success',
+      dashboardTitle: 'تم إعادة تفعيل حسابك',
+      dashboardMessage: 'تم إعادة تفعيل حسابك في المنصة وأُرسلت بيانات دخول جديدة إلى بريدك الإلكتروني.',
+      emailSubject: 'تم إعادة تفعيل حسابك — بيانات الدخول الجديدة',
+      emailBody:
+        'مرحباً {{participantName}}،\n\nتم إعادة تفعيل حسابك في منصة الهاكاثون.\n\nبيانات الدخول الجديدة:\nالبريد الإلكتروني: {{email}}\nكلمة المرور: {{password}}\n\nرابط تسجيل الدخول: {{loginUrl}}\n\nهذه البيانات خاصة بك ولا تشاركها مع أحد. يمكنك تغيير كلمة المرور في أي وقت عبر خيار "نسيت كلمة المرور" في صفحة الدخول.',
+      actionUrl: '/participant-dashboard',
+    }),
+    def({
+      key: 'teamLeaderChanged',
+      label: 'تغيير قائد الفريق',
+      category: 'participant',
+      variables: ['teamName', 'newLeaderName'],
+      type: 'info',
+      dashboardTitle: 'تم تغيير قائد الفريق',
+      dashboardMessage: 'تم تعيين {{newLeaderName}} قائداً لفريق {{teamName}}.',
+      emailSubject: 'تغيير قائد فريق {{teamName}}',
+      emailBody: 'تم تعيين {{newLeaderName}} قائداً لفريق {{teamName}}. صلاحيات قيادة الفريق (إدارة الأعضاء وبيانات الفريق والتسليمات) انتقلت إليه اعتباراً من الآن.',
+      actionUrl: '/participant-dashboard/team',
+    }),
+    def({
       key: 'participantRejection',
       label: 'رفض المشارك',
       category: 'participant',
@@ -278,6 +322,32 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       actionUrl: '/participant-dashboard/milestones',
     }),
     def({
+      key: 'bookingReminderParticipant',
+      label: 'تذكير بالجلسة قبل 5 دقائق (للمشارك والفريق)',
+      category: 'participant',
+      variables: ['mentorName', 'dateTime', 'meetingLink', 'minutes'],
+      type: 'info',
+      dashboardTitle: 'جلستك تبدأ خلال {{minutes}} دقائق',
+      dashboardMessage: 'جلسة الإرشاد مع {{mentorName}} تبدأ في {{dateTime}}. اضغط "دخول الاجتماع" للانضمام.',
+      emailSubject: 'تذكير: جلستك مع {{mentorName}} تبدأ خلال {{minutes}} دقائق',
+      emailBody:
+        'تذكير: جلسة الإرشاد مع {{mentorName}} تبدأ في {{dateTime}} (خلال {{minutes}} دقائق).\n\nرابط الاجتماع:\n{{meetingLink}}\n\nيرجى الانضمام في الموعد المحدد.',
+      actionUrl: '/participant-dashboard/mentors',
+    }),
+    def({
+      key: 'bookingReminderMentor',
+      label: 'تذكير بالجلسة قبل 5 دقائق (للموجه)',
+      category: 'mentor',
+      variables: ['participantName', 'dateTime', 'meetingLink', 'minutes'],
+      type: 'info',
+      dashboardTitle: 'جلستك تبدأ خلال {{minutes}} دقائق',
+      dashboardMessage: 'جلسة الإرشاد مع {{participantName}} تبدأ في {{dateTime}}. اضغط "دخول الاجتماع" للانضمام.',
+      emailSubject: 'تذكير: جلسة مع {{participantName}} تبدأ خلال {{minutes}} دقائق',
+      emailBody:
+        'تذكير: جلسة الإرشاد مع {{participantName}} تبدأ في {{dateTime}} (خلال {{minutes}} دقائق).\n\nرابط الاجتماع:\n{{meetingLink}}\n\nيرجى الانضمام في الموعد المحدد.',
+      actionUrl: '/mentor-dashboard/sessions',
+    }),
+    def({
       key: 'bookingConfirmation',
       label: 'تأكيد حجز جلسة إرشاد',
       category: 'participant',
@@ -371,6 +441,45 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       actionUrl: '/mentor-dashboard/sessions',
     }),
     def({
+      key: 'orgBookingRequest',
+      label: 'حجز جلسة مع الجهة (لكل أعضاء الجهة)',
+      category: 'mentor',
+      variables: ['participantName', 'dateTime', 'organizationName', 'meetingLink'],
+      type: 'info',
+      dashboardTitle: 'حجز جلسة جديد مع جهتكم',
+      dashboardMessage: 'حجز {{participantName}} جلسة مع {{organizationName}} في {{dateTime}}',
+      emailSubject: 'حجز جلسة إرشاد مع {{organizationName}} — {{dateTime}}',
+      emailBody:
+        'قام {{participantName}} بحجز جلسة إرشاد مع جهتكم {{organizationName}} في {{dateTime}}.\n\nرابط الاجتماع:\n{{meetingLink}}\n\nوصل هذا الإشعار لجميع أعضاء الجهة — افتحوا الرابط في موعد الجلسة وسجّلوا الدخول بحساب Google (أو GitHub) لبدء الاجتماع كمشرف؛ المشاركون ينضمون بعدها مباشرة دون حسابات.',
+      actionUrl: '/mentor-dashboard/sessions',
+    }),
+    def({
+      key: 'orgBookingConfirmation',
+      label: 'تأكيد حجز جلسة مع جهة',
+      category: 'participant',
+      variables: ['organizationName', 'dateTime', 'meetingLink'],
+      type: 'success',
+      dashboardTitle: 'تأكيد حجز الجلسة',
+      dashboardMessage: 'تم تأكيد حجز جلستك مع {{organizationName}} في {{dateTime}}',
+      emailSubject: 'تأكيد حجز جلستك مع {{organizationName}}',
+      emailBody:
+        'تم تأكيد حجز جلسة الإرشاد مع {{organizationName}} في {{dateTime}}.\n\nرابط الاجتماع (افتحه في موعد الجلسة من المتصفح أو الجوال):\n{{meetingLink}}\n\nلا حاجة لإنشاء حساب — اضغط الرابط وانضم مباشرة.',
+      actionUrl: '/participant-dashboard/mentors',
+    }),
+    def({
+      key: 'bookingCancelledParticipant',
+      label: 'إلغاء جلسة (للمشارك والفريق)',
+      category: 'participant',
+      variables: ['mentorName', 'dateTime', 'cancelledBy'],
+      type: 'warning',
+      dashboardTitle: 'تم إلغاء جلسة الإرشاد',
+      dashboardMessage: 'تم إلغاء جلستك مع {{mentorName}} المقررة في {{dateTime}} من قبل {{cancelledBy}}. يمكنك حجز موعد جديد من صفحة الموجهين.',
+      emailSubject: 'تم إلغاء جلستك مع {{mentorName}}',
+      emailBody:
+        'نأسف لإبلاغك بأن جلسة الإرشاد مع {{mentorName}} المقررة في {{dateTime}} تم إلغاؤها من قبل {{cancelledBy}}.\n\nيمكنك حجز موعد جديد في أي وقت من صفحة الموجهين في لوحة المشارك.',
+      actionUrl: '/participant-dashboard/mentors',
+    }),
+    def({
       key: 'bookingCancellation',
       label: 'إلغاء حجز جلسة (للمرشد)',
       category: 'mentor',
@@ -384,10 +493,16 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       key: 'mentorProfileApproval',
       label: 'قبول المرشد',
       category: 'mentor',
-      variables: [],
+      // A fresh temporary password is generated when the admin approves the
+      // mentor (the original is only stored hashed), so the approval email
+      // can carry the login details just like participant acceptance.
+      variables: ['mentorName', 'email', 'password', 'loginUrl'],
       type: 'success',
       dashboardTitle: 'تم قبول طلبك كمرشد',
       dashboardMessage: 'تهانينا! تم قبولك كمرشد في منصة الهاكثون',
+      emailSubject: 'تم قبولك كمرشد — بيانات الدخول',
+      emailBody:
+        'مرحباً {{mentorName}}،\n\nتهانينا! تم قبولك كمرشد في منصة الهاكثون.\n\nبيانات الدخول إلى لوحة المرشد:\nالبريد الإلكتروني: {{email}}\nكلمة المرور: {{password}}\n\nرابط تسجيل الدخول: {{loginUrl}}\n\nهذه البيانات خاصة بك ولا تشاركها مع أحد. يمكنك تغيير كلمة المرور في أي وقت عبر خيار "نسيت كلمة المرور" في صفحة الدخول.',
       actionUrl: '/mentor-dashboard',
     }),
   ].map((d) => [d.key, d])
@@ -466,7 +581,7 @@ export interface DispatchParams {
   perRecipient?: Record<string, TemplateVariables>;
 }
 
-interface PlannedRecipient {
+export interface PlannedRecipient {
   notificationId: string;
   recipientType: 'admin' | 'participant' | 'mentor';
   recipientId: string;
@@ -479,12 +594,48 @@ interface PlannedRecipient {
 const EMAIL_TIME_BUDGET_MS = 20_000;
 
 export async function dispatchNotification(params: DispatchParams): Promise<void> {
+  const planned = await createNotificationRows(params);
+  if (!planned) return;
+  const { template, recipients } = planned;
+
+  // ---- email (best-effort; never throws out of this function) -------------
+  try {
+    await sendTemplateEmails(template, params.variables ?? {}, recipients, params.audience.kind, Boolean(params.perRecipient));
+  } catch (error) {
+    console.error(`Error sending emails for ${params.templateKey}:`, error);
+  }
+}
+
+/**
+ * Rendered email for one planned recipient, or null when the template has
+ * email switched off. Used by callers that queue emails instead of sending
+ * them inline (bulk acceptance — see src/lib/bulk-approval.ts).
+ */
+export function renderRecipientEmail(
+  template: EffectiveTemplate,
+  recipient: PlannedRecipient
+): { subject: string; body: string } | null {
+  if (!template.emailEnabled) return null;
+  return {
+    subject: renderTemplate(template.emailSubject, recipient.variables),
+    body: renderTemplate(template.emailBody, recipient.variables),
+  };
+}
+
+/**
+ * Resolve the audience and write the dashboard Notification rows — the first
+ * half of dispatchNotification(), without sending any email. Returns null when
+ * the template is unknown or nobody is eligible (disabled accounts etc.).
+ */
+export async function createNotificationRows(
+  params: DispatchParams
+): Promise<{ template: EffectiveTemplate; recipients: PlannedRecipient[] } | null> {
   const { templateKey, variables = {}, audience, relatedEntityType, relatedEntityId, perRecipient } = params;
 
   const template = await getEffectiveTemplate(templateKey);
   if (!template) {
     console.error(`dispatchNotification: unknown template key "${templateKey}"`);
-    return;
+    return null;
   }
 
   const actionUrl = params.actionUrl ?? template.actionUrl;
@@ -507,7 +658,7 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
         // Disabled accounts get NO transactional notification at all — not the
         // email and not the dashboard row. Admin broadcasts are the one channel
         // that can still reach them (see account-status.ts).
-        if (isEffectivelyDisabled(row)) return;
+        if (isEffectivelyDisabled(row)) return null;
         email = row?.email ?? null;
       } else {
         const row = await prisma.mentor.findUnique({
@@ -515,7 +666,7 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
           select: { email: true, isDisabled: true },
         });
         // Disabled mentors get no transactional notification either.
-        if (row?.isDisabled) return;
+        if (row?.isDisabled) return null;
         email = row?.email ?? null;
       }
     } catch {
@@ -565,10 +716,10 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
         },
       },
     });
-    if (!team) return;
+    if (!team) return null;
     // A disabled team — or a team sitting in a disabled PHASE — notifies
     // nobody. Individually disabled members are filtered by the `where` above.
-    if (team.isDisabled || team.phase?.isDisabled) return;
+    if (team.isDisabled || team.phase?.isDisabled) return null;
     for (const p of team.participants) {
       recipients.push({
         notificationId: crypto.randomUUID(),
@@ -618,7 +769,7 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
     }
   }
 
-  if (recipients.length === 0) return;
+  if (recipients.length === 0) return null;
 
   // ---- dashboard rows ------------------------------------------------------
   await prisma.notification.createMany({
@@ -635,12 +786,7 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
     })),
   });
 
-  // ---- email (best-effort; never throws out of this function) -------------
-  try {
-    await sendTemplateEmails(template, variables, recipients, audience.kind, Boolean(perRecipient));
-  } catch (error) {
-    console.error(`Error sending emails for ${templateKey}:`, error);
-  }
+  return { template, recipients };
 }
 
 async function sendTemplateEmails(
@@ -661,6 +807,8 @@ async function sendTemplateEmails(
   const subject = renderTemplate(template.emailSubject, variables);
   const bodyText = renderTemplate(template.emailBody, variables);
   const startedAt = Date.now();
+  // Footer support channels follow the template category (participant / mentor).
+  const audience: EmailAudience = template.category;
 
   // Per-recipient content (credentials etc.): one email per address, each
   // rendered with that recipient's own variables. Never BCC — a password must
@@ -688,6 +836,7 @@ async function sendTemplateEmails(
         subject: ownSubject,
         title: ownSubject,
         bodyText: renderTemplate(template.emailBody, r.variables),
+        audience,
       });
       await stampEmailStatus([r.notificationId], result.ok ? 'sent' : 'failed');
       await logSendResult({ templateKey: template.key, subject: ownSubject, result });
@@ -708,7 +857,7 @@ async function sendTemplateEmails(
     const inbox = settings.adminInboxEmail.trim();
     if (!inbox) return;
 
-    const result = await sendEmail({ config, to: inbox, subject, title: subject, bodyText });
+    const result = await sendEmail({ config, to: inbox, subject, title: subject, bodyText, audience });
     await stampEmailStatus(recipients.map((r) => r.notificationId), result.ok ? 'sent' : 'failed');
     await logSendResult({ templateKey: template.key, subject, result });
     return;
@@ -720,7 +869,7 @@ async function sendTemplateEmails(
 
   if (emailable.length === 1) {
     const r = emailable[0];
-    const result = await sendEmail({ config, to: r.email!, subject, title: subject, bodyText });
+    const result = await sendEmail({ config, to: r.email!, subject, title: subject, bodyText, audience });
     await stampOutcome([r], result);
     await logSendResult({ templateKey: template.key, subject, result });
     return;
@@ -750,7 +899,7 @@ async function sendTemplateEmails(
       break;
     }
 
-    const result = await sendEmail({ config, bcc: batch, subject, title: subject, bodyText });
+    const result = await sendEmail({ config, bcc: batch, subject, title: subject, bodyText, audience });
     // Per-recipient stamps: 3 accepted + 1 rejected => 3 'sent' rows, 1 'failed' row.
     await stampOutcome(batchRecipients, result);
     await logSendResult({ templateKey: template.key, subject, result });
@@ -857,15 +1006,21 @@ export async function sendRawEmail(params: {
   subject: string;
   bodyText: string;
   broadcastId?: string;
+  audience?: EmailAudience;
+  /** Per-recipient content (credentials): one aggregated result for the batch. */
+  items?: IndividualEmail[];
 }): Promise<SendEmailResult> {
-  const result = await sendEmail({
-    config: params.config,
-    to: params.to,
-    bcc: params.bcc,
-    subject: params.subject,
-    title: params.subject,
-    bodyText: params.bodyText,
-  });
+  const result = params.items
+    ? await sendIndividualEmails({ config: params.config, items: params.items, audience: params.audience })
+    : await sendEmail({
+        config: params.config,
+        to: params.to,
+        bcc: params.bcc,
+        subject: params.subject,
+        title: params.subject,
+        bodyText: params.bodyText,
+        audience: params.audience,
+      });
 
   await logSendResult({ broadcastId: params.broadcastId, subject: params.subject, result });
 

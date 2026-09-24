@@ -28,8 +28,11 @@ import {
   getEmailSettings,
   toSmtpConfig,
   chunkRecipients,
+  getIndividualBatchSize,
   type SmtpConfig,
   type SendEmailResult,
+  type EmailAudience,
+  type IndividualEmail,
 } from './mailer';
 import { sendRawEmail, stampEmailStatus } from './notify';
 
@@ -49,6 +52,9 @@ export interface QueueRecipientInput {
   recipientId: string;
   email: string;
   notificationId?: string | null;
+  /** Per-recipient rendered content (credentials). Sent one-by-one, never BCC. */
+  subject?: string | null;
+  body?: string | null;
 }
 
 export interface QueueRow {
@@ -60,6 +66,9 @@ export interface QueueRow {
   notificationId: string | null;
   status: string;
   attempts: number;
+  /** Non-null => this row has its own content and is sent individually. */
+  subject: string | null;
+  body: string | null;
 }
 
 export interface DrainOptions {
@@ -88,10 +97,14 @@ export interface DrainResult {
 
 export type SendFn = (params: {
   config: SmtpConfig;
+  /** Per-recipient content batch (credentials); `bcc` is empty then. */
+  items?: IndividualEmail[];
   bcc: string[];
   subject: string;
   bodyText: string;
   broadcastId: string;
+  /** Footer support channels; set when every row in the batch shares a recipient type. */
+  audience?: EmailAudience;
 }) => Promise<SendEmailResult>;
 
 function isSqlite(): boolean {
@@ -115,6 +128,8 @@ export async function enqueueBroadcastRecipients(
       recipientId: r.recipientId,
       email: r.email.trim(),
       notificationId: r.notificationId ?? null,
+      subject: r.subject ?? null,
+      body: r.body ?? null,
     })),
     skipDuplicates: true,
   });
@@ -185,7 +200,7 @@ export async function claimSlice(limit: number, nowMs: number = Date.now()): Pro
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     )
-    RETURNING "id", "broadcastId", "recipientType", "recipientId", "email", "notificationId", "status", "attempts"
+    RETURNING "id", "broadcastId", "recipientType", "recipientId", "email", "notificationId", "status", "attempts", "subject", "body"
   `;
 }
 
@@ -198,6 +213,8 @@ const QUEUE_ROW_SELECT = {
   notificationId: true,
   status: true,
   attempts: true,
+  subject: true,
+  body: true,
 } as const;
 
 /** Put claimed-but-unsent rows back so another drainer can take them. */
@@ -258,6 +275,13 @@ async function stampRows(rows: QueueRow[], status: 'sent' | 'failed'): Promise<v
   }
 }
 
+/** The batch's recipient type when uniform (BCC shares one body), else undefined. */
+function batchAudience(rows: QueueRow[]): EmailAudience | undefined {
+  const first = rows[0]?.recipientType;
+  if (first !== 'participant' && first !== 'mentor') return undefined;
+  return rows.every((r) => r.recipientType === first) ? first : undefined;
+}
+
 /**
  * Send one batch (all rows share a broadcast) and persist the per-recipient
  * outcome. Returns the counts for this batch.
@@ -269,13 +293,21 @@ async function processBatch(
   send: SendFn,
   nowMs: number
 ): Promise<{ sent: number; failed: number; retried: number }> {
+  // Rows with their own body (credentials) are delivered as individual
+  // emails — each addressed to its recipient alone, never BCC (Mandrill: one
+  // merge-var call per batch; SMTP: one message each). Shared rows share the
+  // broadcast body and go out as one BCC.
+  const individual = rows.every((r) => r.body != null);
   const subject = broadcast.emailSubject || broadcast.title;
   const result = await send({
     config,
-    bcc: rows.map((r) => r.email),
+    ...(individual
+      ? { items: rows.map((r) => ({ to: r.email, subject: r.subject || subject, bodyText: r.body as string })), bcc: [] }
+      : { bcc: rows.map((r) => r.email) }),
     subject,
     bodyText: broadcast.body,
     broadcastId: broadcast.id,
+    audience: batchAudience(rows),
   });
 
   const accepted = new Set(result.accepted.map((e) => e.toLowerCase()));
@@ -309,6 +341,9 @@ async function processBatch(
         providerMessageId: result.messageId ?? null,
         error: null,
         claimedAt: null,
+        // Delivered: drop the rendered content so credentials never linger.
+        subject: null,
+        body: null,
       },
     });
     await stampRows(sentRows, 'sent');
@@ -400,11 +435,21 @@ export async function drainEmailQueue(options: DrainOptions): Promise<DrainResul
       }
       touched.add(broadcastId);
 
-      const emailChunks = chunkRecipients(list.map((r) => r.email));
+      // Rows carrying their own content are batched by what the transport
+      // can carry per call (Mandrill 100 via merge vars, SMTP 5 sequential);
+      // the rest share the broadcast body and go out in BCC chunks.
+      const individualRows = list.filter((r) => r.body != null);
+      const sharedRows = list.filter((r) => r.body == null);
+      const batches: QueueRow[][] = [];
+      const perCall = getIndividualBatchSize();
+      for (let i = 0; i < individualRows.length; i += perCall) batches.push(individualRows.slice(i, i + perCall));
+      const emailChunks = chunkRecipients(sharedRows.map((r) => r.email));
       let cursor = 0;
       for (const chunk of emailChunks) {
-        const batchRows = list.slice(cursor, cursor + chunk.length);
+        batches.push(sharedRows.slice(cursor, cursor + chunk.length));
         cursor += chunk.length;
+      }
+      for (const batchRows of batches) {
         if (budgetHit || overBudget()) {
           budgetHit = true;
           unsent.push(...batchRows);
