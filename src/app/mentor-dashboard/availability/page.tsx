@@ -44,10 +44,15 @@ interface Availability {
   start: Date;
   end: Date;
   title: string;
+  /** A colleague's slot in my organization — visible, not editable here. */
+  shared?: boolean;
+  hostName?: string;
+  isBooked?: boolean;
 }
 
 const AvailabilityPage = () => {
   const [events, setEvents] = useState<Availability[]>([]);
+  const [hasSharedSlots, setHasSharedSlots] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const calendarRef = useRef<any>(null);
@@ -84,16 +89,22 @@ const AvailabilityPage = () => {
 
   const fetchAvailabilities = async () => {
     try {
-      const response = await fetch('/api/mentor/availability', { credentials: 'include' });
+      // scope=organization also returns colleagues' slots: any slot a member
+      // adds is automatically an organization slot every member is invited to.
+      const response = await fetch('/api/mentor/availability?scope=organization', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         const formattedEvents = data.map((avail: any) => ({
           id: avail.id,
           start: new Date(avail.startTime),
           end: new Date(avail.endTime),
-          title: 'متاح',
+          title: avail.shared ? `وقت الجهة (${avail.hostMentor?.name ?? 'زميل'})` : 'متاح',
+          shared: !!avail.shared,
+          hostName: avail.hostMentor?.name,
+          isBooked: !!avail.isBooked,
         }));
         setEvents(formattedEvents);
+        setHasSharedSlots(formattedEvents.some((e: Availability) => e.shared));
       } else if (response.status === 401) {
         toast({
           title: "غير مصرح",
@@ -153,16 +164,22 @@ const AvailabilityPage = () => {
         credentials: 'include',
       });
 
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
         fetchAvailabilities();
+        const created = Number(data.created ?? 1);
+        const skipped = Number(data.skipped ?? 0);
         toast({
           title: "تم بنجاح",
-          description: "تمت إضافة وقت التوافر بنجاح.",
+          description:
+            created === 0
+              ? "هذه الأوقات مضافة مسبقاً."
+              : `تمت إضافة ${created} فترة (${SLOT_STEP_MINUTES} دقيقة لكل فترة)${skipped ? ` — تم تجاوز ${skipped} فترة مضافة مسبقاً` : ''}.`,
         })
       } else {
         toast({
           title: "خطأ",
-          description: "فشل في إضافة وقت التوافر.",
+          description: data.error || "فشل في إضافة وقت التوافر.",
           variant: "destructive",
         })
       }
@@ -183,10 +200,13 @@ const AvailabilityPage = () => {
       });
 
       if (response.ok) {
+        const data = await response.json().catch(() => ({}));
         fetchAvailabilities();
         toast({
           title: "تم بنجاح",
-          description: "تم حذف وقت التوافر بنجاح.",
+          description: data.cancelledBookings
+            ? `تم حذف الوقت وإلغاء ${data.cancelledBookings} حجز عليه — تم إشعار المشاركين.`
+            : "تم حذف وقت التوافر بنجاح.",
         })
       } else {
         toast({
@@ -205,6 +225,13 @@ const AvailabilityPage = () => {
   };
 
   const handleSelectEvent = async (event: Availability) => {
+    if (event.shared) {
+      toast({
+        title: "وقت الجهة",
+        description: `أضافه ${event.hostName ?? 'زميل في الجهة'} ويظهر لجميع أعضاء الجهة؛ لا يمكن تعديله من هنا.`,
+      });
+      return;
+    }
     if (window.confirm('هل أنت متأكد أنك تريد حذف وقت التوافر هذا؟')) {
       await deleteAvailability(event.id);
     }
@@ -253,7 +280,7 @@ const AvailabilityPage = () => {
     <div className="container mx-auto p-0 sm:p-4" dir="rtl">
       <h1 className="text-2xl font-bold mb-2 sm:mb-4">إدارة أوقات التوافر الخاصة بك</h1>
       <p className="mb-4 hidden md:block text-muted-foreground">
-        انقر واسحب على التقويم لإنشاء فترات توافر جديدة، أو أضف وقتاً بدقة من النموذج الجانبي. انقر على فترة في التقويم أو على سلة المهملات في القائمة لحذفها.
+        انقر واسحب على التقويم لإنشاء فترات توافر جديدة، أو أضف وقتاً بدقة من النموذج الجانبي. أي مدة تختارها تُقسَّم تلقائياً إلى فترات من {SLOT_STEP_MINUTES} دقيقة (كل فترة تُحجز على حدة). انقر على فترة في التقويم أو على سلة المهملات في القائمة لحذفها.
       </p>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
@@ -314,6 +341,11 @@ const AvailabilityPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {hasSharedSlots && (
+              <p className="text-xs text-purple-700 bg-purple-50 border border-purple-100 rounded-md p-2">
+                الأوقات البنفسجية أضافها زملاؤك في الجهة؛ تظهر تلقائياً لجميع الأعضاء، وعند حجزها عبر الجهة يصلكم جميعاً الإشعار ورابط الاجتماع.
+              </p>
+            )}
             {upcomingByDay.length === 0 ? (
               <p className="text-sm text-muted-foreground py-2">
                 لا توجد أوقات توفر قادمة. أضف وقتاً جديداً من النموذج أعلاه.
@@ -326,12 +358,23 @@ const AvailabilityPage = () => {
                     {group.slots.map((slot) => (
                       <div
                         key={slot.id}
-                        className="flex items-center justify-between gap-2 p-3 rounded-lg border bg-blue-50/50 border-blue-100"
+                        className={`flex items-center justify-between gap-2 p-3 rounded-lg border ${
+                          slot.shared ? 'bg-purple-50/60 border-purple-100' : 'bg-blue-50/50 border-blue-100'
+                        }`}
                       >
-                        <span className="text-sm font-medium" dir="ltr">
-                          {fmtTime(slot.start)} – {fmtTime(slot.end)}
-                        </span>
-                        {confirmDeleteId === slot.id ? (
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium" dir="ltr">
+                            {fmtTime(slot.start)} – {fmtTime(slot.end)}
+                          </span>
+                          {slot.shared && (
+                            <div className="text-[11px] text-purple-700 mt-0.5 truncate">
+                              وقت الجهة — أضافه {slot.hostName ?? 'زميل'}{slot.isBooked ? ' • محجوز' : ''}
+                            </div>
+                          )}
+                        </div>
+                        {slot.shared ? (
+                          <span className="text-[11px] text-muted-foreground shrink-0">للاطلاع</span>
+                        ) : confirmDeleteId === slot.id ? (
                           <div className="flex items-center gap-1">
                             <Button
                               variant="destructive"
@@ -373,6 +416,11 @@ const AvailabilityPage = () => {
 
       {/* ============ Desktop: drag-select calendar ============ */}
       <div className="hidden md:block min-w-0 lg:order-1">
+        {hasSharedSlots && (
+          <p className="mb-3 text-xs text-purple-700 bg-purple-50 border border-purple-100 rounded-md p-2">
+            الأوقات البنفسجية أضافها زملاؤك في الجهة؛ تظهر تلقائياً لجميع الأعضاء، وعند حجزها عبر الجهة يصلكم جميعاً الإشعار ورابط الاجتماع.
+          </p>
+        )}
       {/* Date Selection UI */}
       <div className="mb-4 flex flex-wrap gap-2 items-center rounded-lg border bg-white p-3 shadow-sm">
         <div className="flex items-center">
@@ -461,6 +509,11 @@ const AvailabilityPage = () => {
           scrollToTime={SCROLL_TO}
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
+          eventPropGetter={(event: Availability) => ({
+            style: event.shared
+              ? { backgroundColor: event.isBooked ? '#a78bfa' : '#c4b5fd', color: '#3b0764', border: 'none', borderRadius: '4px', cursor: 'default' }
+              : {},
+          })}
           defaultView="week"
           views={['day', 'week', 'agenda']}
           date={selectedDate.toDate()}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +59,8 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '../../../../components/ui/use-toast';
 import MentorMessageDialog from '@/components/admin/MentorMessageDialog';
+import OrganizationsManager from '@/components/admin/OrganizationsManager';
+import { Building2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
@@ -98,6 +101,8 @@ interface Mentor {
   specialty: string;
   phone: string;
   status: 'pending' | 'active' | 'inactive';
+  organizationId?: string | null;
+  organization?: { id: string; name: string; logoUrl: string | null } | null;
   isDisabled?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -108,6 +113,8 @@ interface Mentor {
   sessionsCompleted?: number;  // non-cancelled bookings whose slot has ended
   sessionsUpcoming?: number;
   sessionsTotal?: number;
+  sessionsJoined?: number;     // mentor opened the meeting link
+  sessionsConfirmed?: number;  // both sides joined (status completed)
   availableSlots?: number;
   upcomingSlots?: number;
   teams?: string[];
@@ -140,7 +147,20 @@ export default function MentorsPage() {
     specialty: '',
     phone: '',
     password: '',
+    organizationId: '' as string,
   });
+  // Organizations for the add/edit selects (managed in <OrganizationsManager />)
+  const [orgOptions, setOrgOptions] = useState<{ id: string; name: string }[]>([]);
+  const fetchOrganizations = async () => {
+    try {
+      const res = await fetch('/api/admin/organizations', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setOrgOptions((data.organizations || []).map((o: any) => ({ id: o.id, name: o.name })));
+      }
+    } catch { /* selects just stay empty */ }
+  };
+  useEffect(() => { fetchOrganizations(); }, []);
   const [generatedPassword, setGeneratedPassword] = useState('');
   // Id of the mentor whose status is currently being toggled from the table row,
   // so that row's button can show a spinner state and reject double clicks.
@@ -284,7 +304,7 @@ export default function MentorsPage() {
         description: `تمت إضافة الموجه بنجاح. كلمة المرور الافتراضية: ${newMentor.password}`,
       });
       setAddDialogOpen(false);
-      setNewMentor({ name: '', email: '', specialty: '', phone: '', password: '' });
+      setNewMentor({ name: '', email: '', specialty: '', phone: '', password: '', organizationId: '' });
       fetchMentors(); // Refresh the list
     } catch (error: any) {
       toast({
@@ -710,6 +730,22 @@ export default function MentorsPage() {
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
+                    <Label htmlFor="organization" className="text-right">
+                      الجهة
+                    </Label>
+                    <Select value={newMentor.organizationId || 'none'} onValueChange={(v) => setNewMentor({ ...newMentor, organizationId: v === 'none' ? '' : v })}>
+                      <SelectTrigger id="organization" className="col-span-3">
+                        <SelectValue placeholder="بدون جهة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">بدون جهة</SelectItem>
+                        {orgOptions.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                     <Label htmlFor="phone" className="text-right">
                       رقم الجوال
                     </Label>
@@ -890,6 +926,7 @@ export default function MentorsPage() {
                 </TableHead>
                 <TableHead>الاسم</TableHead>
                 <TableHead>التخصص</TableHead>
+                <TableHead>الجهة</TableHead>
                 <TableHead>الفرق المعينة</TableHead>
                 <TableHead>التوفر</TableHead>
                 <TableHead>الجلسات</TableHead>
@@ -921,6 +958,21 @@ export default function MentorsPage() {
                   </TableCell>
                   <TableCell>{mentor.specialty}</TableCell>
                   <TableCell>
+                    {mentor.organization ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        {mentor.organization.logoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={mentor.organization.logoUrl} alt="" className="h-7 w-7 rounded object-contain border bg-white shrink-0" />
+                        ) : (
+                          <Building2 className="h-4 w-4 text-blue-500 shrink-0" />
+                        )}
+                        <span className="truncate max-w-[140px]" title={mentor.organization.name}>{mentor.organization.name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-gray-500" />
                       <span title={(mentor.teams || []).join('، ') || 'لا توجد فرق'}>
@@ -932,11 +984,12 @@ export default function MentorsPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gray-500" />
-                      <span title={`مكتملة ${mentor.sessionsCompleted ?? 0} · قادمة ${mentor.sessionsUpcoming ?? 0}`}>
+                      <span title={`منتهية ${mentor.sessionsCompleted ?? 0} · قادمة ${mentor.sessionsUpcoming ?? 0} · انضم الموجه ${mentor.sessionsJoined ?? 0} · مكتملة (الطرفان) ${mentor.sessionsConfirmed ?? 0}`}>
                         {mentor.sessionsCompleted ?? 0}
                         {(mentor.sessionsUpcoming ?? 0) > 0 && (
                           <span className="text-xs text-muted-foreground"> (+{mentor.sessionsUpcoming} قادمة)</span>
                         )}
+                        <div className="text-[11px] text-muted-foreground">انضم {mentor.sessionsJoined ?? 0} · مكتملة {mentor.sessionsConfirmed ?? 0}</div>
                       </span>
                     </div>
                   </TableCell>
@@ -1019,10 +1072,19 @@ export default function MentorsPage() {
         </CardContent>
       </Card>
 
+      {/* --- Organizations (mentor groups) --- */}
+      <div className="mb-8">
+        <OrganizationsManager onChanged={() => { fetchOrganizations(); fetchMentors(); }} />
+      </div>
+
       {/* --- Admin Mentor Bookings Management Box --- */}
       <Card className="border-0 shadow-sm overflow-hidden mt-12">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl font-bold text-blue-800">جميع حجوزات الموجهين</CardTitle>
+          <div className="flex items-center gap-2">
+          <Button asChild variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+            <Link href="/admin-hackton-dashboard/bookings">عرض الحجوزات حسب اليوم والوقت</Link>
+          </Button>
           <Button 
             variant="outline" 
             className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
@@ -1031,6 +1093,7 @@ export default function MentorsPage() {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 21h5v-5"></path></svg>
             تحديث
           </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {bookingsLoading ? (
@@ -1096,7 +1159,7 @@ export default function MentorsPage() {
                             className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200 flex items-center gap-1 px-3 py-1 h-8"
                             title="رابط اجتماع الجلسة"
                           >
-                            <a href={booking.meetingUrl} target="_blank" rel="noopener noreferrer">
+                            <a href={`/api/meeting/join/${booking.id}`} target="_blank" rel="noopener noreferrer">
                               <Video className="h-4 w-4" />
                             </a>
                           </Button>
@@ -1285,6 +1348,22 @@ export default function MentorsPage() {
                     required
                   />
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
+                    <Label htmlFor="edit-organization" className="text-right">
+                      الجهة
+                    </Label>
+                    <Select value={mentorToEdit.organizationId || 'none'} onValueChange={(v) => setMentorToEdit({ ...mentorToEdit, organizationId: v === 'none' ? null : v })}>
+                      <SelectTrigger id="edit-organization" className="col-span-3">
+                        <SelectValue placeholder="بدون جهة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">بدون جهة</SelectItem>
+                        {orgOptions.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
                   <Label htmlFor="edit-phone" className="text-right">
                     رقم الجوال

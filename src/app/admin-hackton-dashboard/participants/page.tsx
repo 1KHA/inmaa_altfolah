@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { usePhases, PhaseBadge, PhaseBulkActions, PhaseRowMove, PhaseFilter, matchesPhaseFilter } from "@/components/phases/phase-controls";
+import BulkApproveButton from "@/components/admin/BulkApproveButton";
+import ParticipantEditDialog from "@/components/admin/ParticipantEditDialog";
 
 // Define types for our data
 interface IndividualParticipant {
@@ -73,6 +75,16 @@ export default function ParticipantsPage() {
   const { phases } = usePhases();
   const [phaseFilter, setPhaseFilter] = useState("all");
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  // Admin edit of an individual participant's profile (shared dialog with the teams page)
+  const [editingParticipant, setEditingParticipant] = useState<IndividualParticipant | null>(null);
+  // Session counters (booked / joined / completed) per participant — Meeting_Trigger.md
+  const [sessionStats, setSessionStats] = useState<Record<string, { booked: number; joined: number; completed: number }>>({});
+  useEffect(() => {
+    fetch('/api/admin/session-stats', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.participants) setSessionStats(d.participants); })
+      .catch(() => {});
+  }, []);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
@@ -298,15 +310,15 @@ export default function ParticipantsPage() {
   };
 
   /** Disable or re-enable every ticked participant in one request. */
-  const handleBulkDisable = async (disabled: boolean) => {
-    if (selectedIds.size === 0) return;
+  const handleBulkDisable = async (disabled: boolean, ids: string[] = Array.from(selectedIds)) => {
+    if (ids.length === 0) return;
     try {
       setBulkBusy(true);
       const res = await fetch('/api/admin/accounts/disable', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ participantIds: Array.from(selectedIds), disabled }),
+        body: JSON.stringify({ participantIds: ids, disabled }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل تنفيذ العملية');
@@ -314,7 +326,7 @@ export default function ParticipantsPage() {
         title: 'نجح',
         description: disabled
           ? `تم تعطيل ${data.participantsUpdated} حساب`
-          : `تم تفعيل ${data.participantsUpdated} حساب`,
+          : `تم تفعيل ${data.participantsUpdated} حساب${data.credentialsIssued ? ` — أُرسلت بيانات دخول جديدة لـ ${data.credentialsIssued} مشارك` : ''}`,
       });
       setSelectedIds(new Set());
       fetchIndividualParticipants(searchQuery);
@@ -459,12 +471,26 @@ export default function ParticipantsPage() {
                 <Download className="h-4 w-4" />
                 تصدير
               </Button>
+              {individualParticipants.some((p) => p.status === 'pending') && (
+                <BulkApproveButton
+                  target="participants"
+                  size="default"
+                  className="gap-2 bg-green-600 hover:bg-green-700"
+                  onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
+                />
+              )}
             </div>
           </div>
 
           {selectedIds.size > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
               <span className="text-sm font-medium">تم اختيار {selectedIds.size} مشارك</span>
+              <BulkApproveButton
+                target="participants"
+                ids={Array.from(selectedIds)}
+                className="bg-green-600 hover:bg-green-700"
+                onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
+              />
               <Button
                 size="sm"
                 variant="destructive"
@@ -527,6 +553,7 @@ export default function ParticipantsPage() {
                     <th className="border p-2 text-right">المدينة</th>
                     <th className="border p-2 text-right">الحالة</th>
                     <th className="border p-2 text-right">المرحلة</th>
+                    <th className="border p-2 text-right" title="حجوزات · انضم للاجتماع · مكتملة (الطرفان)">الجلسات</th>
                     <th className="border p-2 text-right">تاريخ التسجيل</th>
                     <th className="border p-2 text-right">الإجراءات</th>
                   </tr>
@@ -557,6 +584,9 @@ export default function ParticipantsPage() {
                       <td className="border p-2">{participant.universityMajor || participant.major || 'غير متوفر'}</td>
                       <td className="border p-2">{participant.city || participant.residence || 'غير متوفر'}</td>
                       <td className="border p-2">{getStatusBadge(participant.status)}</td>
+                      <td className="border p-2 whitespace-nowrap text-xs" title="حجوزات · انضم · مكتملة">
+                        {(() => { const s = sessionStats[participant.id]; return s ? <span><span className="font-semibold">{s.booked}</span> حجز · <span className="text-blue-700">{s.joined}</span> انضم · <span className="text-green-700">{s.completed}</span> مكتملة</span> : <span className="text-gray-400">—</span>; })()}
+                      </td>
                       <td className="border p-2">
                         <div className="flex items-center gap-1">
                           <PhaseBadge phase={participant.phase} phaseStatus={participant.phaseStatus} />
@@ -585,6 +615,13 @@ export default function ParticipantsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </button>
+                          <button
+                            className="p-1 rounded-md hover:bg-muted text-blue-600"
+                            title="تعديل البيانات"
+                            onClick={() => setEditingParticipant(participant)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
                           {participant.status === "pending" && (
                             <>
                               <button 
@@ -606,10 +643,8 @@ export default function ParticipantsPage() {
                           <button
                             className={`p-1 rounded-md hover:bg-muted ${participant.isDisabled ? 'text-green-600' : 'text-amber-600'}`}
                             title={participant.isDisabled ? 'إعادة تفعيل الحساب' : 'تعطيل الحساب'}
-                            onClick={async () => {
-                              setSelectedIds(new Set([participant.id]));
-                              await handleBulkDisable(!participant.isDisabled);
-                            }}
+                            disabled={bulkBusy}
+                            onClick={() => handleBulkDisable(!participant.isDisabled, [participant.id])}
                           >
                             {participant.isDisabled ? <RotateCcw className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                           </button>
@@ -674,6 +709,13 @@ export default function ParticipantsPage() {
       </Card>
 
       {/* View Participant Details Modal */}
+      <ParticipantEditDialog
+        participant={editingParticipant}
+        subjectLabel="المشارك"
+        onClose={() => setEditingParticipant(null)}
+        onSaved={() => fetchIndividualParticipants(searchQuery)}
+      />
+
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Table,
   TableBody,
@@ -17,14 +18,13 @@ import { Progress } from '../../../../components/ui/progress';
 import { 
   Search, 
   Users,
-  Mail,
   Calendar,
   Clock,
-  Phone,
   Briefcase,
   AlertCircle,
   CheckCircle2,
-  CalendarClock
+  CalendarClock,
+  Building2
 } from 'lucide-react';
 import {
   Dialog,
@@ -86,7 +86,25 @@ interface AvailabilityEvent {
   title: string;
   isBooked?: boolean;
   isOwnBooking?: boolean;
+  /** Organization slots: the hosting member's name (null when admin hides names). */
+  mentorName?: string | null;
 }
+
+// Mentor organizations (GET /api/organizations). `members` is only present
+// when the admin lets participants see individual mentors.
+interface Organization {
+  id: string;
+  name: string;
+  description: string | null;
+  logoUrl: string | null;
+  memberCount: number;
+  specialties: string[];
+  members?: { id: string; name: string; specialty: string }[];
+  upcomingSlots: number;
+  availableSlots: number;
+}
+
+type BookingMode = 'individual' | 'organization' | 'both';
 
 // Define the Booking type
 interface Booking {
@@ -98,6 +116,7 @@ interface Booking {
   status: string;
   meetingUrl?: string | null;
   createdAt: string;
+  organization?: { id: string; name: string; logoUrl: string | null } | null;
 }
 
 
@@ -105,10 +124,9 @@ interface Booking {
 interface Mentor {
   id: string;
   name: string;
-  email: string;
   specialty: string;
-  phone: string;
   status: 'pending' | 'active' | 'inactive';
+  organization?: { id: string; name: string; logoUrl: string | null } | null;
   createdAt: string;
   updatedAt: string;
   // Real availability summary computed server-side from FUTURE slots
@@ -122,6 +140,8 @@ export default function MentorsPage() {
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [filteredMentors, setFilteredMentors] = useState<Mentor[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  // 'all' | 'none' (mentors without an organization) | organization id
+  const [orgFilter, setOrgFilter] = useState('all');
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
   const [availabilityEvents, setAvailabilityEvents] = useState<AvailabilityEvent[]>([]);
   const [isAvailabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
@@ -132,7 +152,14 @@ export default function MentorsPage() {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  // Admin-controlled booking mode + organizations (see src/lib/organizations.ts)
+  const [bookingMode, setBookingMode] = useState<BookingMode>('individual');
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const { toast } = useToast();
+  const showIndividuals = bookingMode !== 'organization';
+  const showOrganizations = bookingMode !== 'individual';
 
   const fetchMyBookings = async () => {
     try {
@@ -158,25 +185,45 @@ export default function MentorsPage() {
   };
 
   const fetchMentors = async () => {
+    const response = await fetch('/api/admin/mentors');
+    if (!response.ok) {
+      throw new Error('فشل في جلب قائمة الموجهين');
+    }
+    const data = await response.json();
+    // Filter only active mentors
+    const activeMentors = data.filter((mentor: Mentor) => mentor.status === 'active');
+    // availability/availableSlots come from the API, computed from real
+    // future slots — this used to be Math.random() mock data.
+    setMentors(activeMentors);
+    setFilteredMentors(activeMentors);
+  };
+
+  const fetchOrganizations = async (): Promise<BookingMode> => {
+    const response = await fetch('/api/organizations');
+    if (!response.ok) {
+      throw new Error('فشل في جلب قائمة الجهات');
+    }
+    const data = await response.json();
+    const mode: BookingMode = ['individual', 'organization', 'both'].includes(data.mode) ? data.mode : 'individual';
+    setBookingMode(mode);
+    setOrganizations(data.organizations || []);
+    return mode;
+  };
+
+  const loadDirectory = async () => {
     try {
       setLoading(true);
       setProgress(30);
-      const response = await fetch('/api/admin/mentors');
+      // The mode decides what the participant may see: in organization-only
+      // mode individual mentors are never fetched (names stay hidden).
+      const mode = await fetchOrganizations();
       setProgress(60);
-      
-      if (!response.ok) {
-        throw new Error('فشل في جلب قائمة الموجهين');
+      if (mode !== 'organization') {
+        await fetchMentors();
+      } else {
+        setMentors([]);
+        setFilteredMentors([]);
       }
-      
-      const data = await response.json();
-      
-      // Filter only active mentors
-      const activeMentors = data.filter((mentor: Mentor) => mentor.status === 'active');
-      
-      // availability/availableSlots come from the API, computed from real
-      // future slots — this used to be Math.random() mock data.
-      setMentors(activeMentors);
-      setFilteredMentors(activeMentors);
       setProgress(100);
     } catch (error) {
       console.error(error);
@@ -187,22 +234,77 @@ export default function MentorsPage() {
   };
 
   useEffect(() => {
-    fetchMentors();
+    loadDirectory();
     fetchMyBookings();
   }, []);
 
-  useEffect(() => {
-    // Filter mentors based on search term
-    const filtered = mentors.filter(mentor => 
-      mentor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      mentor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      mentor.specialty.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredOrganizations = organizations.filter((org) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      org.name.toLowerCase().includes(q) ||
+      (org.description || '').toLowerCase().includes(q) ||
+      org.specialties.some((sp) => sp.toLowerCase().includes(q))
     );
+  });
+
+  useEffect(() => {
+    // Filter by search + organization, then group: mentors of the same
+    // organization sit together (organizations A→Z, members A→Z), mentors
+    // without an organization last.
+    const q = searchTerm.toLowerCase();
+    const filtered = mentors.filter(mentor =>
+      (mentor.name.toLowerCase().includes(q) ||
+        mentor.specialty.toLowerCase().includes(q) ||
+        (mentor.organization?.name || '').toLowerCase().includes(q)) &&
+      (orgFilter === 'all' ||
+        (orgFilter === 'none' ? !mentor.organization : mentor.organization?.id === orgFilter))
+    );
+    const byName = (a: string, b: string) => a.localeCompare(b, 'ar');
+    filtered.sort((a, b) => {
+      if (!!a.organization !== !!b.organization) return a.organization ? -1 : 1;
+      if (a.organization && b.organization && a.organization.id !== b.organization.id) {
+        return byName(a.organization.name, b.organization.name);
+      }
+      return byName(a.name, b.name);
+    });
     setFilteredMentors(filtered);
-  }, [searchTerm, mentors]);
+  }, [searchTerm, orgFilter, mentors]);
+
+  // Organizations present in the mentors list (for the filter), A→Z.
+  const mentorOrgOptions = Array.from(
+    new Map(mentors.filter((m) => m.organization).map((m) => [m.organization!.id, m.organization!])).values()
+  ).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  const hasUnaffiliated = mentors.some((m) => !m.organization);
+
+  const fetchOrganizationAvailability = async (orgId: string) => {
+    try {
+      setAvailabilityLoading(true);
+      const response = await fetch(`/api/organizations?id=${encodeURIComponent(orgId)}`);
+      if (!response.ok) {
+        toast({ title: "خطأ", description: "فشل في جلب مواعيد الجهة.", variant: "destructive" });
+        return;
+      }
+      const data = await response.json();
+      const events: AvailabilityEvent[] = (data.slots || []).map((slot: any) => ({
+        id: slot.id,
+        start: new Date(slot.startTime),
+        end: new Date(slot.endTime),
+        title: slot.isBooked ? (slot.isOwnBooking ? 'محجوز بواسطتك' : 'محجوز') : 'متاح',
+        isBooked: slot.isBooked,
+        isOwnBooking: slot.isOwnBooking,
+        mentorName: slot.mentorName ?? null,
+      }));
+      setAvailabilityEvents(events);
+    } catch (error) {
+      toast({ title: "خطأ", description: "حدث خطأ أثناء جلب المواعيد.", variant: "destructive" });
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  };
 
   const fetchMentorAvailability = async (mentorId: string) => {
     try {
+      setAvailabilityLoading(true);
       const response = await fetch(`/api/admin/mentors/${mentorId}/availability`);
       if (response.ok) {
         const data = await response.json();
@@ -237,6 +339,8 @@ export default function MentorsPage() {
         description: "حدث خطأ أثناء جلب المواعيد.",
         variant: "destructive",
       });
+    } finally {
+      setAvailabilityLoading(false);
     }
   };
 
@@ -255,9 +359,28 @@ export default function MentorsPage() {
 
   const openAvailabilityDialog = (mentor: Mentor) => {
     setSelectedMentor(mentor);
+    setSelectedOrg(null);
     setSelectedEvent(null); // Reset selected event
+    setAvailabilityEvents([]);
     fetchMentorAvailability(mentor.id);
     setAvailabilityDialogOpen(true);
+  };
+
+  const openOrganizationDialog = (org: Organization) => {
+    setSelectedOrg(org);
+    setSelectedMentor(null);
+    setSelectedEvent(null);
+    setAvailabilityEvents([]);
+    fetchOrganizationAvailability(org.id);
+    setAvailabilityDialogOpen(true);
+  };
+
+  // Re-fetch whichever directory/availability is open after a booking.
+  const refreshAfterBooking = () => {
+    if (selectedOrg) fetchOrganizationAvailability(selectedOrg.id);
+    else if (selectedMentor) fetchMentorAvailability(selectedMentor.id);
+    fetchOrganizations().catch(() => {});
+    if (showIndividuals) fetchMentors().catch(() => {});
   };
   
   const handleSelectEvent = (event: AvailabilityEvent) => {
@@ -316,6 +439,9 @@ export default function MentorsPage() {
         },
         body: JSON.stringify({
           availabilityId: selectedEvent.id,
+          // Booking through an organization: every member is notified and
+          // gets the meeting link (see book-appointment route).
+          ...(selectedOrg ? { organizationId: selectedOrg.id } : {}),
         }),
       });
       
@@ -329,13 +455,13 @@ export default function MentorsPage() {
         });
         
         // Refresh availability data and bookings
-        fetchMentorAvailability(selectedMentor!.id);
+        refreshAfterBooking();
         fetchMyBookings(); // Refresh the bookings list
         setSelectedEvent(null);
       } else {
         toast({
           title: "فشل الحجز",
-          description: data.message,
+          description: data.message || data.error,
           variant: "destructive",
         });
       }
@@ -371,7 +497,9 @@ export default function MentorsPage() {
   return (
     <div className="p-3 sm:p-8" dir="rtl">
       <div className="flex justify-between items-center mb-4 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-blue-800">الموجهون المتاحون</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-blue-800">
+          {bookingMode === 'organization' ? 'الجهات الموجِّهة' : 'الموجهون المتاحون'}
+        </h1>
       </div>
 
       {/* My Booked Appointments Box */}
@@ -411,19 +539,37 @@ export default function MentorsPage() {
 
                 return (
                   <div key={booking.id} className="flex items-center p-3 rounded-lg bg-white shadow-sm border border-blue-100">
-                    <div className="mr-4 bg-blue-100 p-2 rounded-full">
-                      <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                    <div className="mr-4 bg-blue-100 p-2 rounded-full shrink-0">
+                      {booking.organization?.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={booking.organization.logoUrl} alt="" className="h-6 w-6 rounded object-contain" />
+                      ) : booking.organization ? (
+                        <Building2 className="h-6 w-6 text-blue-600" />
+                      ) : (
+                        <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-blue-900">{booking.mentorName}</div>
-                      <div className="text-sm text-gray-600">{booking.mentorSpecialty}</div>
+                    <div className="flex-1 min-w-0">
+                      {booking.organization ? (
+                        <>
+                          <div className="font-medium text-blue-900 break-words">{booking.organization.name}</div>
+                          <div className="text-sm text-gray-600">
+                            جلسة مع الجهة{showIndividuals && booking.mentorName ? ` • ${booking.mentorName}` : ''}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-medium text-blue-900">{booking.mentorName}</div>
+                          <div className="text-sm text-gray-600">{booking.mentorSpecialty}</div>
+                        </>
+                      )}
                       <div className="text-sm text-gray-500 mt-1">
                         {formattedDate} • {formattedStartTime} - {formattedEndTime}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 ml-2 shrink-0">
                       <Badge className="bg-green-100 text-green-800">
-                        {booking.status === 'booked' ? 'محجوز' : booking.status}
+                        {booking.status === 'booked' ? 'محجوز' : booking.status === 'completed' ? 'مكتملة' : booking.status}
                       </Badge>
                       {booking.meetingUrl && booking.status === 'booked' && (
                         <Button
@@ -431,7 +577,7 @@ export default function MentorsPage() {
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 h-8 text-xs"
                         >
-                          <a href={booking.meetingUrl} target="_blank" rel="noopener noreferrer">
+                          <a href={`/api/meeting/join/${booking.id}`} target="_blank" rel="noopener noreferrer">
                             دخول الاجتماع
                           </a>
                         </Button>
@@ -454,25 +600,28 @@ export default function MentorsPage() {
             <div className="py-8 text-center">
               <Calendar className="h-12 w-12 text-blue-300 mx-auto mb-3" />
               <p className="text-gray-500">لم تقم بحجز أي مواعيد بعد</p>
-              <p className="text-sm text-gray-400 mt-1">يمكنك حجز موعد مع أحد الموجهين من القائمة أدناه</p>
+              <p className="text-sm text-gray-400 mt-1">
+                {bookingMode === 'organization' ? 'يمكنك حجز موعد مع إحدى الجهات من القائمة أدناه' : 'يمكنك حجز موعد مع أحد الموجهين من القائمة أدناه'}
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Stats Cards */}
+      {/* Stats Cards — in organization-only mode the counts describe the
+          organizations, since individual mentors are hidden there. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6 sm:mb-8">
         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-blue-50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-500" />
-              إجمالي الموجهين
+              {showIndividuals ? <Users className="h-5 w-5 text-blue-500" /> : <Building2 className="h-5 w-5 text-blue-500" />}
+              {showIndividuals ? 'إجمالي الموجهين' : 'إجمالي الجهات'}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{mentors.length}</div>
+            <div className="text-3xl font-bold text-blue-600">{showIndividuals ? mentors.length : organizations.length}</div>
             <p className="text-xs text-muted-foreground">
-              موجه نشط متاح للمساعدة
+              {showIndividuals ? 'موجه نشط متاح للمساعدة' : 'جهة موجِّهة متاحة للمساعدة'}
             </p>
           </CardContent>
         </Card>
@@ -481,15 +630,17 @@ export default function MentorsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-5 w-5 text-green-500" />
-              متاحون الآن
+              {showIndividuals ? 'متاحون الآن' : 'جهات متاحة الآن'}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
-              {mentors.filter(m => (m.availableSlots ?? 0) > 0).length}
+              {showIndividuals
+                ? mentors.filter(m => (m.availableSlots ?? 0) > 0).length
+                : organizations.filter(o => o.availableSlots > 0).length}
             </div>
             <p className="text-xs text-muted-foreground">
-              موجه لديه مواعيد متاحة للحجز
+              {showIndividuals ? 'موجه لديه مواعيد متاحة للحجز' : 'جهة لديها مواعيد متاحة للحجز'}
             </p>
           </CardContent>
         </Card>
@@ -505,10 +656,12 @@ export default function MentorsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-yellow-600">
-              {mentors.reduce((total, mentor) => total + (mentor.availableSlots ?? 0), 0)}
+              {showIndividuals
+                ? mentors.reduce((total, mentor) => total + (mentor.availableSlots ?? 0), 0)
+                : organizations.reduce((total, o) => total + o.availableSlots, 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              موعد قادم غير محجوز لدى جميع الموجهين
+              {showIndividuals ? 'موعد قادم غير محجوز لدى جميع الموجهين' : 'موعد قادم غير محجوز لدى جميع الجهات'}
             </p>
           </CardContent>
         </Card>
@@ -516,80 +669,217 @@ export default function MentorsPage() {
 
       {/* Search */}
       <Card className="mb-6 sm:mb-8 border-0 shadow-sm overflow-hidden">
-        <CardContent className="pt-4 sm:pt-6">
-          <div className="flex flex-col gap-4 items-center">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 h-4 w-4" />
-                <Input
-                  placeholder="البحث بالاسم، البريد الإلكتروني، أو التخصص..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10 border-blue-100 focus:border-blue-300 rounded-full"
-                />
-              </div>
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative w-full flex-1">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-500 h-5 w-5 pointer-events-none" />
+              <Input
+                placeholder={showIndividuals ? "البحث بالاسم، التخصص، أو الجهة..." : "البحث باسم الجهة أو التخصص..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-12 pr-12 text-base border-blue-100 focus:border-blue-300 rounded-full"
+              />
             </div>
+            {showIndividuals && mentorOrgOptions.length > 0 && (
+              <Select value={orgFilter} onValueChange={setOrgFilter}>
+                <SelectTrigger className="h-12 w-full sm:w-64 rounded-full border-blue-100 focus:border-blue-300" aria-label="تصفية حسب الجهة">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Building2 className="h-4 w-4 text-blue-500 shrink-0" />
+                    <SelectValue placeholder="كل الجهات" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent dir="rtl" className="text-right">
+                  <SelectItem value="all">كل الجهات</SelectItem>
+                  {mentorOrgOptions.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                  ))}
+                  {hasUnaffiliated && <SelectItem value="none">بدون جهة</SelectItem>}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Mentors Table */}
+      {/* Organizations (visible in 'organization' and 'both' modes) */}
+      {showOrganizations && (
+        <Card className="mb-6 sm:mb-8 border-0 shadow-sm overflow-hidden">
+          <CardHeader className="pb-2 text-right" dir="rtl">
+            <CardTitle className="text-lg font-bold text-blue-800 flex items-center justify-start gap-2">
+              <Building2 className="h-5 w-5 text-blue-600" />
+              الحجز مع جهة
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {filteredOrganizations.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredOrganizations.map((org) => (
+                  <div key={org.id} className="flex flex-col rounded-lg border border-blue-100 bg-white p-4 min-w-0 hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-3 min-w-0">
+                      {org.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={org.logoUrl} alt={org.name} className="h-16 w-16 rounded-lg object-contain border bg-white shrink-0" />
+                      ) : (
+                        <div className="h-16 w-16 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                          <Building2 className="h-8 w-8" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-blue-900 break-words">{org.name}</div>
+                        {org.description && (
+                          <div className="text-xs text-gray-600 mt-1 line-clamp-3 break-words">{org.description}</div>
+                        )}
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {org.specialties.slice(0, 3).map((sp) => (
+                            <Badge key={sp} variant="secondary" className="text-[11px] font-normal">{sp}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                      <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{org.memberCount} موجه</span>
+                      {org.availableSlots > 0 ? (
+                        <Badge className="bg-green-100 text-green-800">متاح ({org.availableSlots})</Badge>
+                      ) : org.upcomingSlots > 0 ? (
+                        <Badge className="bg-red-100 text-red-800">مشغول</Badge>
+                      ) : (
+                        <Badge className="bg-gray-100 text-gray-800">لا توجد مواعيد</Badge>
+                      )}
+                    </div>
+                    {org.members && org.members.length > 0 && (
+                      <div className="mt-2 text-xs text-gray-500 break-words">
+                        {org.members.slice(0, 3).map((m) => m.name).join('، ')}{org.members.length > 3 ? ` +${org.members.length - 3}` : ''}
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 w-full bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 flex items-center gap-1"
+                      onClick={() => openOrganizationDialog(org)}
+                    >
+                      <Calendar className="h-4 w-4" />
+                      عرض مواعيد الجهة
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-gray-500">
+                {organizations.length === 0 ? 'لا توجد جهات متاحة للحجز حالياً' : 'لا توجد جهات متطابقة مع البحث'}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mentors Table (hidden in organization-only mode) */}
+      {showIndividuals && (
       <Card className="border-0 shadow-sm overflow-hidden">
+        {bookingMode === 'both' && (
+          <CardHeader className="pb-2 text-right" dir="rtl">
+            <CardTitle className="text-lg font-bold text-blue-800 flex items-center justify-start gap-2">
+              <Users className="h-5 w-5 text-blue-600" />
+              الحجز مع موجه محدد
+            </CardTitle>
+          </CardHeader>
+        )}
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table className="border-collapse">
               <TableHeader>
                 <TableRow className="bg-blue-50 hover:bg-blue-50">
-                  <TableHead>الاسم</TableHead>
-                  <TableHead className="hidden sm:table-cell">التخصص</TableHead>
-                  <TableHead className="hidden sm:table-cell">التوفر</TableHead>
-                  <TableHead className="text-left">المواعيد</TableHead>
+                  <TableHead className="text-right font-semibold text-blue-900">الاسم</TableHead>
+                  <TableHead className="text-right font-semibold text-blue-900 hidden sm:table-cell">الجهة</TableHead>
+                  <TableHead className="text-right font-semibold text-blue-900 hidden sm:table-cell">التخصص</TableHead>
+                  <TableHead className="text-right font-semibold text-blue-900 hidden sm:table-cell">التوفر</TableHead>
+                  <TableHead className="text-center font-semibold text-blue-900 w-[140px]">المواعيد</TableHead>
                 </TableRow>
               </TableHeader>
             <TableBody>
               {filteredMentors.length > 0 ? (
-                filteredMentors.map((mentor) => (
-                  <TableRow key={mentor.id} className="hover:bg-gray-50 transition-colors duration-150">
-                    <TableCell className="font-medium">
+                filteredMentors.map((mentor, index) => {
+                  // Group header when this mentor starts a new organization block
+                  const orgKey = mentor.organization?.id ?? 'none';
+                  const prevKey = index > 0 ? (filteredMentors[index - 1].organization?.id ?? 'none') : null;
+                  const groupSize = filteredMentors.filter((m) => (m.organization?.id ?? 'none') === orgKey).length;
+                  const header = orgKey !== prevKey ? (
+                    <TableRow key={`org-${orgKey}`} className="bg-blue-50/70 hover:bg-blue-50/70">
+                      <TableCell colSpan={5} className="py-2 text-right">
+                        <div className="flex items-center gap-2 font-semibold text-blue-900">
+                          {mentor.organization?.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={mentor.organization.logoUrl} alt="" className="h-6 w-6 rounded object-contain border bg-white" />
+                          ) : (
+                            <Building2 className="h-4 w-4 text-blue-500" />
+                          )}
+                          <span>{mentor.organization ? mentor.organization.name : 'موجهون بدون جهة'}</span>
+                          <Badge variant="secondary" className="font-normal text-[11px]">{groupSize} موجه</Badge>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : null;
+                  return (
+                  <React.Fragment key={mentor.id}>
+                  {header}
+                  <TableRow className="hover:bg-gray-50 transition-colors duration-150">
+                    <TableCell className="font-medium text-right">
                       <div>{mentor.name}</div>
-                      <div className="text-sm text-gray-500 flex items-center gap-1">
-                        <Mail className="h-3 w-3" /> {mentor.email}
-                      </div>
-                      <div className="text-sm text-gray-500 flex items-center gap-1">
-                        <Phone className="h-3 w-3" /> {mentor.phone}
-                      </div>
-                      <div className="sm:hidden text-xs text-gray-500 mt-1">
-                        {getAvailabilityBadge(mentor)}
+                      {/* Mobile: organization + specialty + availability stacked under the name */}
+                      <div className="sm:hidden text-xs text-gray-500 mt-1 space-y-1">
+                        {mentor.organization && (
+                          <div className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3" /> {mentor.organization.name}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Briefcase className="h-3 w-3" /> {mentor.specialty}
+                        </div>
+                        <div>{getAvailabilityBadge(mentor)}</div>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">
+                    <TableCell className="hidden sm:table-cell text-right">
+                      {mentor.organization ? (
+                        <div className="flex items-center gap-2 min-w-0">
+                          {mentor.organization.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={mentor.organization.logoUrl} alt="" className="h-8 w-8 rounded object-contain border bg-white shrink-0" />
+                          ) : (
+                            <Building2 className="h-4 w-4 text-blue-500 shrink-0" />
+                          )}
+                          <span className="truncate max-w-[180px]" title={mentor.organization.name}>{mentor.organization.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-right">
                       <div className="flex items-center gap-2">
                         <Briefcase className="h-4 w-4 text-gray-500" />
                         <span>{mentor.specialty}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">
+                    <TableCell className="hidden sm:table-cell text-right">
                       {getAvailabilityBadge(mentor)}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col sm:flex-row items-center gap-2 justify-end">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 flex items-center gap-1 w-full sm:w-auto text-xs sm:text-sm"
-                          onClick={() => openAvailabilityDialog(mentor)}
-                        >
-                          <Calendar className="h-4 w-4" />
-                          <span className="hidden sm:inline">عرض المواعيد</span>
-                          <span className="sm:hidden">المواعيد</span>
-                        </Button>
-                      </div>
+                    <TableCell className="text-center">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 inline-flex items-center gap-1 w-full sm:w-auto text-xs sm:text-sm"
+                        onClick={() => openAvailabilityDialog(mentor)}
+                      >
+                        <Calendar className="h-4 w-4" />
+                        <span className="hidden sm:inline">عرض المواعيد</span>
+                        <span className="sm:hidden">المواعيد</span>
+                      </Button>
                     </TableCell>
                   </TableRow>
-                ))
+                  </React.Fragment>
+                  );
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                     لا يوجد موجهين متطابقين مع البحث
                   </TableCell>
                 </TableRow>
@@ -599,14 +889,23 @@ export default function MentorsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Availability Dialog */}
       <Dialog open={isAvailabilityDialogOpen} onOpenChange={setAvailabilityDialogOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-6xl rounded-lg border-0 shadow-lg">
           <DialogHeader>
-            <DialogTitle>مواعيد توفر الموجه: {selectedMentor?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedOrg?.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selectedOrg.logoUrl} alt="" className="h-8 w-8 rounded object-contain border bg-white" />
+              )}
+              {selectedOrg ? `مواعيد الجهة: ${selectedOrg.name}` : `مواعيد توفر الموجه: ${selectedMentor?.name ?? ''}`}
+            </DialogTitle>
             <DialogDescription>
-              المواعيد المتاحة للموجه خلال الأسبوع الحالي
+              {selectedOrg
+                ? 'المواعيد المتاحة لدى موجهي الجهة — عند الحجز يصل الإشعار ورابط الاجتماع لجميع أعضائها'
+                : 'المواعيد المتاحة للموجه خلال الأسبوع الحالي'}
             </DialogDescription>
           </DialogHeader>
           {/* Mobile: tappable slot list grouped by day */}
@@ -645,6 +944,9 @@ export default function MentorsPage() {
                             <span className="block text-[11px] mt-0.5">
                               {ev.isBooked ? (ev.isOwnBooking ? 'محجوز بواسطتك' : 'محجوز') : isSelected ? 'تم الاختيار' : 'متاح'}
                             </span>
+                            {ev.mentorName && (
+                              <span className="block text-[10px] mt-0.5 truncate opacity-80">{ev.mentorName}</span>
+                            )}
                           </button>
                         );
                       })}
@@ -663,11 +965,13 @@ export default function MentorsPage() {
                   </div>
                 )}
               </>
+            ) : availabilityLoading ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">جاري تحميل المواعيد...</div>
             ) : (
               <div className="flex flex-col items-center justify-center py-10">
                 <Calendar className="h-12 w-12 text-gray-300 mb-3" />
                 <p className="text-gray-500">لا توجد مواعيد متاحة حالياً</p>
-                <p className="text-gray-400 text-sm mt-1">يرجى التحقق لاحقاً أو التواصل مع الموجه مباشرة</p>
+                <p className="text-gray-400 text-sm mt-1">{selectedOrg ? 'يرجى التحقق لاحقاً' : 'يرجى التحقق لاحقاً أو التواصل مع الموجه مباشرة'}</p>
               </div>
             )}
           </div>
@@ -682,7 +986,7 @@ export default function MentorsPage() {
                   timeslots={SLOT_TIMESLOTS_PER_HOUR}
                   events={availabilityEvents.map(event => ({
                     ...event,
-                    title: event.title,
+                    title: event.mentorName ? `${event.title} — ${event.mentorName}` : event.title,
                     // Add color based on booking status
                     style: {
                       backgroundColor: event.isBooked 
@@ -739,11 +1043,13 @@ export default function MentorsPage() {
                   )}
                 </div>
               </>
+            ) : availabilityLoading ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">جاري تحميل المواعيد...</div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full">
                 <Calendar className="h-16 w-16 text-gray-300 mb-4" />
                 <p className="text-gray-500 text-lg">لا توجد مواعيد متاحة حالياً</p>
-                <p className="text-gray-400 text-sm mt-2">يرجى التحقق لاحقاً أو التواصل مع الموجه مباشرة</p>
+                <p className="text-gray-400 text-sm mt-2">{selectedOrg ? 'يرجى التحقق لاحقاً' : 'يرجى التحقق لاحقاً أو التواصل مع الموجه مباشرة'}</p>
               </div>
             )}
           </div>

@@ -10,6 +10,8 @@ import { CHALLENGES } from "@/lib/challenges";
 import { useToast } from "@/../../components/ui/use-toast";
 import * as XLSX from 'xlsx';
 import AutoTeamCreationModal from "@/../../components/admin/AutoTeamCreationModal";
+import BulkApproveButton from "@/components/admin/BulkApproveButton";
+import ParticipantEditDialog from "@/components/admin/ParticipantEditDialog";
 import {
   Dialog,
   DialogContent,
@@ -115,6 +117,20 @@ export default function TeamsPage() {
   const [editedTeam, setEditedTeam] = useState<Partial<Team> & { newLeaderId?: string } | null>(null);
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+  // Member edit (from the team details dialog) — POST /api/admin/update-participant
+  const [editedMember, setEditedMember] = useState<Participant | null>(null);
+  const [leaderCandidate, setLeaderCandidate] = useState<Participant | null>(null);
+  // Session counters per team / member — Meeting_Trigger.md
+  const [sessionStats, setSessionStats] = useState<{ teams: Record<string, { booked: number; joined: number; completed: number }>; participants: Record<string, { booked: number; joined: number; completed: number }> }>({ teams: {}, participants: {} });
+  useEffect(() => {
+    fetch('/api/admin/session-stats', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.teams) setSessionStats({ teams: d.teams, participants: d.participants || {} }); })
+      .catch(() => {});
+  }, []);
+  const fmtSessions = (s?: { booked: number; joined: number; completed: number }) =>
+    s ? <span><span className="font-semibold">{s.booked}</span> حجز · <span className="text-blue-700">{s.joined}</span> انضم · <span className="text-green-700">{s.completed}</span> مكتملة</span> : <span className="text-gray-400">—</span>;
+  const [savingMember, setSavingMember] = useState(false);
   const [participantEmail, setParticipantEmail] = useState("");
   const [makeLeader, setMakeLeader] = useState(false);
   
@@ -226,6 +242,29 @@ export default function TeamsPage() {
         description: "حدث خطأ أثناء حذف الفريق",
         variant: "destructive",
       });
+    }
+  };
+
+  /** Make `participant` the team leader; the previous leader becomes a member. */
+  const handleMakeLeader = async (team: Team, participant: Participant) => {
+    try {
+      setSavingMember(true);
+      const res = await fetch('/api/admin/update-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ teamId: team.id, newLeaderId: participant.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'فشل تغيير قائد الفريق');
+      toast({ title: 'نجح', description: `أصبح ${participant.fullName || participant.email} قائد الفريق` });
+      setSelectedTeam((t) => t ? { ...t, participants: t.participants.map((p) => ({ ...p, isLeader: p.id === participant.id })) } : t);
+      setLeaderCandidate(null);
+      fetchTeams(searchQuery);
+    } catch (error) {
+      toast({ title: 'خطأ', description: error instanceof Error ? error.message : 'فشل تغيير قائد الفريق', variant: 'destructive' });
+    } finally {
+      setSavingMember(false);
     }
   };
 
@@ -417,15 +456,15 @@ export default function TeamsPage() {
    * Disable or re-enable every ticked team in one request. Disabling a team
    * disables all of its members with it (see src/lib/account-status.ts).
    */
-  const handleBulkDisable = async (disabled: boolean) => {
-    if (selectedIds.size === 0) return;
+  const handleBulkDisable = async (disabled: boolean, ids: string[] = Array.from(selectedIds)) => {
+    if (ids.length === 0) return;
     try {
       setBulkBusy(true);
       const res = await fetch('/api/admin/accounts/disable', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ teamIds: Array.from(selectedIds), disabled }),
+        body: JSON.stringify({ teamIds: ids, disabled }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل تنفيذ العملية');
@@ -433,7 +472,7 @@ export default function TeamsPage() {
         title: 'نجح',
         description: disabled
           ? `تم تعطيل ${data.teamsUpdated} فريق (وجميع أعضائه)`
-          : `تم تفعيل ${data.teamsUpdated} فريق`,
+          : `تم تفعيل ${data.teamsUpdated} فريق${data.credentialsIssued ? ` — أُرسلت بيانات دخول جديدة لـ ${data.credentialsIssued} عضو` : ''}`,
       });
       setSelectedIds(new Set());
       fetchTeams();
@@ -706,12 +745,26 @@ export default function TeamsPage() {
                 <Download className="h-4 w-4" />
                 تصدير
               </Button>
+              {teams.some((t) => t.status === 'pending') && (
+                <BulkApproveButton
+                  target="teams"
+                  size="default"
+                  className="gap-2 bg-green-600 hover:bg-green-700"
+                  onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
+                />
+              )}
             </div>
           </div>
 
           {selectedIds.size > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
               <span className="text-sm font-medium">تم اختيار {selectedIds.size} فريق</span>
+              <BulkApproveButton
+                target="teams"
+                ids={Array.from(selectedIds)}
+                className="bg-green-600 hover:bg-green-700"
+                onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
+              />
               <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={() => handleBulkDisable(true)}>
                 <Ban className="ml-1 h-4 w-4" />
                 تعطيل المحدد
@@ -750,6 +803,7 @@ export default function TeamsPage() {
                   <th className="border p-2 text-right">المسار</th>
                   <th className="border p-2 text-right">الأعضاء</th>
                   <th className="border p-2 text-right">قائد الفريق</th>
+                  <th className="border p-2 text-right" title="حجوزات · انضم للاجتماع · مكتملة (الطرفان)">الجلسات</th>
                   <th className="border p-2 text-right">الحالة</th>
                   <th className="border p-2 text-right">المرحلة</th>
                   <th className="border p-2 text-right">تاريخ الإنشاء</th>
@@ -794,6 +848,7 @@ export default function TeamsPage() {
                           </Button>
                         </td>
                         <td className="border p-2">{leader?.fullName || 'غير متوفر'}</td>
+                        <td className="border p-2 whitespace-nowrap text-xs">{fmtSessions(sessionStats.teams[team.id])}</td>
                         <td className="border p-2">
                         <span
                           className={`px-2 py-1 rounded-full text-xs ${
@@ -882,6 +937,14 @@ export default function TeamsPage() {
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
+                            className={`p-1 rounded-md hover:bg-muted ${team.isDisabled ? 'text-green-600' : 'text-amber-600'}`}
+                            title={team.isDisabled ? 'إعادة تفعيل الفريق (تُرسل بيانات دخول جديدة للأعضاء)' : 'تعطيل الفريق وجميع أعضائه'}
+                            disabled={bulkBusy}
+                            onClick={() => handleBulkDisable(!team.isDisabled, [team.id])}
+                          >
+                            {team.isDisabled ? <RotateCcw className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                          </button>
+                          <button
                             className="p-1 rounded-md hover:bg-muted text-red-500"
                             onClick={() => {
                               setSelectedTeam(team);
@@ -895,7 +958,7 @@ export default function TeamsPage() {
                       </tr>
                       {expandedTeam === team.id && (
                         <tr className="bg-muted/20">
-                          <td colSpan={10} className="p-0">
+                          <td colSpan={11} className="p-0">
                             <div className="p-4">
                               <div className="flex justify-between items-center mb-4">
                                 <h4 className="font-bold">أعضاء الفريق:</h4>
@@ -1101,9 +1164,24 @@ export default function TeamsPage() {
                 <div className="space-y-4">
                   {selectedTeam.participants.map((p, index) => (
                     <div key={p.id} className="p-4 border rounded-lg">
-                      <h4 className="font-medium mb-2">{p.isLeader ? 'قائد الفريق' : `العضو ${index}`}</h4>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <h4 className="font-medium">{p.isLeader ? 'قائد الفريق' : `العضو ${index}`}</h4>
+                        <div className="flex items-center gap-2">
+                          {!p.isLeader && (
+                            <Button size="sm" variant="outline" className="gap-1 text-blue-700 border-blue-200" onClick={() => setLeaderCandidate(p)}>
+                              <Users className="h-4 w-4" />
+                              تعيين قائداً
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" className="gap-1" onClick={() => setEditedMember({ ...p })}>
+                            <Edit className="h-4 w-4" />
+                            تعديل البيانات
+                          </Button>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
                         <p><strong>الاسم الكامل:</strong> {p.fullName}</p>
+                        <p><strong>الجلسات:</strong> {fmtSessions(sessionStats.participants[p.id])}</p>
                         <p><strong>البريد الإلكتروني:</strong> {p.email}</p>
                         <p><strong>رقم الهوية:</strong> {p.nationalId}</p>
                         <p><strong>تاريخ الميلاد:</strong> {p.dob}</p>
@@ -1127,6 +1205,34 @@ export default function TeamsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Change leader confirmation */}
+      <Dialog open={!!leaderCandidate} onOpenChange={(v) => { if (!v && !savingMember) setLeaderCandidate(null); }}>
+        <DialogContent dir="rtl" className="rounded-lg">
+          <DialogHeader>
+            <DialogTitle>تعيين قائد جديد للفريق</DialogTitle>
+            <DialogDescription>
+              سيصبح "{leaderCandidate?.fullName || leaderCandidate?.email}" قائد فريق "{selectedTeam?.teamName}" بكل صلاحيات القائد (إدارة الأعضاء، بيانات الفريق، التسليمات)، ويتحول القائد الحالي إلى عضو عادي. سيتم إشعار أعضاء الفريق.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setLeaderCandidate(null)} disabled={savingMember} className="w-full sm:w-auto">إلغاء</Button>
+            <Button onClick={() => selectedTeam && leaderCandidate && handleMakeLeader(selectedTeam, leaderCandidate)} disabled={savingMember} className="w-full sm:w-auto">
+              {savingMember ? 'جاري التنفيذ...' : 'تأكيد التعيين'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member (shared admin form; email change → credentials to the new address) */}
+      <ParticipantEditDialog
+        participant={editedMember}
+        onClose={() => setEditedMember(null)}
+        onSaved={(saved) => {
+          setSelectedTeam((t) => t ? { ...t, participants: t.participants.map((p) => (p.id === saved.id ? { ...p, ...(saved as Partial<Participant>) } : p)) } : t);
+          fetchTeams(searchQuery);
+        }}
+      />
 
       {/* Delete Team Confirmation Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>

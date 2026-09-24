@@ -422,7 +422,9 @@ export default function BroadcastComposer() {
                     try {
                       const a = JSON.parse(b.audience);
                       audienceLabel =
-                        a.type === "selected"
+                        a.type === "bulk-approval"
+                          ? `قبول جماعي (${a.target === "teams" ? "فرق" : "أفراد"}): ${a.approved ?? 0} / ${a.requested ?? 0}`
+                          : a.type === "selected"
                           ? `${a.selected?.length ?? 0} مستخدم محدد`
                           : a.type === "phase" || a.type === "phase-failed"
                           ? `${AUDIENCE_LABELS[a.type]}: ${

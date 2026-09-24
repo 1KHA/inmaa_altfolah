@@ -53,6 +53,11 @@ interface MentorBooking {
   meetingUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Set when the participant booked the mentor's organization rather than
+   *  the mentor directly; hostedByMe=false means a colleague's slot. */
+  organization?: { id: string; name: string; logoUrl: string | null } | null;
+  viaOrganization?: boolean;
+  hostedByMe?: boolean;
   availability: {
     id: string;
     startTime: string;
@@ -357,6 +362,16 @@ export default function MentorSessionsPage() {
                             <div className="text-sm text-gray-500 flex items-center gap-1">
                               <Phone className="h-3 w-3" /> {booking.participant.phoneNumber}
                             </div>
+                            {booking.organization && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
+                                <Badge variant="secondary" className="text-[11px] font-normal">
+                                  عبر جهة: {booking.organization.name}
+                                </Badge>
+                                {booking.hostedByMe === false && booking.mentor?.name && (
+                                  <span className="text-[11px] text-gray-500">يستضيفها {booking.mentor.name}</span>
+                                )}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -382,7 +397,7 @@ export default function MentorSessionsPage() {
                                   asChild
                                   className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
                                 >
-                                  <a href={booking.meetingUrl} target="_blank" rel="noopener noreferrer">
+                                  <a href={`/api/meeting/join/${booking.id}`} target="_blank" rel="noopener noreferrer">
                                     <Video className="h-4 w-4" />
                                     <span>دخول الاجتماع</span>
                                   </a>

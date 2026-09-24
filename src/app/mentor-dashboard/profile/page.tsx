@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Phone, Briefcase, Calendar, Clock, UserCheck, Edit } from 'lucide-react';
+import { Mail, Phone, Briefcase, Calendar, Clock, UserCheck, Edit, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ interface Mentor {
   status: 'pending' | 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
+  organization?: { id: string; name: string; logoUrl: string | null; description?: string | null } | null;
 }
 
 function MentorProfile() {
@@ -165,8 +166,19 @@ function MentorProfile() {
           <div className="flex-1 text-center md:text-right">
             <CardTitle className="text-3xl font-bold">{mentor.name}</CardTitle>
             <CardDescription className="text-lg text-muted-foreground">{mentor.specialty}</CardDescription>
-            <div className="mt-2">
+            <div className="mt-2 flex flex-wrap items-center justify-center md:justify-start gap-2">
                 {getStatusBadge(mentor.status)}
+                {mentor.organization && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-blue-50 text-blue-800 px-3 py-1 text-xs">
+                    {mentor.organization.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={mentor.organization.logoUrl} alt="" className="h-5 w-5 rounded object-contain bg-white" />
+                    ) : (
+                      <Building2 className="h-3.5 w-3.5" />
+                    )}
+                    {mentor.organization.name}
+                  </span>
+                )}
             </div>
           </div>
           <Dialog>
@@ -229,6 +241,16 @@ function MentorProfile() {
               <div>
                 <p className="text-sm text-muted-foreground">التخصص</p>
                 <p className="font-medium">{mentor.specialty}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <Building2 className="h-6 w-6 text-gray-500" />
+              <div>
+                <p className="text-sm text-muted-foreground">الجهة</p>
+                <p className="font-medium">{mentor.organization?.name ?? 'بدون جهة'}</p>
+                {mentor.organization && (
+                  <p className="text-xs text-muted-foreground">تُحدَّد الجهة من قبل الإدارة، وتصلك حجوزات الجهة ورابط اجتماعها مع بقية الأعضاء.</p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-4">

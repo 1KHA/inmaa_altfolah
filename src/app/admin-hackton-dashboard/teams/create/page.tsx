@@ -76,7 +76,6 @@ const initialFormState = {
 type FormState = typeof initialFormState
 
 /** Same options the public registration form offers. */
-const PROFESSIONAL_FIELDS = ['ذكاء اصناعي', 'علم البيانات', 'برمجة']
 
 export default function AdminCreateTeamPage() {
   const router = useRouter()
@@ -210,15 +209,8 @@ export default function AdminCreateTeamPage() {
         <Input id={`${prefix}-universityMajor`} required value={participant.universityMajor} onChange={(e) => updateFn('universityMajor', e.target.value)} />
       </div>
       <div>
-        <Label>ماهو مجالك المهني؟</Label>
-        <Select required onValueChange={(value) => updateFn('professionalField', value)} value={participant.professionalField}>
-          <SelectTrigger><SelectValue placeholder="اختر مجالك المهني..." /></SelectTrigger>
-          <SelectContent className="text-right" dir="rtl">
-            {PROFESSIONAL_FIELDS.map((f) => (
-              <SelectItem key={f} value={f} className="text-right">{f}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label htmlFor={`${prefix}-professionalField`}>ماهو مجالك المهني؟</Label>
+        <Input id={`${prefix}-professionalField`} required value={participant.professionalField} onChange={(e) => updateFn('professionalField', e.target.value)} placeholder="مثال: علم البيانات" />
       </div>
       <div>
         {/* Stored in Participant.city — the public form labels this column the

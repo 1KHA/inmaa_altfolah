@@ -12,6 +12,7 @@ import { useToast } from "../../../../components/ui/use-toast";
 import TemplateEditor from "@/components/notifications/template-editor";
 import BroadcastComposer from "@/components/notifications/broadcast-composer";
 import MemberWindowSettings from "@/components/admin/MemberWindowSettings";
+import MentorBookingModeSettings from "@/components/admin/MentorBookingModeSettings";
 
 interface EmailSettingsForm {
   host: string;
@@ -175,7 +176,7 @@ export default function SettingsPage() {
           <TabsTrigger value="smtp">إعدادات البريد (SMTP)</TabsTrigger>
           <TabsTrigger value="templates">قوالب الإشعارات</TabsTrigger>
           <TabsTrigger value="broadcast">إرسال رسالة</TabsTrigger>
-          <TabsTrigger value="team">إعدادات الفرق</TabsTrigger>
+          <TabsTrigger value="team">إعدادات الفرق والموجهين</TabsTrigger>
         </TabsList>
 
         <TabsContent value="smtp">
@@ -301,8 +302,9 @@ export default function SettingsPage() {
           <BroadcastComposer />
         </TabsContent>
 
-        <TabsContent value="team">
+        <TabsContent value="team" className="space-y-6">
           <MemberWindowSettings />
+          <MentorBookingModeSettings />
         </TabsContent>
       </Tabs>
     </div>

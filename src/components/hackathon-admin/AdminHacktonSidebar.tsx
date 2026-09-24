@@ -16,7 +16,7 @@ import {
   Flag,
   Settings,
   ScanLine,
-  LogOut, Upload, Layers } from "lucide-react";
+  LogOut, Upload, Layers, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Exported so the TopBar hamburger renders the same list on mobile
@@ -28,6 +28,7 @@ export const navItems = [
   { name: "الفرق", href: "/admin-hackton-dashboard/teams", icon: UserCheck },
   { name: "المراحل", href: "/admin-hackton-dashboard/phases", icon: Layers },
   { name: "المرشدون", href: "/admin-hackton-dashboard/mentors", icon: BookOpen },
+  { name: "حجوزات الموجهين", href: "/admin-hackton-dashboard/bookings", icon: CalendarClock },
   { name: "التسليمات", href: "/admin-hackton-dashboard/milestones", icon: Flag },
   { name: "تسجيل الحضور", href: "/admin-hackton-dashboard/attendance", icon: ScanLine },
   { name: "الإشعارات", href: "/admin-hackton-dashboard/notifications", icon: Bell },
