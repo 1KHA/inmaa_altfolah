@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { formatRiyadhDateTime } from '@/lib/format-dates';
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
@@ -91,9 +92,7 @@ export async function POST(request: NextRequest) {
     // Notify every participant about the new event (dashboard + email),
     // mirroring the newMilestoneAvailable flow. Never blocks event creation.
     try {
-      const eventDate = new Date(startDate).toLocaleString('ar-SA', {
-        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
-      });
+      const eventDate = formatRiyadhDateTime(startDate);
       await dispatchNotification({
         templateKey: 'newEventAvailable',
         variables: { eventTitle: title, eventDate, location },

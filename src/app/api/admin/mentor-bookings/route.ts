@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     // Get all bookings, join mentor, participant, availability
     const bookings = await prisma.mentorBooking.findMany({
       include: {
+        organization: { select: { id: true, name: true, logoUrl: true } },
         participant: {
           select: {
             id: true,
@@ -62,6 +63,11 @@ export async function GET(request: NextRequest) {
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
       meetingUrl: booking.meetingUrl ?? null,
+      // Join tracking (Meeting_Trigger.md layer 1)
+      mentorJoinedAt: booking.mentorJoinedAt ?? null,
+      participantJoinedAt: booking.participantJoinedAt ?? null,
+      completedAt: booking.completedAt ?? null,
+      organization: booking.organization ?? null,
       mentor: {
         id: booking.availability.mentor.id,
         name: booking.availability.mentor.name,

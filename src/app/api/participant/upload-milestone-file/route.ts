@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadToStorage } from "@/lib/supabase-storage";
+import { safeExtension } from "@/lib/storage-keys";
 import { MAX_FILE_SIZE, MAX_FILE_SIZE_MB, ALLOWED_FILE_TYPES } from "@/lib/constants";
 
 // Ensure this route is dynamic
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
-    const fileExt = file.name.split('.').pop();
+    const fileExt = safeExtension(file.name); // ASCII-only — storage rejects non-ASCII keys
     const fileName = `${timestamp}_${randomString}.${fileExt}`;
 
     try {

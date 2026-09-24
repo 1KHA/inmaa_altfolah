@@ -64,7 +64,8 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             teamName: true,
-            status: true
+            status: true,
+            hackathonTrack: true
           }
         }
       }

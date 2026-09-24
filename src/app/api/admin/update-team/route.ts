@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/notification-auth';
 import { PARTICIPANT_PUBLIC_FIELDS } from '@/lib/participant-fields';
+import { dispatchNotification } from '@/lib/notify';
+import { participantDisplayName } from '@/lib/credentials';
 
 export async function POST(req: Request) {
   if (!requireAdmin(cookies().get('token')?.value)) {
@@ -108,6 +110,23 @@ export async function POST(req: Request) {
 
       return updatedTeam;
     });
+
+    // Tell the team when leadership actually moved (best-effort).
+    const previousLeaderId = team.participants.find((p) => p.isLeader)?.id;
+    if (newLeaderId && newLeaderId !== previousLeaderId) {
+      try {
+        const newLeader = team.participants.find((p) => p.id === newLeaderId);
+        await dispatchNotification({
+          templateKey: 'teamLeaderChanged',
+          variables: { teamName: team.teamName || 'فريقك', newLeaderName: newLeader ? participantDisplayName(newLeader) : '' },
+          audience: { kind: 'team', teamId },
+          relatedEntityType: 'team',
+          relatedEntityId: teamId,
+        });
+      } catch (notificationError) {
+        console.error('Error notifying team about leader change:', notificationError);
+      }
+    }
 
     return NextResponse.json(result);
   } catch (error) {

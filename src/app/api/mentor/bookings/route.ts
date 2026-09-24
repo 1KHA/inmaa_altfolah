@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
         },
         bookings: {
           include: {
+            organization: { select: { id: true, name: true, logoUrl: true } },
             participant: {
               select: {
                 id: true,
@@ -122,8 +123,50 @@ export async function GET(request: NextRequest) {
           name: availability.mentor.name,
           specialty: availability.mentor.specialty,
         },
+        organization: booking.organization ?? null,
+        viaOrganization: Boolean(booking.organizationId),
+        hostedByMe: true,
       }))
     );
+
+    // Organization bookings hosted by a COLLEAGUE's slot still concern this
+    // mentor (every member was notified and may attend) — list them too.
+    const me = await prisma.mentor.findUnique({ where: { id: targetMentorId }, select: { organizationId: true } });
+    if (me?.organizationId) {
+      const colleagueBookings = await (prisma as any).mentorBooking.findMany({
+        where: {
+          organizationId: me.organizationId,
+          availability: { mentorId: { not: targetMentorId } },
+        },
+        include: {
+          organization: { select: { id: true, name: true, logoUrl: true } },
+          participant: { select: { id: true, firstName: true, secondName: true, familyName: true, fullName: true, email: true, phoneNumber: true } },
+          availability: { include: { mentor: { select: { id: true, name: true, specialty: true } } } },
+        },
+        orderBy: { availability: { startTime: 'asc' } },
+      });
+      for (const b of colleagueBookings) {
+        bookings.push({
+          id: b.id,
+          status: b.status,
+          createdAt: b.createdAt,
+          updatedAt: b.updatedAt,
+          meetingUrl: b.meetingUrl ?? null,
+          availability: { id: b.availability.id, startTime: b.availability.startTime, endTime: b.availability.endTime },
+          participant: {
+            id: b.participant.id,
+            name: b.participant.fullName || [b.participant.firstName, b.participant.secondName, b.participant.familyName].filter(Boolean).join(' ').trim() || b.participant.email,
+            email: b.participant.email,
+            phoneNumber: b.participant.phoneNumber,
+          },
+          mentor: { id: b.availability.mentor.id, name: b.availability.mentor.name, specialty: b.availability.mentor.specialty },
+          organization: b.organization ?? null,
+          viaOrganization: true,
+          hostedByMe: false,
+        });
+      }
+      bookings.sort((a: any, b: any) => new Date(a.availability.startTime).getTime() - new Date(b.availability.startTime).getTime());
+    }
     
     return NextResponse.json(bookings);
   } catch (error) {

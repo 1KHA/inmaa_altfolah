@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
 
     const mentor = await prisma.mentor.findUnique({
       where: { id: decoded.id },
+      include: { organization: { select: { id: true, name: true, logoUrl: true, description: true } } },
     });
 
     if (!mentor) {
@@ -84,6 +85,9 @@ export async function GET(request: NextRequest) {
       specialty: mentor.specialty, // Use actual field from schema
       phone: mentor.phone,
       status: mentor.status,
+      // Organization the admin grouped this mentor into (null if none).
+      organizationId: mentor.organizationId,
+      organization: mentor.organization,
     });
   } catch (error) {
     console.error('❌ Failed to get mentor profile:', error);

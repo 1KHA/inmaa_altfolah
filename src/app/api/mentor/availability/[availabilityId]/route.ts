@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verify } from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+import { cancelBookingsOnSlot } from '@/lib/booking-cancel';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -29,11 +30,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Availability not found or you do not have permission to delete it' }, { status: 404 });
     }
 
+    // A booked slot is not silently removed: its live bookings are cancelled
+    // and the participant/team (and admins via the mentor path) are notified.
+    const cancelled = await cancelBookingsOnSlot(availabilityId, 'mentor');
     await prisma.mentorAvailability.delete({
       where: { id: availabilityId },
     });
 
-    return NextResponse.json({ message: 'Availability deleted successfully' });
+    return NextResponse.json({ message: 'Availability deleted successfully', cancelledBookings: cancelled });
   } catch (error) {
     if (error instanceof Error && error.name === 'JsonWebTokenError') {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });

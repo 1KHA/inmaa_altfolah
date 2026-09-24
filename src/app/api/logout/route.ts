@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isSecureRequest } from '@/lib/cookie-security';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
     // Clear the auth token cookie with multiple approaches for thorough cleanup
     response.cookies.set('token', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureRequest(request),
       sameSite: 'lax',
       maxAge: 0, // Expire immediately
       path: '/',
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     // Also clear any potential legacy cookies
     response.cookies.set('auth-token', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureRequest(request),
       sameSite: 'lax',
       maxAge: 0,
       path: '/',

@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/notification-auth';
 import { PARTICIPANT_PUBLIC_FIELDS } from '@/lib/participant-fields';
+import { notifyEmailChanged } from '@/lib/reactivation';
 
 /**
  * This route lives under /api/admin/ but in practice is called by the
@@ -57,20 +58,39 @@ export async function POST(req: Request) {
       }
     }
 
-    // Remove fields that shouldn't be updated through this endpoint —
-    // matches the blocklist in /api/participant/update-profile
-    const {
-      passwordHash,
-      status,
-      teamId,
-      isLeader,
-      createdAt,
-      updatedAt,
-      team,
-      role,
-      fullName, // computed field, never persisted directly
-      ...dataToUpdate
-    } = rawUpdate;
+    // Only profile fields may be written here. Everything sensitive (status,
+    // teamId, isLeader, passwordHash, phase, disabled flags, badge…) and any
+    // unknown key is dropped — same policy as /api/participant/update-profile,
+    // but as an explicit whitelist so a stray key can never reach Prisma.
+    const dataToUpdate: Record<string, unknown> = {};
+    for (const key of EDITABLE_FIELDS) {
+      if (key in rawUpdate) dataToUpdate[key] = rawUpdate[key];
+    }
+    // The admin edits the stored display name directly; team leaders keep the
+    // historical behaviour (name comes from the split name fields).
+    if (claims.role === 'admin' && 'fullName' in rawUpdate) dataToUpdate.fullName = rawUpdate.fullName;
+
+    for (const key of Object.keys(dataToUpdate)) {
+      const v = dataToUpdate[key];
+      if (typeof v === 'string') dataToUpdate[key] = v.trim();
+      if (BOOLEAN_FIELDS.has(key) && v !== null && v !== undefined && typeof v !== 'boolean') {
+        dataToUpdate[key] = v === 'true' || v === 1 || v === '1';
+      }
+    }
+    if (typeof dataToUpdate.email === 'string') {
+      const email = dataToUpdate.email.toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return NextResponse.json({ error: 'صيغة البريد الإلكتروني غير صالحة' }, { status: 400 });
+      }
+      dataToUpdate.email = email;
+    }
+    if (Object.keys(dataToUpdate).length === 0) {
+      return NextResponse.json({ error: 'لا توجد حقول قابلة للتعديل في الطلب' }, { status: 400 });
+    }
+
+    // Remember the current login email so a change can be announced.
+    const before = await prisma.participant.findUnique({ where: { id }, select: { email: true } });
+    if (!before) return NextResponse.json({ error: 'المشارك غير موجود' }, { status: 404 });
 
     const updatedParticipant = await prisma.participant.update({
       where: { id },
@@ -78,12 +98,52 @@ export async function POST(req: Request) {
       select: PARTICIPANT_PUBLIC_FIELDS,
     });
 
-    return NextResponse.json(updatedParticipant);
+    // The login email changed: send fresh credentials to the new address and a
+    // notice to the old one (see src/lib/reactivation.ts). Never fails the edit.
+    let emailChange: { credentialsSent: boolean } | undefined;
+    if (typeof dataToUpdate.email === 'string' && dataToUpdate.email !== before.email.toLowerCase()) {
+      emailChange = await notifyEmailChanged(id, before.email);
+    }
+
+    return NextResponse.json(emailChange ? { ...updatedParticipant, emailChange } : updatedParticipant);
   } catch (error) {
+    const code = (error as { code?: string })?.code;
+    if (code === 'P2002') {
+      return NextResponse.json({ error: 'البريد الإلكتروني مستخدم مسبقاً لمشارك آخر' }, { status: 409 });
+    }
+    if (code === 'P2025') {
+      return NextResponse.json({ error: 'المشارك غير موجود' }, { status: 404 });
+    }
     console.error('Error updating participant:', error);
     return NextResponse.json({ error: 'Failed to update participant' }, { status: 500 });
   }
 }
+
+/** Profile fields an admin or team leader may edit through this route. */
+const EDITABLE_FIELDS = [
+  'email',
+  'contactNumber',
+  'phoneNumber',
+  'gender',
+  'isUniversityStudent',
+  'university',
+  'universityMajor',
+  'professionalField',
+  'city',
+  'canAttendHackathon',
+  'firstName',
+  'secondName',
+  'familyName',
+  'nationalId',
+  'dob',
+  'education',
+  'major',
+  'employmentStatus',
+  'nationality',
+  'residence',
+  'canAttend',
+] as const;
+const BOOLEAN_FIELDS = new Set(['isUniversityStudent', 'canAttendHackathon', 'canAttend']);
 // Also allow PATCH requests for compatibility, though we'll use POST
 export async function PATCH(req: Request) {
   return POST(req);

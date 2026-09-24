@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isSecureRequest } from '@/lib/cookie-security';
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { isEffectivelyDisabled, DISABLED_ACCOUNT_MESSAGE } from '@/lib/account-status'
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
           isLeader: participant.isLeader || false,
         },
         JWT_SECRET,
-        { expiresIn: '30m' }
+        { expiresIn: '60m' }
       );
 
       console.log(`✅ JWT token created successfully for ${email}`);
@@ -124,18 +125,18 @@ export async function POST(request: NextRequest) {
       // Use consistent cookie name with 30-minute expiration
       response.cookies.set('token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecureRequest(request),
         sameSite: 'lax',
-        maxAge: 30 * 60, // 30 minutes (matches JWT expiration)
+        maxAge: 60 * 60, // 60 minutes (matches JWT expiration)
         path: '/', // Ensure cookie is available for all paths
         domain: process.env.NODE_ENV === 'production' ? undefined : undefined, // Let browser handle domain
       });
 
       console.log(`🍪 Cookie set with settings:`, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecureRequest(request),
         sameSite: 'lax',
-        maxAge: 30 * 60, // 30 minutes
+        maxAge: 60 * 60, // 60 minutes
         path: '/'
       });
 
@@ -182,7 +183,7 @@ export async function POST(request: NextRequest) {
         role: 'mentor',
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '60m' }
     );
 
     // Create response with cookie
@@ -199,18 +200,18 @@ export async function POST(request: NextRequest) {
     // Set HTTP-only cookie (consistent cookie name)
     response.cookies.set('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureRequest(request),
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60, // 60 minutes (matches JWT expiration)
       path: '/', // Ensure cookie is available for all paths
       domain: process.env.NODE_ENV === 'production' ? undefined : undefined, // Let browser handle domain
     })
 
     console.log(`🍪 Mentor cookie set with settings:`, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureRequest(request),
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60,
       path: '/'
     });
 

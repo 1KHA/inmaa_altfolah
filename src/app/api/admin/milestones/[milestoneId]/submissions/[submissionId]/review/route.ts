@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { formatRiyadhDate } from '@/lib/format-dates';
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { autoAdvanceForMilestone, markFailedForMilestone } from "@/lib/phases";
@@ -128,8 +129,7 @@ export async function POST(
           variables: {
             milestoneTitle: submissionDetails.milestone.title,
             reviewComment: String(reviewComment || '').trim(),
-            deadline: (resubmissionDeadline ?? submissionDetails.milestone.dueDate)
-              .toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' }),
+            deadline: formatRiyadhDate(resubmissionDeadline ?? submissionDetails.milestone.dueDate),
           },
           audience: { kind: 'team', teamId: submissionDetails.participant.teamId },
           relatedEntityType: 'milestone_submission',

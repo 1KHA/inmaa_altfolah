@@ -38,12 +38,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid or expired token.' }, { status: 401 });
     }
 
-    // Authorization: Only team leaders can add members
-    if (!decoded.isLeader) {
+    // Authorization: only the CURRENT team leader can add members. Read the
+    // flag from the database — the JWT copy goes stale when an admin moves
+    // leadership to someone else (old leader must lose the power, new leader
+    // must gain it without logging in again).
+    const me = await prisma.participant.findUnique({
+      where: { id: decoded.participantId },
+      select: { isLeader: true, teamId: true },
+    });
+    if (!me?.isLeader) {
       return NextResponse.json({ error: 'Only team leaders can add members.' }, { status: 403 });
     }
 
-    const { teamId } = decoded;
+    const teamId = me.teamId;
     const blocked_ = await requireActiveParticipant(decoded.participantId);
     if (blocked_) return blocked_;
 

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { PrismaClient } from '@prisma/client'
 import { dispatchNotification } from '@/lib/notify'
 import { uploadToStorage } from '@/lib/supabase-storage'
+import { buildStorageFilename } from '@/lib/storage-keys'
 import { MAX_FILE_SIZE, MAX_FILE_SIZE_MB } from '@/lib/constants'
 
 // Ensure this route is dynamic
@@ -47,7 +48,8 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-            const filename = `${Date.now()}_${attachmentFile.name}`;
+            // ASCII-safe key — Arabic filenames used to fail with "Invalid key"
+            const filename = buildStorageFilename(attachmentFile.name);
             // Upload file to Supabase storage in 'teams' folder
             attachmentPath = await uploadToStorage(attachmentFile, filename, 'teams');
         } catch (error) {
