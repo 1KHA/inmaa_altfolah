@@ -119,9 +119,26 @@ model Mentor {
   isDisabled     Boolean              @default(false)
   disabledAt     DateTime?
   passwordHash   String?
+  // Optional grouping: participants can book "the organization" and every
+  // member is notified — see mdfiles/organizations.md.
+  organizationId String?
+  organization   Organization?        @relation(fields: [organizationId], references: [id])
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   availabilities MentorAvailability[]
+}
+
+// A group of mentors (company / entity). Bookings can target the whole
+// organization instead of one person, depending on TeamSettings.mentorBookingMode.
+model Organization {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  description String?
+  logoUrl     String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  mentors     Mentor[]
+  bookings    MentorBooking[]
 }
 
 model MentorAvailability {
@@ -144,6 +161,17 @@ model MentorBooking {
   // Auto-generated video-meeting room for this session (Jitsi by default —
   // see src/lib/meeting.ts). Sent to the mentor and the booking team by email.
   meetingUrl     String?
+  // Set when the participant booked the ORGANIZATION (not the slot owner
+  // personally): every member of that organization is notified.
+  organizationId String?
+  organization   Organization?      @relation(fields: [organizationId], references: [id])
+  // Join tracking: first click on the platform's meeting link per role
+  // (/api/meeting/join). Both set => status 'completed' + completedAt.
+  mentorJoinedAt      DateTime?
+  participantJoinedAt DateTime?
+  completedAt         DateTime?
+  // 5-minute reminder sent (cron /api/cron/booking-reminders)
+  reminderSentAt      DateTime?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 }
@@ -340,6 +368,10 @@ model BroadcastRecipient {
   nextAttemptAt     DateTime? // retry backoff for transport-level failures
   sentAt            DateTime?
   createdAt         DateTime  @default(now())
+  // Per-recipient rendered content (bulk acceptance credentials). NULL = use
+  // the broadcast's shared subject/body (BCC). Cleared once sent.
+  subject           String?
+  body              String?
 
   @@unique([broadcastId, email]) // idempotency: never double-send within a broadcast
   @@index([status, nextAttemptAt, createdAt]) // the claim query
@@ -368,6 +400,12 @@ model TeamSettings {
   id             String    @id @default(cuid())
   memberAddStart DateTime?
   memberAddEnd   DateTime?
+  // How participants book mentors: individual | organization | both
+  mentorBookingMode String  @default("individual")
+  // Max non-cancelled bookings one participant may hold with the same mentor
+  // (or organization). Bookings created before bookingCountResetAt don't count.
+  maxBookingsPerMentor Int       @default(3)
+  bookingCountResetAt  DateTime?
   updatedAt      DateTime  @updatedAt
 }
 
