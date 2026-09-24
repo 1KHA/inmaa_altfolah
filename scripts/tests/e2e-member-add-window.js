@@ -83,7 +83,6 @@ async function main() {
   // ============ settings API ============
   section('admin team-settings API');
   const g = await api('/api/admin/team-settings', { cookie: aCookie });
-  // This hackathon caps teams at 5 (TEAM_MAX_MEMBERS); upstream ships 30.
   check('GET returns 200 with maxMembers=5', g.status === 200 && g.json?.maxMembers === 5, JSON.stringify(g.json));
   check('GET without admin -> 401/403', [401, 403].includes((await api('/api/admin/team-settings', { cookie: lCookie })).status));
   const badPut = await setWindow(new Date(Date.now() + 864e5).toISOString(), new Date(Date.now() + 1000).toISOString());
@@ -198,8 +197,14 @@ async function main() {
 
   // ============ guard rails ============
   section('guard rails');
-  const nonLeader = await api('/api/participant/add-member', { method: 'POST', cookie: memberCookie(), body: memberBody() });
+  // A real non-leader row: the route now reads isLeader from the DB (a forged
+  // JWT flag no longer matters either way), so use an actual member's identity.
+  const realMember = fillerRows.find((r) => r.id !== leader.id) || fillerRows[0];
+  const nonLeaderCookie = cookie({ id: realMember.id, participantId: realMember.id, role: 'participant', teamId: team.id, isLeader: false });
+  const nonLeader = await api('/api/participant/add-member', { method: 'POST', cookie: nonLeaderCookie, body: memberBody() });
   check('non-leader still refused (403)', nonLeader.status === 403, `status=${nonLeader.status}`);
+  const forged = await api('/api/participant/add-member', { method: 'POST', cookie: cookie({ id: realMember.id, participantId: realMember.id, role: 'participant', teamId: team.id, isLeader: true }), body: memberBody() });
+  check('  a member with a forged isLeader:true token is still refused (DB is the source of truth)', forged.status === 403, `status=${forged.status}`);
   check('unauthenticated window read -> 401', (await api('/api/participant/member-add-window')).status === 401);
 }
 

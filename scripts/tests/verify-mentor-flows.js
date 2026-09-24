@@ -70,6 +70,18 @@ async function main() {
   check('new mentor defaults to status=pending', fresh.status === 'pending', fresh.status);
 
   // ---- 2. approval fires only on the transition ---------------------------
+  // Route email to Mailpit for this section: approval must email the mentor
+  // their login details (fresh temporary password + login URL).
+  const MAILPIT = 'http://localhost:8025';
+  const settingsRow = await prisma.emailSettings.findFirst();
+  const originalSettings = settingsRow ? { ...settingsRow } : null;
+  if (settingsRow) {
+    await prisma.emailSettings.update({
+      where: { id: settingsRow.id },
+      data: { host: 'localhost', port: 1025, secure: false, username: '', password: '', fromEmail: 'noreply@example.test', fromName: 'منصة دِيَم', adminInboxEmail: '', enabled: true },
+    });
+    await fetch(MAILPIT + '/api/v1/messages', { method: 'DELETE' });
+  }
   const approve = await api('/api/admin/mentors', {
     method: 'PUT', cookie: adminCookie,
     body: { id: created.mentorId, name: 'مرشد تجريبي', email: MENTOR_EMAIL, specialty: 'اختبار', phone: '0500000000', status: 'active' },
@@ -80,6 +92,28 @@ async function main() {
   check('mentor notified once on pending -> active', mentorNotifs.length === 1, `count=${mentorNotifs.length}`);
   check('  it is the approval message',
     mentorNotifs[0]?.title === 'تم قبول طلبك كمرشد', mentorNotifs[0]?.title);
+  check('  dashboard message does NOT contain a password', !/كلمة المرور/.test(mentorNotifs[0]?.message || ''), mentorNotifs[0]?.message);
+
+  if (settingsRow) {
+    await new Promise((r) => setTimeout(r, 900));
+    const inbox = (await (await fetch(MAILPIT + '/api/v1/messages?limit=100')).json()).messages || [];
+    const mail = inbox.find((m) => (m.To || []).some((t) => t.Address === MENTOR_EMAIL));
+    check('approval email reached the mentor', !!mail, `inbox=${inbox.length}`);
+    if (mail) {
+      const full = await (await fetch(MAILPIT + '/api/v1/message/' + mail.ID)).json();
+      const text = (full.Text || '') + (full.HTML || '');
+      const pw = (text.match(/كلمة المرور:\s*([A-Za-z0-9]{10})/) || [])[1];
+      check('  email carries {{email}}', text.includes(MENTOR_EMAIL));
+      check('  email carries {{loginUrl}}', /https?:\/\/[^\s<]+\/login/.test(text));
+      check('  email carries a generated {{password}}', !!pw, text.slice(0, 200));
+      if (pw) {
+        const login = await api('/api/login', { method: 'POST', body: { email: MENTOR_EMAIL, password: pw } });
+        check('  the emailed password logs the mentor in', login.status === 200 && (login.json?.role === 'mentor' || login.json?.user?.role === 'mentor'), `status=${login.status} ${JSON.stringify(login.json).slice(0, 120)}`);
+      }
+    }
+    const { id: _i, updatedAt: _u, ...restore } = originalSettings;
+    await prisma.emailSettings.update({ where: { id: settingsRow.id }, data: restore });
+  }
 
   // an unrelated edit while already active must NOT re-notify
   await api('/api/admin/mentors', {

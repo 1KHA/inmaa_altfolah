@@ -23,5 +23,20 @@ if [ "${SEED_ON_START:-true}" = "true" ]; then
   node prisma/seed.js
 fi
 
+# Local stand-in for Vercel Cron: poll the cron endpoints every minute so
+# booking reminders and the email queue work in Docker too (LOCAL_CRON=true).
+if [ "${LOCAL_CRON:-false}" = "true" ] && [ -n "${CRON_SECRET:-}" ]; then
+  echo "[entrypoint] local cron poller enabled (every 60s)"
+  (
+    sleep 20
+    while true; do
+      for path in /api/cron/booking-reminders /api/cron/drain-email-queue; do
+        wget -q -O /dev/null --header="Authorization: Bearer ${CRON_SECRET}" "http://127.0.0.1:${PORT:-3000}${path}" || true
+      done
+      sleep 60
+    done
+  ) &
+fi
+
 echo "[entrypoint] starting Next.js server on port ${PORT:-3000}"
 exec node server.js

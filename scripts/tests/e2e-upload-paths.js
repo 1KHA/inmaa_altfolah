@@ -28,12 +28,12 @@ function registration(suffix, extra = {}) {
   fd.set('ideaDescription', 'وصف');
   fd.set('hearAboutUs', 'اختبار');
   fd.set('leaderInfo', JSON.stringify({ fullName: 'قائد', email: `${TAG}-${suffix}-lead@example.invalid`, contactNumber: '0500000001', city: 'الرياض', gender: 'ذكر' }));
-  fd.set('members', JSON.stringify([{ fullName: 'عضو', email: `${TAG}-${suffix}-m@example.invalid`, contactNumber: '0500000002', city: 'الرياض', gender: 'أنثى' }, { fullName: 'عضوة ثالثة', email: `${TAG}-${suffix}-m@example.invalid-b`, contactNumber: '0500000002', city: 'الرياض', gender: 'أنثى' }]));
+  fd.set('members', JSON.stringify([{ fullName: 'عضو', email: `${TAG}-${suffix}-m@example.invalid`, contactNumber: '0500000002', city: 'الرياض', gender: 'أنثى' }]));
   for (const [k, v] of Object.entries(extra)) fd.set(k, v);
   return fetch(BASE + '/api/register-team', { method: 'POST', body: fd }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => null) }));
 }
 
-const STORAGE_URL = 'https://example.supabase.co/storage/v1/object/public/mayda_buk/teams/1700000000_test.pdf';
+const STORAGE_URL = 'https://example.supabase.co/storage/v1/object/public/uploads/teams/1700000000_test.pdf';
 
 async function main() {
   section('pre-uploaded attachment URL is stored');

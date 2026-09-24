@@ -186,12 +186,12 @@ async function waitForServer() {
   r = await disableApi({ participantIds: [bulkA.id, bulkB.id, solo2.id], disabled: true });
   check('bulk disabled 3 participants in one call', r.status === 200 && r.json.participantsUpdated === 3, JSON.stringify(r.json));
   check('bulk-disabled account cannot log in', (await login(bulkA.email, PW)).status === 403);
-  r = await disableApi({ participantIds: [bulkA.id, bulkB.id, solo2.id], disabled: false });
+  r = await disableApi({ participantIds: [bulkA.id, bulkB.id, solo2.id], disabled: false, sendCredentials: false });
   check('bulk re-enabled 3', r.status === 200 && r.json.participantsUpdated === 3);
   check('re-enabled account CAN log in again', (await login(bulkA.email, PW)).status === 200);
 
   section('re-enable restores the team');
-  await disableApi({ teamIds: [team.id], disabled: false });
+  await disableApi({ teamIds: [team.id], disabled: false, sendCredentials: false });
   check('team member can log in after team re-enabled', (await login(member.email, PW)).status === 200);
   const t = await prisma.team.findUnique({ where: { id: team.id } });
   check('team disabledAt cleared', t.isDisabled === false && t.disabledAt === null);
@@ -250,7 +250,7 @@ async function waitForServer() {
         JSON.stringify(r.json));
   check('participant from mixed bulk blocked', (await login(bulkA.email, PW)).status === 403);
   check('mentor from mixed bulk blocked', (await login(mentorOff.email, PW)).status === 403);
-  await disableApi({ participantIds: [bulkA.id], teamIds: [openTeam.id], mentorIds: [mentorOff.id], disabled: false });
+  await disableApi({ participantIds: [bulkA.id], teamIds: [openTeam.id], mentorIds: [mentorOff.id], disabled: false, sendCredentials: false });
 
   section('validation + authorisation');
   r = await disableApi({ participantIds: [], teamIds: [], disabled: true });

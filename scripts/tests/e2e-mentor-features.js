@@ -93,12 +93,18 @@ async function main() {
   });
   check('first booking with mentor A succeeds', first.status === 201, `status=${first.status} ${JSON.stringify(first.json)}`);
 
+  // Limit is now configurable (default 3): pin it to 1 for this section so the
+  // original one-per-mentor assertions keep their meaning, then restore.
+  const settingsRow = await prisma.teamSettings.findFirst();
+  const savedMax = settingsRow?.maxBookingsPerMentor ?? 3;
+  await api('/api/admin/team-settings', { method: 'PUT', cookie: aCookie, body: { maxBookingsPerMentor: 1 } });
   const second = await api('/api/participant/book-appointment', {
     method: 'POST', cookie: partCookie(p1.id), body: { availabilityId: a2.id },
   });
-  check('second slot with the SAME mentor is rejected (400)', second.status === 400, `status=${second.status}`);
-  check('  rejection message says one session per mentor',
-    !!second.json?.message && second.json.message.includes('جلسة واحدة'), JSON.stringify(second.json));
+  check('second slot with the SAME mentor is rejected (400) when the limit is 1', second.status === 400, `status=${second.status}`);
+  check('  rejection message states the limit',
+    !!second.json?.message && /الحد الأقصى/.test(second.json.message) && second.json.limit === 1, JSON.stringify(second.json));
+  await api('/api/admin/team-settings', { method: 'PUT', cookie: aCookie, body: { maxBookingsPerMentor: savedMax } });
 
   const otherMentor = await api('/api/participant/book-appointment', {
     method: 'POST', cookie: partCookie(p1.id), body: { availabilityId: b1.id },
