@@ -23,8 +23,13 @@ const note = (f, what) => edits.push(`${f}: ${what}`);
 for (const f of ['e2e-golden-path.js', 'e2e-upload-paths.js']) {
   let s = read(f);
   const m = s.match(/fd\.set\('members', JSON\.stringify\(\[\{([^\n]*?)\}\]\)\);/);
-  if (m && !s.includes('}, {')) {
-    const second = m[1].replace(/\$\{TAG\}([^`'"]*)/, '${TAG}$1-b').replace('عضو الرحلة', 'عضوة ثالثة').replace("'عضو'", "'عضوة ثالثة'");
+  // only when the array still holds exactly one member
+  if (m && (m[1].match(/fullName/g) || []).length === 1) {
+    // unique address: the suffix goes before the @, not after the TLD
+    const second = m[1]
+      .replace(/(`\$\{TAG\}[^`@]*)@/, '$1-b@')
+      .replace('عضو الرحلة', 'عضوة ثالثة')
+      .replace("'عضو'", "'عضوة ثالثة'");
     s = s.replace(m[0], `fd.set('members', JSON.stringify([{${m[1]}}, {${second}}]));`);
     write(f, s); note(f, 'second team member added');
   }

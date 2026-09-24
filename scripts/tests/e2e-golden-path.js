@@ -74,7 +74,7 @@ async function main() {
   fd.set('ideaDescription', 'وصف الفكرة');
   fd.set('hearAboutUs', 'اختبار');
   fd.set('leaderInfo', JSON.stringify({ fullName: 'قائد الرحلة', email: `${TAG}-leader@t.test`, contactNumber: '0500000001', city: 'الرياض' }));
-  fd.set('members', JSON.stringify([{ fullName: 'عضو الرحلة', email: `${TAG}-member@t.test`, contactNumber: '0500000002', city: 'الرياض' }, { fullName: 'عضوة ثالثة', email: `${TAG}-member@t.test-b`, contactNumber: '0500000002', city: 'الرياض' }]));
+  fd.set('members', JSON.stringify([{ fullName: 'عضو الرحلة', email: `${TAG}-member@t.test`, contactNumber: '0500000002', city: 'الرياض' }, { fullName: 'عضوة ثالثة', email: `${TAG}-member-b@t.test`, contactNumber: '0500000002', city: 'الرياض' }]));
   const regRes = await fetch(BASE + '/api/register-team', { method: 'POST', body: fd });
   check('registration accepted', regRes.status === 200 || regRes.status === 201, `status=${regRes.status}`);
 
