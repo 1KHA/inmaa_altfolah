@@ -10,8 +10,28 @@ in a `finally` block, so the database is unchanged after a run.
 
 - The local Docker Postgres running (`mayda-postgres`) with all migrations
   applied (`npx prisma migrate deploy`).
-- Mailpit running for the email suites (`docker run -d --name mayda-mailpit
-  -p 1025:1025 -p 8025:8025 axllent/mailpit`).
+- Mailpit running for the email suites — it ships with the local stack:
+
+  ```bash
+  docker compose --env-file .env.docker --profile test up -d
+  ```
+
+  SMTP `localhost:1025`, web UI <http://localhost:8025>. It is published on both
+  IPv4 and IPv6 loopback on purpose: macOS resolves `localhost` to `::1` first,
+  and an IPv4-only publish makes every send wait out a TCP timeout (227s per
+  mail) before falling back.
+
+  The app reads SMTP settings from the `EmailSettings` row, not from env:
+
+  ```bash
+  # host-run server (what these suites drive) — the suites set this themselves
+  DATABASE_URL=postgresql://mayda:localtestpassword@127.0.0.1:55432/mayda \
+    node scripts/dev/use-mailpit.js localhost 1025
+
+  # the containerised app reaches Mailpit by service name instead
+  DATABASE_URL=postgresql://mayda:localtestpassword@127.0.0.1:55432/mayda \
+    node scripts/dev/use-mailpit.js mailpit 1025
+  ```
 - A production build served locally — **not** `next dev`. The dev server was
   found to hang under the load these suites generate; every suite here is
   written and verified against `next start`.
