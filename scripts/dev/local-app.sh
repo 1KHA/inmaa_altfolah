@@ -24,7 +24,7 @@ export DIRECT_URL="$DATABASE_URL"
 export DATABASE_TYPE=postgresql
 
 echo "[local] database : 127.0.0.1:${DB_PORT}/${POSTGRES_DB} (Docker)"
-echo "[local] mail      : Mailpit http://localhost:${MAILPIT_UI_PORT:-8025}"
+echo "[local] mail      : Mailpit http://localhost:${MAILPIT_UI_PORT:-8025} (SMTP 127.0.0.1:${MAILPIT_SMTP_PORT:-1025})"
 echo "[local] app       : http://localhost:${PORT}"
 
 exec npx next dev -p "$PORT"
