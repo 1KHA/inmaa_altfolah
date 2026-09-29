@@ -292,7 +292,11 @@ export default function TeamManagementPage() {
           <Card>
         <CardHeader className="flex flex-col sm:flex-row-reverse items-start sm:items-center justify-between gap-3">
           <div className="min-w-0">
-            <CardTitle className="text-xl sm:text-2xl leading-snug break-words">فريق: {teamData.teamName}</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl leading-snug break-words">
+              {/* Name first so it starts the RTL line at the right edge; <bdi>
+                  isolates it so a Latin name does not drag the label around. */}
+              <bdi>{teamData.teamName}</bdi> فريق
+            </CardTitle>
             <CardDescription>تفاصيل الفريق والفكرة</CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:shrink-0">
