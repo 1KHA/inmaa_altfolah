@@ -83,7 +83,7 @@ const defaultFAQData: FAQCategory[] = [
       {
         id: "comm2",
         question: "ماهي طرق التواصل مع فريق الدعم الفني؟",
-        answer: "للرد على الاستفسارات والإجابة على تساؤلاتكم يمكنكم التواصل عبر: \n\nwmvc@wadimakka.sa\n\n+966 557552166"
+        answer: "للرد على الاستفسارات والإجابة على تساؤلاتكم يمكنكم التواصل عبر: \n\nwmvc@wadimakkah.sa\n\n+966 557552166"
       }
     ]
   },
