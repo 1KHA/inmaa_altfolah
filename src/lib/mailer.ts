@@ -190,8 +190,8 @@ export function escapeHtml(value: string): string {
 export type EmailAudience = 'participant' | 'mentor' | 'admin';
 
 export const SUPPORT_EMAIL = 'wmvc@wadimakkah.sa';
-export const SUPPORT_PHONE = '966545671998';
-const SUPPORT_PHONE_URL = 'tel:+966545671998';
+export const SUPPORT_PHONE = '+966557552166';
+const SUPPORT_PHONE_URL = 'tel:+966557552166';
 
 const FOOTER_LINK_STYLE = 'color:#620f10;text-decoration:none';
 
