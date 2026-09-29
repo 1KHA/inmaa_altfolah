@@ -43,6 +43,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-mayda}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mayda}
       DIRECT_URL: postgresql://${POSTGRES_USER:-mayda}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mayda}
       DATABASE_TYPE: postgresql
+      # Absolute URLs inside e-mail (logos, login links). Point it at the host
+      # port so a mail opened on this machine can actually load them.
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:${APP_PORT:-3011}}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       SEED_ON_START: ${SEED_ON_START:-true}
       # File-upload storage (Supabase) — leave empty to disable uploads

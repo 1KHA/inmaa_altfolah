@@ -34,7 +34,10 @@ export function getAppBaseUrl(): string {
   if (explicit) return explicit.replace(/\/+$/, '');
   const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   if (vercel) return `https://${vercel.replace(/\/+$/, '')}`;
-  return 'https://dyamhackathon.vercel.app';
+  // Last resort only: set NEXT_PUBLIC_APP_URL per environment (the Docker stack
+  // and `npm run dev:local-db` point it at localhost so e-mail images and login
+  // links resolve while testing).
+  return 'https://mayda-four.dyam.tech';
 }
 
 /** Participant login page (participants sign in with email + password). */

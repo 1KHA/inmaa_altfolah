@@ -22,6 +22,9 @@ DB_PORT="${POSTGRES_PORT:-55432}"
 export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${DB_PORT}/${POSTGRES_DB}"
 export DIRECT_URL="$DATABASE_URL"
 export DATABASE_TYPE=postgresql
+# E-mail bodies build absolute URLs (logos, login links) from this. Without it
+# they fall back to the production domain, which does not resolve while testing.
+export NEXT_PUBLIC_APP_URL="http://localhost:${PORT}"
 
 echo "[local] database : 127.0.0.1:${DB_PORT}/${POSTGRES_DB} (Docker)"
 echo "[local] mail      : Mailpit http://localhost:${MAILPIT_UI_PORT:-8025} (SMTP 127.0.0.1:${MAILPIT_SMTP_PORT:-1025})"

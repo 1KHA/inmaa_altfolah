@@ -10,6 +10,8 @@ import { useToast } from '../../../components/ui/use-toast'
 import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
 import Loader from '@/components/ui/loader'
+import SiteHeader from '@/app/landing/components/SiteHeader'
+import SiteFooter from '@/app/landing/components/SiteFooter'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -95,16 +97,14 @@ export default function LoginPage() {
       
       {/* Main content with smooth fade in */}
       <div 
-        className={`min-h-screen transition-opacity duration-500 ${contentVisible ? 'opacity-100' : 'opacity-0'}`}
+        className={`min-h-screen flex flex-col transition-opacity duration-500 ${contentVisible ? 'opacity-100' : 'opacity-0'}`}
         style={{ backgroundColor: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}
       >
-        {/* Header Image Section */}
-        <div className="w-full">
-          <img src="/header.png" alt="Header" className="w-full h-auto" />
-        </div>
+        {/* Header (shared with the landing and registration pages) */}
+        <SiteHeader standalone />
         
-        {/* Form Section */}
-        <div className="py-16 px-4 sm:px-6 lg:px-8">
+        {/* Form Section — flex-1 keeps the footer at the bottom on tall screens */}
+        <div className="flex-1 py-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
             <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
               <CardHeader className="text-center pb-8 pt-10">
@@ -198,18 +198,8 @@ export default function LoginPage() {
           </div>
         </div>
         
-        {/* Footer Image */}
-        <div className="w-full">
-          <picture>
-            <source media="(max-width: 520px)" srcSet="/mobfot.png" />
-            <img 
-              src="/footer.png" 
-              alt="Footer" 
-              className="w-full h-auto"
-              style={{ display: "block" }}
-            />
-          </picture>
-        </div>
+        {/* Footer (shared with the landing and registration pages) */}
+        <SiteFooter standalone />
       </div>
     </>
   )
