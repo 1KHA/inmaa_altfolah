@@ -19,14 +19,18 @@ const logOptions: Prisma.LogLevel[] = isDevelopment
   : ['error'] as Prisma.LogLevel[]
 
 // Enhanced Prisma client configuration for multi-database support
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({
-  log: logOptions,
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL,
-    },
-  },
-})
+// The datasource override is applied ONLY when the URL is actually present.
+// `next build` imports every route module to read its config exports, and on
+// Vercel DATABASE_URL is not necessarily exposed to the build step — passing
+// `url: undefined` makes the PrismaClient constructor throw during "Collecting
+// page data". Without the override Prisma resolves env("DATABASE_URL") from the
+// schema lazily, i.e. at query time, when the variable is there.
+const clientOptions: Prisma.PrismaClientOptions = { log: logOptions }
+if (process.env.DATABASE_URL) {
+  clientOptions.datasources = { db: { url: process.env.DATABASE_URL } }
+}
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient(clientOptions)
 
 // Log database connection information in development
 if (isDevelopment) {
