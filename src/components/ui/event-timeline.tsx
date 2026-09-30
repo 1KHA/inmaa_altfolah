@@ -56,8 +56,8 @@ export const TIMELINE_EVENTS: TimelineEvent[] = [
     end: "2026-09-30",
   },
   {
-    shortName: "تشغيل الهاكاثون",
-    name: "تشغيل الهاكاثون (حضوري)",
+    shortName: "بدأ الهاكاثون",
+    name: "بدأ الهاكاثون (حضوري)",
     dateLabel: "4 - 8 أكتوبر",
     start: "2026-10-04",
     end: "2026-10-08",
