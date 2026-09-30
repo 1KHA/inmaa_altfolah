@@ -746,12 +746,21 @@ export default function TeamsPage() {
                 تصدير
               </Button>
               {teams.some((t) => t.status === 'pending') && (
-                <BulkApproveButton
-                  target="teams"
-                  size="default"
-                  className="gap-2 bg-green-600 hover:bg-green-700"
-                  onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
-                />
+                <>
+                  <BulkApproveButton
+                    target="teams"
+                    size="default"
+                    className="gap-2 bg-green-600 hover:bg-green-700"
+                    onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
+                  />
+                  <BulkApproveButton
+                    target="teams"
+                    action="reject"
+                    size="default"
+                    className="gap-2"
+                    onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
+                  />
+                </>
               )}
             </div>
           </div>
@@ -763,6 +772,12 @@ export default function TeamsPage() {
                 target="teams"
                 ids={Array.from(selectedIds)}
                 className="bg-green-600 hover:bg-green-700"
+                onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
+              />
+              <BulkApproveButton
+                target="teams"
+                action="reject"
+                ids={Array.from(selectedIds)}
                 onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
               />
               <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={() => handleBulkDisable(true)}>

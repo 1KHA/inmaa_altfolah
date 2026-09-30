@@ -1,5 +1,9 @@
 /**
- * Bulk acceptance of pending teams / individual participants.
+ * Bulk acceptance OR rejection of pending teams / individual participants.
+ *
+ * Both actions share one job machine; `action` on the job state decides which
+ * per-row function runs. Rejection is the cheap one — a status change and one
+ * notification per recipient, no password hashing.
  *
  * Accepting hundreds of teams means hundreds of bcrypt hashes and thousands of
  * per-person credential emails — far beyond one request. So a bulk job is:
@@ -27,16 +31,20 @@ import { enqueueBroadcastRecipients, type QueueRecipientInput } from './email-qu
 import { generatePassword, credentialVariables, participantDisplayName } from './credentials';
 
 export type BulkTarget = 'teams' | 'participants';
+export type BulkAction = 'approve' | 'reject';
 
 /** Progress persisted in Broadcast.audience (JSON). */
 export interface BulkJobState {
   type: 'bulk-approval';
   target: BulkTarget;
+  /** Absent on jobs created before rejection existed — treated as 'approve'. */
+  action?: BulkAction;
   /** Explicit selection (null = every pending row at the time of each chunk). */
   ids: string[] | null;
   /** Next index into `ids` (selection mode). */
   cursor: number;
   requested: number;
+  /** Rows successfully acted on — approved or rejected, per `action`. */
   approved: number;
   /** Not pending any more when reached (already handled, disabled, missing). */
   skipped: number;
@@ -52,9 +60,20 @@ export interface BulkJobProgress extends Omit<BulkJobState, 'ids' | 'failedIds' 
   emails: { total: number; sent: number; failed: number; status: string; pending: number; sending: number };
 }
 
-const JOB_TITLES: Record<BulkTarget, string> = {
-  teams: 'قبول جماعي — الفرق',
-  participants: 'قبول جماعي — المشاركون الأفراد',
+const JOB_TITLES: Record<BulkAction, Record<BulkTarget, string>> = {
+  approve: {
+    teams: 'قبول جماعي — الفرق',
+    participants: 'قبول جماعي — المشاركون الأفراد',
+  },
+  reject: {
+    teams: 'رفض جماعي — الفرق',
+    participants: 'رفض جماعي — المشاركون الأفراد',
+  },
+};
+
+const JOB_BODIES: Record<BulkAction, string> = {
+  approve: 'بريد بيانات الدخول — محتوى فردي لكل مستلم (يُرسل عبر قائمة الانتظار)',
+  reject: 'بريد إشعار الاعتذار — يُرسل عبر قائمة الانتظار',
 };
 
 /** Where clause for rows a bulk job may accept. */
@@ -77,12 +96,14 @@ export async function countPending(target: BulkTarget, ids: string[] | null): Pr
 export async function createBulkJob(
   adminId: string,
   target: BulkTarget,
-  ids: string[] | null
+  ids: string[] | null,
+  action: BulkAction = 'approve'
 ): Promise<{ jobId: string; requested: number }> {
   const requested = await countPending(target, ids);
   const state: BulkJobState = {
     type: 'bulk-approval',
     target,
+    action,
     ids,
     cursor: 0,
     requested,
@@ -94,8 +115,8 @@ export async function createBulkJob(
   };
   const job = await prisma.broadcast.create({
     data: {
-      title: JOB_TITLES[target],
-      body: 'بريد بيانات الدخول — محتوى فردي لكل مستلم (يُرسل عبر قائمة الانتظار)',
+      title: JOB_TITLES[action][target],
+      body: JOB_BODIES[action],
       emailSubject: null,
       channels: JSON.stringify(['dashboard', 'email']),
       audience: JSON.stringify(state),
@@ -256,6 +277,57 @@ export async function approveParticipantQueued(participantId: string, jobId: str
   return 'approved';
 }
 
+/**
+ * Reject one team exactly like POST /api/admin/reject-team: status → rejected
+ * and one rejection notification per member, with the e-mail queued instead of
+ * sent inline. No credentials are issued — a rejected team never signs in.
+ */
+export async function rejectTeamQueued(teamId: string, jobId: string): Promise<Outcome> {
+  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { id: true, teamName: true, status: true, isDisabled: true } });
+  if (!team || team.status !== 'pending' || team.isDisabled) return 'skipped';
+
+  // Guard on `pending` so two overlapping runs can never reject twice.
+  const res = await prisma.team.updateMany({ where: { id: teamId, status: 'pending' }, data: { status: 'rejected' } });
+  if (res.count === 0) return 'skipped';
+
+  const planned = await createNotificationRows({
+    templateKey: 'teamRejection',
+    variables: { teamName: team.teamName || 'فريقك' },
+    audience: { kind: 'team', teamId },
+    relatedEntityType: 'team',
+    relatedEntityId: teamId,
+  });
+  await enqueueCredentialEmails(jobId, planned);
+  return 'approved';
+}
+
+/**
+ * Reject one individual participant exactly like POST
+ * /api/admin/reject-participant: status → rejected + a queued notification.
+ */
+export async function rejectParticipantQueued(participantId: string, jobId: string): Promise<Outcome> {
+  const participant = await prisma.participant.findUnique({
+    where: { id: participantId },
+    select: { id: true, status: true, teamId: true, isDisabled: true },
+  });
+  if (!participant || participant.status !== 'pending' || participant.teamId || participant.isDisabled) return 'skipped';
+
+  const res = await prisma.participant.updateMany({
+    where: { id: participantId, status: 'pending', teamId: null },
+    data: { status: 'rejected' },
+  });
+  if (res.count === 0) return 'skipped';
+
+  const planned = await createNotificationRows({
+    templateKey: 'participantRejection',
+    audience: { kind: 'participant', id: participantId },
+    relatedEntityType: 'participant',
+    relatedEntityId: participantId,
+  });
+  await enqueueCredentialEmails(jobId, planned);
+  return 'approved';
+}
+
 /** Next ids to work on for this job (bounded, never re-visits failures). */
 async function nextCandidates(state: BulkJobState, take: number): Promise<string[]> {
   if (state.ids) {
@@ -282,7 +354,11 @@ export async function runBulkJobChunk(jobId: string, budgetMs: number): Promise<
 
   const startedAt = Date.now();
   const overBudget = () => Date.now() - startedAt > budgetMs;
-  const approve = state.target === 'teams' ? approveTeamQueued : approveParticipantQueued;
+  const runners = {
+    approve: { teams: approveTeamQueued, participants: approveParticipantQueued },
+    reject: { teams: rejectTeamQueued, participants: rejectParticipantQueued },
+  } as const;
+  const act = runners[state.action ?? 'approve'][state.target];
 
   while (!overBudget()) {
     const candidates = await nextCandidates(state, 10);
@@ -293,11 +369,11 @@ export async function runBulkJobChunk(jobId: string, budgetMs: number): Promise<
     for (const id of candidates) {
       if (state.ids) state.cursor++;
       try {
-        const outcome = await approve(id, jobId);
+        const outcome = await act(id, jobId);
         if (outcome === 'approved') state.approved++;
         else state.skipped++;
       } catch (error) {
-        console.error(`[bulk-approval] ${state.target} ${id} failed:`, error);
+        console.error(`[bulk-approval] ${state.action ?? 'approve'} ${state.target} ${id} failed:`, error);
         state.failed++;
         state.failedIds.push(id);
       }

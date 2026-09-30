@@ -12,9 +12,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "../../../components/ui/use-toast";
-import { CheckCheck, Loader2, Mail } from "lucide-react";
+import { CheckCheck, Loader2, Mail, UserX } from "lucide-react";
 
 type Target = "teams" | "participants";
+type Action = "approve" | "reject";
 
 interface Progress {
   jobId: string;
@@ -29,6 +30,8 @@ interface Progress {
 
 interface Props {
   target: Target;
+  /** What the job does. Defaults to acceptance. */
+  action?: Action;
   /** Explicit selection; omit to accept every pending row. */
   ids?: string[];
   /** Called after the job finishes (or is closed) so the page can refresh. */
@@ -43,6 +46,60 @@ const NOUN: Record<Target, { one: string; many: string }> = {
   participants: { one: "مشارك", many: "المشاركين الأفراد" },
 };
 
+/** Every string that differs between the two actions, in one place. */
+const COPY: Record<Action, {
+  buttonSelected: string;
+  buttonAll: (many: string) => string;
+  dialogTitle: string;
+  summary: (n: number, one: string, scoped: boolean) => string;
+  note: string;
+  start: string;
+  phase: string;
+  progressLabel: string;
+  doneLabel: string;
+  mailLabel: string;
+  toastTitle: string;
+  toastDone: (n: number, one: string) => string;
+  postError: string;
+  emailDisabled: string;
+  destructive: boolean;
+}> = {
+  approve: {
+    buttonSelected: "قبول المحدد",
+    buttonAll: (many) => `قبول جميع ${many} المعلّقين`,
+    dialogTitle: "تأكيد القبول الجماعي",
+    summary: (n, one, scoped) => `سيتم قبول ${n} ${one} معلّق${scoped ? " من ضمن التحديد" : ""}.`,
+    note: "يُنشأ لكل عضو حساب دخول وتُرسل بيانات الدخول بالبريد عبر قائمة الانتظار (رسالة لكل شخص)؛ لن يُغيَّر أي عنصر مقبول أو مرفوض مسبقاً.",
+    start: "بدء القبول",
+    phase: "جاري القبول...",
+    progressLabel: "القبول",
+    doneLabel: "مقبول",
+    mailLabel: "رسائل بيانات الدخول",
+    toastTitle: "اكتمل القبول الجماعي",
+    toastDone: (n, one) => `تم قبول ${n} ${one}`,
+    postError: "فشل تنفيذ القبول الجماعي",
+    emailDisabled: "البريد الإلكتروني معطّل في الإعدادات — تم القبول وستُرسل الرسائل تلقائياً عند تفعيله.",
+    destructive: false,
+  },
+  reject: {
+    buttonSelected: "رفض المحدد",
+    buttonAll: (many) => `رفض جميع ${many} المعلّقين`,
+    dialogTitle: "تأكيد الرفض الجماعي",
+    summary: (n, one, scoped) => `سيتم رفض ${n} ${one} معلّق${scoped ? " من ضمن التحديد" : ""}.`,
+    note: "تُرسل رسالة اعتذار لكل مستلم عبر قائمة الانتظار، ولا تُنشأ حسابات دخول؛ لن يُغيَّر أي عنصر مقبول أو مرفوض مسبقاً. لا يمكن التراجع عن الرفض من هذه الشاشة.",
+    start: "بدء الرفض",
+    phase: "جاري الرفض...",
+    progressLabel: "الرفض",
+    doneLabel: "مرفوض",
+    mailLabel: "رسائل الاعتذار",
+    toastTitle: "اكتمل الرفض الجماعي",
+    toastDone: (n, one) => `تم رفض ${n} ${one}`,
+    postError: "فشل تنفيذ الرفض الجماعي",
+    emailDisabled: "البريد الإلكتروني معطّل في الإعدادات — تم الرفض وستُرسل الرسائل تلقائياً عند تفعيله.",
+    destructive: true,
+  },
+};
+
 /**
  * "Accept all / accept selected" with a two-phase progress dialog:
  *   1. approvals — POST /api/admin/bulk-approve in a loop until `done`
@@ -51,7 +108,7 @@ const NOUN: Record<Target, { one: string; many: string }> = {
  *      POST /api/admin/email-queue/drain while the dialog stays open, with
  *      the cron as the safety net if the admin closes it.
  */
-export default function BulkApproveButton({ target, ids, onDone, size = "sm", variant = "default", className }: Props) {
+export default function BulkApproveButton({ target, action = "approve", ids, onDone, size = "sm", variant = "default", className }: Props) {
   const { toast } = useToast();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -61,6 +118,8 @@ export default function BulkApproveButton({ target, ids, onDone, size = "sm", va
   const [error, setError] = useState<string | null>(null);
   const cancelled = useRef(false);
   const noun = NOUN[target];
+  const copy = COPY[action];
+  const ActionIcon = copy.destructive ? UserX : CheckCheck;
 
   // How many rows this action would really accept (selection may include
   // already-approved rows, which are skipped).
@@ -83,7 +142,7 @@ export default function BulkApproveButton({ target, ids, onDone, size = "sm", va
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "فشل تنفيذ القبول الجماعي");
+    if (!res.ok) throw new Error(data.error || copy.postError);
     return data as Progress;
   };
 
@@ -102,7 +161,7 @@ export default function BulkApproveButton({ target, ids, onDone, size = "sm", va
     setConfirmOpen(false);
     try {
       // ---- phase 1: approvals, chunk by chunk --------------------------------
-      let p = await post(ids ? { target, ids } : { target });
+      let p = await post(ids ? { target, action, ids } : { target, action });
       setProgress(p);
       while (!p.done && !cancelled.current) {
         p = await post({ jobId: p.jobId });
@@ -127,7 +186,7 @@ export default function BulkApproveButton({ target, ids, onDone, size = "sm", va
         if (drain.stoppedBy === "email-disabled") {
           p = await refresh(p.jobId);
           setProgress(p);
-          setError("البريد الإلكتروني معطّل في الإعدادات — تم القبول وستُرسل الرسائل تلقائياً عند تفعيله.");
+          setError(copy.emailDisabled);
           break;
         }
         await new Promise((r) => setTimeout(r, 1500));
@@ -143,8 +202,8 @@ export default function BulkApproveButton({ target, ids, onDone, size = "sm", va
       }
       setPhase("finished");
       toast({
-        title: "اكتمل القبول الجماعي",
-        description: `تم قبول ${p.approved} ${noun.one} — بريد ناجح ${p.emails.sent}${p.emails.failed ? `، فاشل ${p.emails.failed}` : ""}`,
+        title: copy.toastTitle,
+        description: `${copy.toastDone(p.approved, noun.one)} — بريد ناجح ${p.emails.sent}${p.emails.failed ? `، فاشل ${p.emails.failed}` : ""}`,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "حدث خطأ غير متوقع");
@@ -170,34 +229,43 @@ export default function BulkApproveButton({ target, ids, onDone, size = "sm", va
 
   return (
     <>
-      <Button size={size} variant={variant} className={className} onClick={() => setConfirmOpen(true)} disabled={running}>
-        <CheckCheck className="ml-1 h-4 w-4" />
-        {ids ? "قبول المحدد" : `قبول جميع ${noun.many} المعلّقين`}
+      <Button
+        size={size}
+        variant={copy.destructive && variant === "default" ? "destructive" : variant}
+        className={className}
+        onClick={() => setConfirmOpen(true)}
+        disabled={running}
+      >
+        <ActionIcon className="ml-1 h-4 w-4" />
+        {ids ? copy.buttonSelected : copy.buttonAll(noun.many)}
       </Button>
 
       {/* confirm */}
       <Dialog open={confirmOpen} onOpenChange={(v) => !running && setConfirmOpen(v)}>
         <DialogContent dir="rtl" className="rounded-lg border-0 shadow-lg">
           <DialogHeader>
-            <DialogTitle>تأكيد القبول الجماعي</DialogTitle>
+            <DialogTitle>{copy.dialogTitle}</DialogTitle>
             <DialogDescription className="space-y-2">
               <span className="block">
                 {pendingCount === null
                   ? "جاري حساب العناصر المعلّقة..."
                   : pendingCount === 0
                   ? `لا يوجد ${noun.one} معلّق ضمن ${ids ? "التحديد" : "القائمة"}.`
-                  : `سيتم قبول ${pendingCount} ${noun.one} معلّق${ids ? " من ضمن التحديد" : ""}.`}
+                  : copy.summary(pendingCount, noun.one, !!ids)}
               </span>
-              <span className="block">
-                يُنشأ لكل عضو حساب دخول وتُرسل بيانات الدخول بالبريد عبر قائمة الانتظار (رسالة لكل شخص)؛ لن يُغيَّر أي عنصر مقبول أو مرفوض مسبقاً.
-              </span>
+              <span className="block">{copy.note}</span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setConfirmOpen(false)} className="w-full sm:w-auto">إلغاء</Button>
-            <Button onClick={run} disabled={!pendingCount} className="w-full sm:w-auto">
-              <CheckCheck className="ml-1 h-4 w-4" />
-              بدء القبول
+            <Button
+              onClick={run}
+              disabled={!pendingCount}
+              variant={copy.destructive ? "destructive" : "default"}
+              className="w-full sm:w-auto"
+            >
+              <ActionIcon className="ml-1 h-4 w-4" />
+              {copy.start}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -208,8 +276,8 @@ export default function BulkApproveButton({ target, ids, onDone, size = "sm", va
         <DialogContent dir="rtl" className="rounded-lg border-0 shadow-lg" onInteractOutside={(e) => running && e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {running ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCheck className="h-5 w-5 text-green-600" />}
-              {phase === "approving" ? "جاري القبول..." : phase === "emailing" ? "جاري إرسال بيانات الدخول..." : "اكتملت العملية"}
+              {running ? <Loader2 className="h-5 w-5 animate-spin" /> : <ActionIcon className={`h-5 w-5 ${copy.destructive ? "text-red-600" : "text-green-600"}`} />}
+              {phase === "approving" ? copy.phase : phase === "emailing" ? "جاري إرسال الرسائل..." : "اكتملت العملية"}
             </DialogTitle>
             <DialogDescription>
               يمكنك إبقاء هذه النافذة مفتوحة حتى يكتمل الإرسال؛ إغلاقها لا يوقف العملية — تُكمل الخلفية إرسال ما تبقى.
@@ -219,19 +287,19 @@ export default function BulkApproveButton({ target, ids, onDone, size = "sm", va
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span>القبول</span>
+                  <span>{copy.progressLabel}</span>
                   <span dir="ltr">{progress.approved + progress.skipped + progress.failed} / {progress.requested}</span>
                 </div>
                 <Progress value={approvalPct} className="h-2" />
                 <div className="mt-1 text-xs text-muted-foreground">
-                  مقبول {progress.approved}
+                  {copy.doneLabel} {progress.approved}
                   {progress.skipped > 0 && ` · متجاوز (غير معلّق) ${progress.skipped}`}
                   {progress.failed > 0 && <span className="text-red-600"> · فشل {progress.failed}</span>}
                 </div>
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="flex items-center gap-1"><Mail className="h-4 w-4" /> رسائل بيانات الدخول</span>
+                  <span className="flex items-center gap-1"><Mail className="h-4 w-4" /> {copy.mailLabel}</span>
                   <span dir="ltr">{progress.emails.sent + progress.emails.failed} / {progress.emails.total}</span>
                 </div>
                 <Progress value={emailPct} className="h-2" />

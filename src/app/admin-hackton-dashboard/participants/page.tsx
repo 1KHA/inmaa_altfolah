@@ -472,12 +472,21 @@ export default function ParticipantsPage() {
                 تصدير
               </Button>
               {individualParticipants.some((p) => p.status === 'pending') && (
-                <BulkApproveButton
-                  target="participants"
-                  size="default"
-                  className="gap-2 bg-green-600 hover:bg-green-700"
-                  onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
-                />
+                <>
+                  <BulkApproveButton
+                    target="participants"
+                    size="default"
+                    className="gap-2 bg-green-600 hover:bg-green-700"
+                    onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
+                  />
+                  <BulkApproveButton
+                    target="participants"
+                    action="reject"
+                    size="default"
+                    className="gap-2"
+                    onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
+                  />
+                </>
               )}
             </div>
           </div>
@@ -489,6 +498,12 @@ export default function ParticipantsPage() {
                 target="participants"
                 ids={Array.from(selectedIds)}
                 className="bg-green-600 hover:bg-green-700"
+                onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
+              />
+              <BulkApproveButton
+                target="participants"
+                action="reject"
+                ids={Array.from(selectedIds)}
                 onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
               />
               <Button

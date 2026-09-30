@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { waitUntil } from '@vercel/functions';
 import { requireAdmin } from '@/lib/notification-auth';
-import { createBulkJob, runBulkJobChunk, getBulkJob, countPending, type BulkTarget } from '@/lib/bulk-approval';
+import { createBulkJob, runBulkJobChunk, getBulkJob, countPending, type BulkTarget, type BulkAction } from '@/lib/bulk-approval';
 import { drainEmailQueue } from '@/lib/email-queue';
 
 /**
- * Bulk acceptance of pending teams / individual participants.
+ * Bulk acceptance OR rejection of pending teams / individual participants.
+ * The path keeps its original name; `action` picks what the job does.
  *
- *   POST { target: 'teams'|'participants', ids?: string[] }  → create job + run first chunk
+ *   POST { target: 'teams'|'participants', ids?: string[], action?: 'approve'|'reject' }
+ *                                                              → create job + run first chunk
  *   POST { jobId }                                             → run the next chunk
  *   GET  ?jobId=                                               → progress
  *   GET  ?target=teams|participants[&ids=a,b,c]                → how many are pending
@@ -29,6 +31,8 @@ const UNAUTHORIZED = () =>
   NextResponse.json({ error: 'غير مصرح. هذه الخدمة متاحة للمسؤولين فقط.' }, { status: 401 });
 
 const isTarget = (v: unknown): v is BulkTarget => v === 'teams' || v === 'participants';
+/** `action` is optional: callers that omit it get the original approve behaviour. */
+const asAction = (v: unknown): BulkAction => (v === 'reject' ? 'reject' : 'approve');
 
 export async function GET(request: NextRequest) {
   if (!requireAdmin(cookies().get('token')?.value)) return UNAUTHORIZED();
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest) {
         ids = Array.from(new Set(body.ids.filter((x: unknown) => typeof x === 'string' && x)));
         if (ids!.length === 0) return NextResponse.json({ error: 'لم يتم تحديد أي عنصر' }, { status: 400 });
       }
-      const created = await createBulkJob(adminId, body.target, ids);
+      const created = await createBulkJob(adminId, body.target, ids, asAction(body.action));
       jobId = created.jobId;
     }
 

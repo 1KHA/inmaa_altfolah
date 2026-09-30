@@ -22,6 +22,7 @@ const SUITES = [
   'e2e-upload-paths',
   'e2e-organizations',
   'e2e-bulk-approval',
+  'e2e-bulk-rejection',
   'e2e-slot-split',
   'e2e-admin-member-edit',
   'e2e-leader-reactivation',
