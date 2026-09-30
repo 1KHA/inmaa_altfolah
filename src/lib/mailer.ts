@@ -192,22 +192,25 @@ export type EmailAudience = 'participant' | 'mentor' | 'admin';
 export const SUPPORT_EMAIL = 'wmvc@wadimakkah.sa';
 export const SUPPORT_PHONE = '+966557552166';
 const SUPPORT_PHONE_URL = 'tel:+966557552166';
+export const SUPPORT_TELEGRAM_URL = 'https://t.me/+4boPQPRmGuAzNmI0';
 
 const FOOTER_LINK_STYLE = 'color:#620f10;text-decoration:none';
 
 /**
  * Support-channels lines for the grey footer, same style as the automated
- * message line. Participants get email + Telegram; mentors get email +
- * WhatsApp; admins/unknown get nothing extra.
+ * message line: e-mail, phone and the Telegram group. Only participants and
+ * mentors get them; admin/unknown audiences get nothing extra.
  */
 function renderSupportChannelsHtml(audience?: EmailAudience): string {
   if (audience !== 'participant' && audience !== 'mentor') return '';
   const mail = `<a href="mailto:${SUPPORT_EMAIL}" style="${FOOTER_LINK_STYLE}" dir="ltr">${SUPPORT_EMAIL}</a>`;
   const phone = `<a href="${SUPPORT_PHONE_URL}" style="${FOOTER_LINK_STYLE}" dir="ltr">${SUPPORT_PHONE}</a>`;
+  const telegram = `<a href="${SUPPORT_TELEGRAM_URL}" style="${FOOTER_LINK_STYLE}" dir="ltr">${SUPPORT_TELEGRAM_URL}</a>`;
   return (
     `<div style="margin-top:8px">للاستفسار يرجى التواصل عبر القنوات التالية:</div>` +
     `<div>البريد: ${mail}</div>` +
-    `<div>الهاتف: ${phone}</div>`
+    `<div>الهاتف: ${phone}</div>` +
+    `<div>تيليجرام: ${telegram}</div>`
   );
 }
 
@@ -216,7 +219,8 @@ export function renderSupportChannelsText(audience?: EmailAudience): string {
   if (audience !== 'participant' && audience !== 'mentor') return '';
   return `للاستفسار يرجى التواصل عبر القنوات التالية:
 البريد: ${SUPPORT_EMAIL}
-الهاتف: ${SUPPORT_PHONE}`;
+الهاتف: ${SUPPORT_PHONE}
+تيليجرام: ${SUPPORT_TELEGRAM_URL}`;
 }
 
 /**
