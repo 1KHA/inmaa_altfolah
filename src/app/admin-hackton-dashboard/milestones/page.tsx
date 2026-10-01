@@ -254,7 +254,7 @@ export default function MilestonesPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Flag className="h-5 w-5 text-blue-500" />
+              <Flag className="h-5 w-5 text-[#80191a]" />
               التسليمات القادمة
             </CardTitle>
           </CardHeader>

@@ -70,7 +70,7 @@ export default function UpcomingMilestonesPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="text-xl font-bold flex items-center">
-                      <Flag className="ml-2 h-5 w-5 text-blue-500" />
+                      <Flag className="ml-2 h-5 w-5 text-[#80191a]" />
                       {milestone.title}
                     </h2>
                     <p className="mt-2 text-muted-foreground">{milestone.description}</p>
@@ -82,7 +82,7 @@ export default function UpcomingMilestonesPage() {
                   </div>
                   
                   <div className="flex flex-col items-end">
-                    <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium flex items-center">
+                    <div className="bg-[#f9d69f]/40 text-[#5e1213] px-3 py-1 rounded-full text-sm font-medium flex items-center">
                       <Clock className="ml-1 h-4 w-4" />
                       متبقي {getDaysRemaining(milestone.dueDate)} يوم
                     </div>

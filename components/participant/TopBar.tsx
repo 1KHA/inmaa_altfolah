@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export default function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-[#364F7A] text-primary-foreground">
+    <header className="sticky top-0 z-40 border-b bg-[#80191a] text-primary-foreground">
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center">
           <button
@@ -63,7 +64,14 @@ export default function TopBar() {
           </button>
 
           <Link href="/participant-dashboard" className="flex items-center">
-            <span className="text-xl font-bold">منصة دِيَم</span>
+            <Image
+              src="/brand/logo01.png"
+              alt="جائزة مايدة محي الدين ناظر للابتكار"
+              width={549}
+              height={406}
+              priority
+              className="h-9 w-auto shrink-0 sm:h-10"
+            />
             <span className="ml-1 hidden sm:inline rounded-md bg-primary-foreground/20 px-1.5 py-0.5 text-xs font-medium">
               لوحة المشارك
             </span>

@@ -120,11 +120,11 @@ export default function OrganizationsManager({ onChanged }: { onChanged?: () => 
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
+            <Building2 className="h-5 w-5 text-[#80191a]" />
             الجهات (مجموعات الموجهين)
           </CardTitle>
         </div>
-        <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 rounded-full shrink-0">
+        <Button onClick={openCreate} className="bg-[#80191a] hover:bg-[#80191a] rounded-full shrink-0">
           <Plus className="ml-2 h-4 w-4" />
           إضافة جهة
         </Button>
@@ -144,7 +144,7 @@ export default function OrganizationsManager({ onChanged }: { onChanged?: () => 
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={o.logoUrl} alt={o.name} className="h-14 w-14 rounded-lg object-contain bg-white border shrink-0" />
                   ) : (
-                    <div className="h-14 w-14 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><Building2 className="h-7 w-7" /></div>
+                    <div className="h-14 w-14 rounded-lg bg-[#fff6eb] text-[#80191a] flex items-center justify-center shrink-0"><Building2 className="h-7 w-7" /></div>
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold break-words">{o.name}</div>

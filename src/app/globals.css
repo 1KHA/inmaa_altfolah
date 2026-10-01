@@ -25,34 +25,52 @@
 }
 
 @layer base {
+  /*
+   * Dashboard design tokens — the visual identity in visual_identity/colors.md:
+   *   #80191a main red · #83bae4 blue · #f9d69f sand · #fff6eb cream
+   * Every shadcn component (Button, Card, Badge, Tabs, Progress, …) reads these,
+   * so the admin, mentor and participant dashboards inherit the palette from
+   * here; only the headers set brand colours directly.
+   */
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 20 25.5% 18.4%;        /* warm ink instead of blue-black */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 20 25.5% 18.4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 20 25.5% 18.4%;
 
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
+    /* brand red */
+    --primary: 359.4 67.3% 30%;
+    --primary-foreground: 33 100% 96.1%; /* cream */
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* cream surface for secondary buttons / chips */
+    --secondary: 33 100% 96.1%;
+    --secondary-foreground: 359.4 67.3% 30%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 33 60% 95%;
+    --muted-foreground: 23.1 11.9% 42.7%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* sand — hover/highlight */
+    --accent: 36.7 88.2% 80%;
+    --accent-foreground: 359.2 67.9% 22%;
 
-    --destructive: 0 84.2% 60.2%;
+    /* kept distinct from the brand red so "danger" still reads as danger */
+    --destructive: 357 65% 45%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --border: 30 40.6% 87.5%;
+    --input: 30 40.6% 87.5%;
+    --ring: 206 64.2% 70.4%;             /* identity blue, for focus rings */
+
+    /* charts: red → blue → sand → deep red → warm gray */
+    --chart-1: 359.4 67.3% 30%;
+    --chart-2: 206 64.2% 70.4%;
+    --chart-3: 36.7 88.2% 80%;
+    --chart-4: 359.2 67.9% 22%;
+    --chart-5: 23.1 11.9% 42.7%;
 
     --radius: 0.5rem;
   }

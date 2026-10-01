@@ -497,16 +497,16 @@ export default function MentorsPage() {
   return (
     <div className="p-3 sm:p-8" dir="rtl">
       <div className="flex justify-between items-center mb-4 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-blue-800">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#5e1213]">
           {bookingMode === 'organization' ? 'الجهات الموجِّهة' : 'الموجهون المتاحون'}
         </h1>
       </div>
 
       {/* My Booked Appointments Box */}
-      <Card className="mb-8 border-0 shadow-md bg-gradient-to-r from-blue-50 to-indigo-50">
+      <Card className="mb-8 border-0 shadow-md bg-gradient-to-r from-[#fff6eb] to-[#fff6eb]">
         <CardHeader className="pb-2">
-          <CardTitle className="text-xl font-bold text-blue-800 flex items-center gap-2">
-            <CalendarClock className="h-6 w-6 text-blue-600" />
+          <CardTitle className="text-xl font-bold text-[#5e1213] flex items-center gap-2">
+            <CalendarClock className="h-6 w-6 text-[#80191a]" />
             المواعيد التي حجزتها
           </CardTitle>
         </CardHeader>
@@ -538,28 +538,28 @@ export default function MentorsPage() {
                 });
 
                 return (
-                  <div key={booking.id} className="flex items-center p-3 rounded-lg bg-white shadow-sm border border-blue-100">
-                    <div className="mr-4 bg-blue-100 p-2 rounded-full shrink-0">
+                  <div key={booking.id} className="flex items-center p-3 rounded-lg bg-white shadow-sm border border-[#ecdfd2]">
+                    <div className="mr-4 bg-[#f9d69f]/40 p-2 rounded-full shrink-0">
                       {booking.organization?.logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={booking.organization.logoUrl} alt="" className="h-6 w-6 rounded object-contain" />
                       ) : booking.organization ? (
-                        <Building2 className="h-6 w-6 text-blue-600" />
+                        <Building2 className="h-6 w-6 text-[#80191a]" />
                       ) : (
-                        <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                        <CheckCircle2 className="h-6 w-6 text-[#80191a]" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       {booking.organization ? (
                         <>
-                          <div className="font-medium text-blue-900 break-words">{booking.organization.name}</div>
+                          <div className="font-medium text-[#5e1213] break-words">{booking.organization.name}</div>
                           <div className="text-sm text-gray-600">
                             جلسة مع الجهة{showIndividuals && booking.mentorName ? ` • ${booking.mentorName}` : ''}
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className="font-medium text-blue-900">{booking.mentorName}</div>
+                          <div className="font-medium text-[#5e1213]">{booking.mentorName}</div>
                           <div className="text-sm text-gray-600">{booking.mentorSpecialty}</div>
                         </>
                       )}
@@ -575,7 +575,7 @@ export default function MentorsPage() {
                         <Button
                           asChild
                           size="sm"
-                          className="bg-green-600 hover:bg-green-700 h-8 text-xs"
+                          className="bg-[#12795a] hover:bg-[#0f6b4f] h-8 text-xs"
                         >
                           <a href={`/api/meeting/join/${booking.id}`} target="_blank" rel="noopener noreferrer">
                             دخول الاجتماع
@@ -589,7 +589,7 @@ export default function MentorsPage() {
               <div className="text-center mt-2">
                 <Button 
                   variant="outline" 
-                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  className="text-[#80191a] border-[#ecdfd2] hover:bg-[#fff6eb]"
                   onClick={fetchMyBookings}
                 >
                   تحديث المواعيد
@@ -611,30 +611,30 @@ export default function MentorsPage() {
       {/* Stats Cards — in organization-only mode the counts describe the
           organizations, since individual mentors are hidden there. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6 sm:mb-8">
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-blue-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#fff6eb]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              {showIndividuals ? <Users className="h-5 w-5 text-blue-500" /> : <Building2 className="h-5 w-5 text-blue-500" />}
+              {showIndividuals ? <Users className="h-5 w-5 text-[#80191a]" /> : <Building2 className="h-5 w-5 text-[#80191a]" />}
               {showIndividuals ? 'إجمالي الموجهين' : 'إجمالي الجهات'}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{showIndividuals ? mentors.length : organizations.length}</div>
+            <div className="text-3xl font-bold text-[#80191a]">{showIndividuals ? mentors.length : organizations.length}</div>
             <p className="text-xs text-muted-foreground">
               {showIndividuals ? 'موجه نشط متاح للمساعدة' : 'جهة موجِّهة متاحة للمساعدة'}
             </p>
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-green-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#83bae4]/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-5 w-5 text-green-500" />
+              <Clock className="h-5 w-5 text-[#2b6b93]" />
               {showIndividuals ? 'متاحون الآن' : 'جهات متاحة الآن'}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
+            <div className="text-3xl font-bold text-[#2b6b93]">
               {showIndividuals
                 ? mentors.filter(m => (m.availableSlots ?? 0) > 0).length
                 : organizations.filter(o => o.availableSlots > 0).length}
@@ -647,15 +647,15 @@ export default function MentorsPage() {
         
         {/* Replaced "متوسط التقييم": no rating system exists, the number was
             random. This counts real bookable slots instead. */}
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-yellow-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#f9d69f]/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-yellow-500" />
+              <Calendar className="h-5 w-5 text-[#a5762a]" />
               مواعيد متاحة للحجز
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">
+            <div className="text-3xl font-bold text-[#a5762a]">
               {showIndividuals
                 ? mentors.reduce((total, mentor) => total + (mentor.availableSlots ?? 0), 0)
                 : organizations.reduce((total, o) => total + o.availableSlots, 0)}
@@ -672,19 +672,19 @@ export default function MentorsPage() {
         <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative w-full flex-1">
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-500 h-5 w-5 pointer-events-none" />
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-[#80191a] h-5 w-5 pointer-events-none" />
               <Input
                 placeholder={showIndividuals ? "البحث بالاسم، التخصص، أو الجهة..." : "البحث باسم الجهة أو التخصص..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-12 pr-12 text-base border-blue-100 focus:border-blue-300 rounded-full"
+                className="w-full h-12 pr-12 text-base border-[#ecdfd2] focus:border-[#f9d69f] rounded-full"
               />
             </div>
             {showIndividuals && mentorOrgOptions.length > 0 && (
               <Select value={orgFilter} onValueChange={setOrgFilter}>
-                <SelectTrigger className="h-12 w-full sm:w-64 rounded-full border-blue-100 focus:border-blue-300" aria-label="تصفية حسب الجهة">
+                <SelectTrigger className="h-12 w-full sm:w-64 rounded-full border-[#ecdfd2] focus:border-[#f9d69f]" aria-label="تصفية حسب الجهة">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Building2 className="h-4 w-4 text-blue-500 shrink-0" />
+                    <Building2 className="h-4 w-4 text-[#80191a] shrink-0" />
                     <SelectValue placeholder="كل الجهات" />
                   </div>
                 </SelectTrigger>
@@ -705,8 +705,8 @@ export default function MentorsPage() {
       {showOrganizations && (
         <Card className="mb-6 sm:mb-8 border-0 shadow-sm overflow-hidden">
           <CardHeader className="pb-2 text-right" dir="rtl">
-            <CardTitle className="text-lg font-bold text-blue-800 flex items-center justify-start gap-2">
-              <Building2 className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-lg font-bold text-[#5e1213] flex items-center justify-start gap-2">
+              <Building2 className="h-5 w-5 text-[#80191a]" />
               الحجز مع جهة
             </CardTitle>
           </CardHeader>
@@ -714,18 +714,18 @@ export default function MentorsPage() {
             {filteredOrganizations.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredOrganizations.map((org) => (
-                  <div key={org.id} className="flex flex-col rounded-lg border border-blue-100 bg-white p-4 min-w-0 hover:shadow-md transition-shadow">
+                  <div key={org.id} className="flex flex-col rounded-lg border border-[#ecdfd2] bg-white p-4 min-w-0 hover:shadow-md transition-shadow">
                     <div className="flex items-start gap-3 min-w-0">
                       {org.logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={org.logoUrl} alt={org.name} className="h-16 w-16 rounded-lg object-contain border bg-white shrink-0" />
                       ) : (
-                        <div className="h-16 w-16 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <div className="h-16 w-16 rounded-lg bg-[#fff6eb] text-[#80191a] flex items-center justify-center shrink-0">
                           <Building2 className="h-8 w-8" />
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-blue-900 break-words">{org.name}</div>
+                        <div className="font-semibold text-[#5e1213] break-words">{org.name}</div>
                         {org.description && (
                           <div className="text-xs text-gray-600 mt-1 line-clamp-3 break-words">{org.description}</div>
                         )}
@@ -754,7 +754,7 @@ export default function MentorsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="mt-3 w-full bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 flex items-center gap-1"
+                      className="mt-3 w-full bg-[#fff6eb] text-[#80191a] hover:bg-[#f9d69f]/40 border-[#ecdfd2] flex items-center gap-1"
                       onClick={() => openOrganizationDialog(org)}
                     >
                       <Calendar className="h-4 w-4" />
@@ -777,8 +777,8 @@ export default function MentorsPage() {
       <Card className="border-0 shadow-sm overflow-hidden">
         {bookingMode === 'both' && (
           <CardHeader className="pb-2 text-right" dir="rtl">
-            <CardTitle className="text-lg font-bold text-blue-800 flex items-center justify-start gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-lg font-bold text-[#5e1213] flex items-center justify-start gap-2">
+              <Users className="h-5 w-5 text-[#80191a]" />
               الحجز مع موجه محدد
             </CardTitle>
           </CardHeader>
@@ -787,12 +787,12 @@ export default function MentorsPage() {
           <div className="overflow-x-auto">
             <Table className="border-collapse">
               <TableHeader>
-                <TableRow className="bg-blue-50 hover:bg-blue-50">
-                  <TableHead className="text-right font-semibold text-blue-900">الاسم</TableHead>
-                  <TableHead className="text-right font-semibold text-blue-900 hidden sm:table-cell">الجهة</TableHead>
-                  <TableHead className="text-right font-semibold text-blue-900 hidden sm:table-cell">التخصص</TableHead>
-                  <TableHead className="text-right font-semibold text-blue-900 hidden sm:table-cell">التوفر</TableHead>
-                  <TableHead className="text-center font-semibold text-blue-900 w-[140px]">المواعيد</TableHead>
+                <TableRow className="bg-[#fff6eb] hover:bg-[#fff6eb]">
+                  <TableHead className="text-right font-semibold text-[#5e1213]">الاسم</TableHead>
+                  <TableHead className="text-right font-semibold text-[#5e1213] hidden sm:table-cell">الجهة</TableHead>
+                  <TableHead className="text-right font-semibold text-[#5e1213] hidden sm:table-cell">التخصص</TableHead>
+                  <TableHead className="text-right font-semibold text-[#5e1213] hidden sm:table-cell">التوفر</TableHead>
+                  <TableHead className="text-center font-semibold text-[#5e1213] w-[140px]">المواعيد</TableHead>
                 </TableRow>
               </TableHeader>
             <TableBody>
@@ -803,14 +803,14 @@ export default function MentorsPage() {
                   const prevKey = index > 0 ? (filteredMentors[index - 1].organization?.id ?? 'none') : null;
                   const groupSize = filteredMentors.filter((m) => (m.organization?.id ?? 'none') === orgKey).length;
                   const header = orgKey !== prevKey ? (
-                    <TableRow key={`org-${orgKey}`} className="bg-blue-50/70 hover:bg-blue-50/70">
+                    <TableRow key={`org-${orgKey}`} className="bg-[#fff6eb]/70 hover:bg-[#fff6eb]/70">
                       <TableCell colSpan={5} className="py-2 text-right">
-                        <div className="flex items-center gap-2 font-semibold text-blue-900">
+                        <div className="flex items-center gap-2 font-semibold text-[#5e1213]">
                           {mentor.organization?.logoUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={mentor.organization.logoUrl} alt="" className="h-6 w-6 rounded object-contain border bg-white" />
                           ) : (
-                            <Building2 className="h-4 w-4 text-blue-500" />
+                            <Building2 className="h-4 w-4 text-[#80191a]" />
                           )}
                           <span>{mentor.organization ? mentor.organization.name : 'موجهون بدون جهة'}</span>
                           <Badge variant="secondary" className="font-normal text-[11px]">{groupSize} موجه</Badge>
@@ -844,7 +844,7 @@ export default function MentorsPage() {
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={mentor.organization.logoUrl} alt="" className="h-8 w-8 rounded object-contain border bg-white shrink-0" />
                           ) : (
-                            <Building2 className="h-4 w-4 text-blue-500 shrink-0" />
+                            <Building2 className="h-4 w-4 text-[#80191a] shrink-0" />
                           )}
                           <span className="truncate max-w-[180px]" title={mentor.organization.name}>{mentor.organization.name}</span>
                         </div>
@@ -865,7 +865,7 @@ export default function MentorsPage() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 inline-flex items-center gap-1 w-full sm:w-auto text-xs sm:text-sm"
+                        className="bg-[#fff6eb] text-[#80191a] hover:bg-[#f9d69f]/40 border-[#ecdfd2] inline-flex items-center gap-1 w-full sm:w-auto text-xs sm:text-sm"
                         onClick={() => openAvailabilityDialog(mentor)}
                       >
                         <Calendar className="h-4 w-4" />
@@ -930,12 +930,12 @@ export default function MentorsPage() {
                             onClick={() => handleSelectEvent(ev)}
                             className={`rounded-lg border p-2 text-center transition-colors ${
                               isSelected
-                                ? 'bg-blue-600 border-blue-600 text-white'
+                                ? 'bg-[#80191a] border-[#f9d69f] text-white'
                                 : ev.isBooked
                                   ? ev.isOwnBooking
                                     ? 'bg-green-50 border-green-300 text-green-700'
                                     : 'bg-red-50 border-red-200 text-red-400'
-                                  : 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100'
+                                  : 'bg-[#fff6eb] border-[#ecdfd2] text-[#80191a] active:bg-[#f9d69f]/40'
                             }`}
                           >
                             <span className="block text-sm font-medium" dir="ltr">
@@ -958,7 +958,7 @@ export default function MentorsPage() {
                     <Button
                       onClick={bookAppointment}
                       disabled={bookingLoading}
-                      className="w-full bg-green-600 hover:bg-green-700"
+                      className="w-full bg-[#12795a] hover:bg-[#0f6b4f]"
                     >
                       {bookingLoading ? 'جاري الحجز...' : 'حجز هذا الموعد'}
                     </Button>
@@ -1036,7 +1036,7 @@ export default function MentorsPage() {
                     <Button 
                       onClick={bookAppointment} 
                       disabled={bookingLoading}
-                      className="bg-green-600 hover:bg-green-700"
+                      className="bg-[#12795a] hover:bg-[#0f6b4f]"
                     >
                       {bookingLoading ? 'جاري الحجز...' : 'حجز هذا الموعد'}
                     </Button>

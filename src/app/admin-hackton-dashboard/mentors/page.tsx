@@ -674,11 +674,11 @@ export default function MentorsPage() {
   return (
     <div className="p-0 md:p-8" dir="rtl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
-        <h1 className="text-3xl font-bold text-blue-800">إدارة الموجهين</h1>
+        <h1 className="text-3xl font-bold text-[#5e1213]">إدارة الموجهين</h1>
         <div className="flex gap-4">
           <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 rounded-full">
+              <Button className="bg-[#80191a] hover:bg-[#80191a] rounded-full">
                 <UserPlus className="ml-2 h-4 w-4" />
                 إضافة موجه جديد
               </Button>
@@ -772,13 +772,13 @@ export default function MentorsPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 rounded-full">إضافة الموجه</Button>
+                  <Button type="submit" className="bg-[#80191a] hover:bg-[#80191a] rounded-full">إضافة الموجه</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
-          <Button variant="outline" className="rounded-full border-blue-200 hover:bg-blue-50">
-            <Download className="ml-2 h-4 w-4 text-blue-600" />
+          <Button variant="outline" className="rounded-full border-[#ecdfd2] hover:bg-[#fff6eb]">
+            <Download className="ml-2 h-4 w-4 text-[#80191a]" />
             تصدير القائمة
           </Button>
         </div>
@@ -786,15 +786,15 @@ export default function MentorsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-blue-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#fff6eb]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-500" />
+              <Users className="h-5 w-5 text-[#80191a]" />
               إجمالي الموجهين
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{mentors.length}</div>
+            <div className="text-3xl font-bold text-[#80191a]">{mentors.length}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-green-600 font-medium">{mentors.filter(m => m.status === 'active').length} نشط</span>، 
               <span className="text-yellow-600 font-medium"> {mentors.filter(m => m.status === 'pending').length} بانتظار</span>
@@ -802,15 +802,15 @@ export default function MentorsPage() {
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-green-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#83bae4]/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-green-500" />
+              <Calendar className="h-5 w-5 text-[#2b6b93]" />
               الجلسات المكتملة
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
+            <div className="text-3xl font-bold text-[#2b6b93]">
               {mentors.reduce((total, mentor) => total + (mentor.sessionsCompleted || 0), 0)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -822,15 +822,15 @@ export default function MentorsPage() {
         {/* Replaced "متوسط التقييم": there is no rating model in the schema, so
             the old average was a mean of Math.random() values. This shows a
             real number instead. */}
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-yellow-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#f9d69f]/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-5 w-5 text-yellow-500" />
+              <Users className="h-5 w-5 text-[#a5762a]" />
               الفرق المخدومة
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">
+            <div className="text-3xl font-bold text-[#a5762a]">
               {new Set(mentors.flatMap((m) => m.teams || [])).size}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -839,15 +839,15 @@ export default function MentorsPage() {
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-purple-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#fff6eb]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-5 w-5 text-purple-500" />
+              <Clock className="h-5 w-5 text-[#80191a]" />
               حالة التوفر
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-600">
+            <div className="text-3xl font-bold text-[#80191a]">
               {mentors.filter(m => m.availability === 'متاح').length}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -863,17 +863,17 @@ export default function MentorsPage() {
           <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 h-4 w-4" />
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#80191a] h-4 w-4" />
                 <Input
                   placeholder="البحث بالاسم، البريد الإلكتروني، أو التخصص..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10 border-blue-100 focus:border-blue-300 rounded-full"
+                  className="pr-10 border-[#ecdfd2] focus:border-[#f9d69f] rounded-full"
                 />
               </div>
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full md:w-[180px] border-blue-100 focus:border-blue-300 rounded-full">
+              <SelectTrigger className="w-full md:w-[180px] border-[#ecdfd2] focus:border-[#f9d69f] rounded-full">
                 <SelectValue placeholder="حالة الموجه" />
               </SelectTrigger>
               <SelectContent>
@@ -883,8 +883,8 @@ export default function MentorsPage() {
                 <SelectItem value="inactive">غير نشط</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" className="rounded-full border-blue-200 hover:bg-blue-50">
-              <Filter className="ml-2 h-4 w-4 text-blue-500" />
+            <Button variant="outline" className="rounded-full border-[#ecdfd2] hover:bg-[#fff6eb]">
+              <Filter className="ml-2 h-4 w-4 text-[#80191a]" />
               المزيد من الفلاتر
             </Button>
           </div>
@@ -914,7 +914,7 @@ export default function MentorsPage() {
         <CardContent className="p-0">
           <Table className="border-collapse">
             <TableHeader>
-              <TableRow className="bg-blue-50 hover:bg-blue-50">
+              <TableRow className="bg-[#fff6eb] hover:bg-[#fff6eb]">
                 <TableHead className="w-10">
                   <Checkbox
                     aria-label="تحديد الكل"
@@ -964,7 +964,7 @@ export default function MentorsPage() {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={mentor.organization.logoUrl} alt="" className="h-7 w-7 rounded object-contain border bg-white shrink-0" />
                         ) : (
-                          <Building2 className="h-4 w-4 text-blue-500 shrink-0" />
+                          <Building2 className="h-4 w-4 text-[#80191a] shrink-0" />
                         )}
                         <span className="truncate max-w-[140px]" title={mentor.organization.name}>{mentor.organization.name}</span>
                       </div>
@@ -1010,7 +1010,7 @@ export default function MentorsPage() {
                         </Button>
                       ) : (
                         <Button
-                          className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                          className="bg-[#12795a] hover:bg-[#0f6b4f] text-white flex items-center gap-1"
                           disabled={statusUpdatingId === mentor.id}
                           onClick={() => handleToggleMentorStatus(mentor)}
                         >
@@ -1022,7 +1022,7 @@ export default function MentorsPage() {
                       )}
                       <Button
                         variant="outline"
-                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 flex items-center gap-1"
+                        className="bg-[#fff6eb] text-[#80191a] hover:bg-[#f9d69f]/40 border-[#ecdfd2] flex items-center gap-1"
                         onClick={() => openAvailabilityDialog(mentor)}
                       >
                         <Clock className="h-4 w-4" />
@@ -1030,7 +1030,7 @@ export default function MentorsPage() {
                       </Button>
                       <Button
                         variant="outline"
-                        className="bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 flex items-center gap-1"
+                        className="bg-[#83bae4]/15 text-[#80191a] hover:bg-[#83bae4]/15 border-[#ecdfd2] flex items-center gap-1"
                         onClick={() => setMentorToMessage(mentor)}
                       >
                         <Mail className="h-4 w-4" />
@@ -1080,14 +1080,14 @@ export default function MentorsPage() {
       {/* --- Admin Mentor Bookings Management Box --- */}
       <Card className="border-0 shadow-sm overflow-hidden mt-12">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl font-bold text-blue-800">جميع حجوزات الموجهين</CardTitle>
+          <CardTitle className="text-xl font-bold text-[#5e1213]">جميع حجوزات الموجهين</CardTitle>
           <div className="flex items-center gap-2">
-          <Button asChild variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+          <Button asChild variant="outline" className="border-[#ecdfd2] text-[#80191a] hover:bg-[#fff6eb]">
             <Link href="/admin-hackton-dashboard/bookings">عرض الحجوزات حسب اليوم والوقت</Link>
           </Button>
           <Button 
             variant="outline" 
-            className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
+            className="bg-[#fff6eb] text-[#80191a] hover:bg-[#f9d69f]/40 border-[#ecdfd2]"
             onClick={fetchBookings}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 21h5v-5"></path></svg>
@@ -1097,7 +1097,7 @@ export default function MentorsPage() {
         </CardHeader>
         <CardContent className="p-0">
           {bookingsLoading ? (
-            <div className="p-8 text-center text-blue-600">جاري تحميل الحجوزات...</div>
+            <div className="p-8 text-center text-[#80191a]">جاري تحميل الحجوزات...</div>
           ) : bookingsError ? (
             <div className="p-8 text-center text-red-600">{bookingsError}</div>
           ) : bookings.length === 0 ? (
@@ -1105,7 +1105,7 @@ export default function MentorsPage() {
           ) : (
             <Table className="border-collapse">
               <TableHeader>
-                <TableRow className="bg-blue-50 hover:bg-blue-50">
+                <TableRow className="bg-[#fff6eb] hover:bg-[#fff6eb]">
                   <TableHead>الموجه</TableHead>
                   <TableHead>المشارك</TableHead>
                   <TableHead>البريد الإلكتروني للمشارك</TableHead>
@@ -1137,7 +1137,7 @@ export default function MentorsPage() {
                     <TableCell>
                       <Badge className={
                         booking.status === 'booked'
-                          ? 'bg-blue-100 text-blue-800'
+                          ? 'bg-[#f9d69f]/40 text-[#5e1213]'
                           : booking.status === 'completed'
                           ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
@@ -1167,7 +1167,7 @@ export default function MentorsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 flex items-center gap-1 px-3 py-1 h-8"
+                          className="bg-[#fff6eb] text-[#80191a] hover:bg-[#f9d69f]/40 border-[#ecdfd2] flex items-center gap-1 px-3 py-1 h-8"
                           onClick={() => openEditBookingDialog(booking)}
                         >
                           <Edit className="h-4 w-4" />

@@ -202,10 +202,10 @@ export default function MentorSessionsPage() {
   return (
     <div className="p-0 md:p-8" dir="rtl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
-        <h1 className="text-3xl font-bold text-blue-800">الجلسات المحجوزة</h1>
+        <h1 className="text-3xl font-bold text-[#5e1213]">الجلسات المحجوزة</h1>
         <Button 
           variant="outline" 
-          className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 flex items-center gap-1"
+          className="bg-[#fff6eb] text-[#80191a] hover:bg-[#f9d69f]/40 border-[#ecdfd2] flex items-center gap-1"
           onClick={fetchBookings}
         >
           <Calendar className="h-4 w-4" />
@@ -215,30 +215,30 @@ export default function MentorSessionsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-blue-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#fff6eb]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-500" />
+              <Users className="h-5 w-5 text-[#80191a]" />
               إجمالي الجلسات
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{totalBookings}</div>
+            <div className="text-3xl font-bold text-[#80191a]">{totalBookings}</div>
             <p className="text-xs text-muted-foreground">
               جلسة محجوزة
             </p>
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-green-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#83bae4]/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-5 w-5 text-green-500" />
+              <Clock className="h-5 w-5 text-[#2b6b93]" />
               الجلسات القادمة
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
+            <div className="text-3xl font-bold text-[#2b6b93]">
               {upcomingBookings}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -247,15 +247,15 @@ export default function MentorSessionsPage() {
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-purple-50">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200 bg-gradient-to-br from-white to-[#fff6eb]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-purple-500" />
+              <CheckCircle2 className="h-5 w-5 text-[#80191a]" />
               الجلسات المكتملة
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-600">
+            <div className="text-3xl font-bold text-[#80191a]">
               {completedBookings}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -288,20 +288,20 @@ export default function MentorSessionsPage() {
           <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 h-4 w-4" />
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#80191a] h-4 w-4" />
                 <Input
                   placeholder="البحث باسم المشارك، البريد الإلكتروني، أو رقم الهاتف..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10 border-blue-100 focus:border-blue-300 rounded-full"
+                  className="pr-10 border-[#ecdfd2] focus:border-[#f9d69f] rounded-full"
                 />
               </div>
             </div>
             <div className="w-full md:w-48">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="border-blue-100 focus:border-blue-300">
+                <SelectTrigger className="border-[#ecdfd2] focus:border-[#f9d69f]">
                   <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-blue-500" />
+                    <Filter className="h-4 w-4 text-[#80191a]" />
                     <SelectValue placeholder="تصفية بالحالة" />
                   </div>
                 </SelectTrigger>
@@ -322,9 +322,9 @@ export default function MentorSessionsPage() {
         <div className="space-y-8">
           {Object.entries(groupedBookings).map(([date, dateBookings]) => (
             <Card key={date} className="border-0 shadow-sm overflow-hidden">
-              <CardHeader className="pb-2 bg-blue-50">
-                <CardTitle className="text-lg font-medium text-blue-800 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
+              <CardHeader className="pb-2 bg-[#fff6eb]">
+                <CardTitle className="text-lg font-medium text-[#5e1213] flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-[#80191a]" />
                   {date}
                 </CardTitle>
               </CardHeader>
@@ -383,7 +383,7 @@ export default function MentorSessionsPage() {
                             <Badge className={`
                               ${booking.status === 'booked' ? 'bg-green-100 text-green-800' : 
                                 booking.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
-                                'bg-blue-100 text-blue-800'}
+                                'bg-[#f9d69f]/40 text-[#5e1213]'}
                             `}>
                               {booking.status === 'booked' ? 'محجوز' : 
                                booking.status === 'cancelled' ? 'ملغي' : 
@@ -395,7 +395,7 @@ export default function MentorSessionsPage() {
                               {booking.meetingUrl && booking.status === 'booked' && (
                                 <Button
                                   asChild
-                                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                                  className="bg-[#12795a] hover:bg-[#0f6b4f] text-white flex items-center gap-1"
                                 >
                                   <a href={`/api/meeting/join/${booking.id}`} target="_blank" rel="noopener noreferrer">
                                     <Video className="h-4 w-4" />
@@ -405,7 +405,7 @@ export default function MentorSessionsPage() {
                               )}
                               <Button 
                                 variant="outline" 
-                                className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 flex items-center gap-1"
+                                className="bg-[#fff6eb] text-[#80191a] hover:bg-[#f9d69f]/40 border-[#ecdfd2] flex items-center gap-1"
                                 onClick={() => openDetailsDialog(booking)}
                               >
                                 <User className="h-4 w-4" />
@@ -449,8 +449,8 @@ export default function MentorSessionsPage() {
           {selectedBooking && (
             <div className="space-y-4">
               {/* Participant Info */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+              <div className="bg-[#fff6eb] p-4 rounded-lg">
+                <h3 className="font-medium text-[#5e1213] mb-2 flex items-center gap-2">
                   <User className="h-4 w-4" />
                   معلومات المشارك
                 </h3>
@@ -505,7 +505,7 @@ export default function MentorSessionsPage() {
                     <Badge className={`
                       ${selectedBooking.status === 'booked' ? 'bg-green-100 text-green-800' : 
                         selectedBooking.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
-                        'bg-blue-100 text-blue-800'}
+                        'bg-[#f9d69f]/40 text-[#5e1213]'}
                     `}>
                       {selectedBooking.status === 'booked' ? 'محجوز' : 
                        selectedBooking.status === 'cancelled' ? 'ملغي' : 

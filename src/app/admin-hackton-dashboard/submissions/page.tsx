@@ -186,7 +186,7 @@ export default function SubmissionsPage() {
       case "مكتمل":
         return "bg-green-100 text-green-800";
       case "قيد المراجعة":
-        return "bg-blue-100 text-blue-800";
+        return "bg-[#f9d69f]/40 text-[#5e1213]";
       case "بانتظار المراجعة":
         return "bg-yellow-100 text-yellow-800";
       case "مرفوض":

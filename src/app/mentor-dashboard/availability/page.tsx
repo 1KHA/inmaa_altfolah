@@ -289,7 +289,7 @@ const AvailabilityPage = () => {
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <CalendarPlus className="h-5 w-5 text-blue-600" />
+              <CalendarPlus className="h-5 w-5 text-[#80191a]" />
               إضافة وقت توفر جديد
             </CardTitle>
           </CardHeader>
@@ -342,7 +342,7 @@ const AvailabilityPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {hasSharedSlots && (
-              <p className="text-xs text-purple-700 bg-purple-50 border border-purple-100 rounded-md p-2">
+              <p className="text-xs text-[#80191a] bg-[#83bae4]/15 border border-[#ecdfd2] rounded-md p-2">
                 الأوقات البنفسجية أضافها زملاؤك في الجهة؛ تظهر تلقائياً لجميع الأعضاء، وعند حجزها عبر الجهة يصلكم جميعاً الإشعار ورابط الاجتماع.
               </p>
             )}
@@ -359,7 +359,7 @@ const AvailabilityPage = () => {
                       <div
                         key={slot.id}
                         className={`flex items-center justify-between gap-2 p-3 rounded-lg border ${
-                          slot.shared ? 'bg-purple-50/60 border-purple-100' : 'bg-blue-50/50 border-blue-100'
+                          slot.shared ? 'bg-[#83bae4]/15/60 border-[#ecdfd2]' : 'bg-[#fff6eb]/50 border-[#ecdfd2]'
                         }`}
                       >
                         <div className="min-w-0">
@@ -367,7 +367,7 @@ const AvailabilityPage = () => {
                             {fmtTime(slot.start)} – {fmtTime(slot.end)}
                           </span>
                           {slot.shared && (
-                            <div className="text-[11px] text-purple-700 mt-0.5 truncate">
+                            <div className="text-[11px] text-[#80191a] mt-0.5 truncate">
                               وقت الجهة — أضافه {slot.hostName ?? 'زميل'}{slot.isBooked ? ' • محجوز' : ''}
                             </div>
                           )}
@@ -417,7 +417,7 @@ const AvailabilityPage = () => {
       {/* ============ Desktop: drag-select calendar ============ */}
       <div className="hidden md:block min-w-0 lg:order-1">
         {hasSharedSlots && (
-          <p className="mb-3 text-xs text-purple-700 bg-purple-50 border border-purple-100 rounded-md p-2">
+          <p className="mb-3 text-xs text-[#80191a] bg-[#83bae4]/15 border border-[#ecdfd2] rounded-md p-2">
             الأوقات البنفسجية أضافها زملاؤك في الجهة؛ تظهر تلقائياً لجميع الأعضاء، وعند حجزها عبر الجهة يصلكم جميعاً الإشعار ورابط الاجتماع.
           </p>
         )}

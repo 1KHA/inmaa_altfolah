@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Image from "next/image";
 import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import EventTimeline from "@/components/ui/event-timeline"
@@ -21,7 +22,7 @@ export default function TopBar() {
   }, [pathname])
 
   return (
-    <header className="sticky top-0 z-40 bg-[#364F7A] text-primary-foreground text-right" dir="rtl">
+    <header className="sticky top-0 z-40 bg-[#80191a] text-primary-foreground text-right" dir="rtl">
       <div className="h-12 flex items-center justify-between px-4">
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -31,7 +32,14 @@ export default function TopBar() {
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             <span className="sr-only">القائمة</span>
           </button>
-          <span className="text-xl font-bold shrink-0">منصة دِيَم</span>
+          <Image
+              src="/brand/logo01.png"
+              alt="جائزة مايدة محي الدين ناظر للابتكار"
+              width={549}
+              height={406}
+              priority
+              className="h-9 w-auto shrink-0 sm:h-10"
+            />
         </div>
         {/* Hackathon journey timeline */}
         <div className="hidden md:flex flex-1 justify-center px-4 min-w-0">
@@ -44,7 +52,7 @@ export default function TopBar() {
           <div className="hidden text-sm sm:block">لوحة تحكم</div>
           <NotificationDropdown
             userType="admin"
-            className="text-primary-foreground hover:bg-[#4a6ba3]"
+            className="text-primary-foreground hover:bg-[#5e1213]"
           />
         </div>
       </div>

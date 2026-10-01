@@ -360,8 +360,8 @@ export default function DashboardPage() {
                     stats.recentNotifications.map((notification) => {
                       // Determine icon and color based on notification type
                       let IconComponent = Bell;
-                      let bgColor = "bg-blue-100";
-                      let textColor = "text-blue-600";
+                      let bgColor = "bg-[#f9d69f]/40";
+                      let textColor = "text-[#80191a]";
                       
                       if (notification.type === "success") {
                         IconComponent = CheckCircle;

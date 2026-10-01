@@ -261,7 +261,7 @@ export default function AllMilestoneSubmissionsPage() {
       case "needs_resubmission":
         return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">مطلوب إعادة تسليم</Badge>;
       case "pending":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">قيد المراجعة</Badge>;
+        return <Badge className="bg-[#f9d69f]/40 text-[#5e1213] hover:bg-[#f9d69f]/40">قيد المراجعة</Badge>;
       default:
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">بانتظار المراجعة</Badge>;
     }
@@ -343,7 +343,7 @@ export default function AllMilestoneSubmissionsPage() {
                 <p className="text-sm text-muted-foreground">قيد المراجعة</p>
                 <p className="text-2xl font-bold">{counts.pending}</p>
               </div>
-              <Clock className="h-8 w-8 text-blue-500 opacity-70" />
+              <Clock className="h-8 w-8 text-[#80191a] opacity-70" />
             </div>
           </CardContent>
         </Card>
@@ -429,7 +429,7 @@ export default function AllMilestoneSubmissionsPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="text-xl font-bold flex items-center">
-                      <User className="ml-2 h-5 w-5 text-blue-500" />
+                      <User className="ml-2 h-5 w-5 text-[#80191a]" />
                       {getParticipantName(submission.participant)}
                     </h2>
                     
@@ -458,7 +458,7 @@ export default function AllMilestoneSubmissionsPage() {
                     <div className="mt-4">
                       <h3 className="text-sm font-semibold mb-2">الملف المرفق:</h3>
                       <div className="flex items-center text-sm">
-                        <FileText className="ml-2 h-4 w-4 text-blue-500" />
+                        <FileText className="ml-2 h-4 w-4 text-[#80191a]" />
                         <span className="ml-1">{submission.fileName}</span>
                         <span className="text-muted-foreground">({formatFileSize(submission.filePath)})</span>
                         <a 
@@ -554,7 +554,7 @@ export default function AllMilestoneSubmissionsPage() {
                     </div>
                     <div className="flex items-center space-x-2 space-x-reverse">
                       <RadioGroupItem value="pending" id="pending" />
-                      <Label htmlFor="pending" className="text-blue-600">قيد المراجعة</Label>
+                      <Label htmlFor="pending" className="text-[#80191a]">قيد المراجعة</Label>
                     </div>
                   </RadioGroup>
                   <p className="text-xs text-muted-foreground">

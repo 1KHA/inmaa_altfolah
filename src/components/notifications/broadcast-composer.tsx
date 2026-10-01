@@ -41,7 +41,7 @@ interface BroadcastRow {
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   queued: { label: "في الانتظار", className: "bg-amber-100 text-amber-800" },
-  sending: { label: "جاري الإرسال", className: "bg-blue-100 text-blue-800" },
+  sending: { label: "جاري الإرسال", className: "bg-[#f9d69f]/40 text-[#5e1213]" },
   completed: { label: "مكتمل", className: "bg-green-100 text-green-800" },
   partial: { label: "مكتمل مع أخطاء", className: "bg-red-100 text-red-700" },
 };
@@ -385,7 +385,7 @@ export default function BroadcastComposer() {
           <Button
             onClick={send}
             disabled={!canSend || sending}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-[#80191a] hover:bg-[#80191a]"
           >
             <Send className="ml-2 h-4 w-4" />
             {sending ? "جاري الإرسال..." : "إرسال"}
