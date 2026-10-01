@@ -75,12 +75,12 @@ export default function TopBar() {
 
           <Link href="/mentor-dashboard" className="flex items-center">
             <Image
-              src="/brand/logo01.png"
+              src="/brand/logonew.png"
               alt="جائزة مايدة محي الدين ناظر للابتكار"
-              width={549}
-              height={406}
+              width={1458}
+              height={259}
               priority
-              className="h-9 w-auto shrink-0 sm:h-10"
+              className="h-7 w-auto shrink-0 sm:h-9 md:h-10"
             />
             <span className="ml-1 hidden sm:inline rounded-md bg-primary-foreground/20 px-1.5 py-0.5 text-xs font-medium">
               لوحة المرشد

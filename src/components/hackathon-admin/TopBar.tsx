@@ -33,12 +33,12 @@ export default function TopBar() {
             <span className="sr-only">القائمة</span>
           </button>
           <Image
-              src="/brand/logo01.png"
+              src="/brand/logonew.png"
               alt="جائزة مايدة محي الدين ناظر للابتكار"
-              width={549}
-              height={406}
+              width={1458}
+              height={259}
               priority
-              className="h-9 w-auto shrink-0 sm:h-10"
+              className="h-7 w-auto shrink-0 sm:h-9 md:h-10"
             />
         </div>
         {/* Hackathon journey timeline */}
