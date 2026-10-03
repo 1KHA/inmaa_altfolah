@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import * as XLSX from "xlsx";
 import { Camera, Download, RotateCcw, ScanLine, Search, Volume2, VolumeX } from "lucide-react";
 import { playScanSound, unlockScanAudio, isScanSoundMuted, setScanSoundMuted } from "@/lib/scan-sounds";
+import { riyadhToday } from "@/lib/badge-dates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,12 +34,16 @@ interface ScanResult {
   name?: string;
   teamName?: string | null;
   participantId?: string;
+  /** General mode: the day the check-in was saved under (server's Riyadh date). */
+  date?: string;
 }
 
 interface SessionScan {
   participantId: string;
   name: string;
   time: string;
+  /** General mode: the day this check-in was saved under — undo targets it. */
+  date?: string;
   undone?: boolean;
 }
 
@@ -82,7 +87,13 @@ export default function AttendancePage() {
   const [mode, setMode] = useState<"event" | "general">("event");
   const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState<string>("");
+  // General mode: `date` only picks which day's list is shown. A check-in is
+  // always saved under the server's today (Asia/Riyadh), whatever is picked.
   const [date, setDate] = useState<string>("");
+  const dateRef = useRef("");
+  dateRef.current = date;
+  const [today, setToday] = useState<string>("");
+  const todayRef = useRef("");
   const [cameraOn, setCameraOn] = useState(false);
   // Audible scan feedback (preference remembered per browser)
   const [soundMuted, setSoundMuted] = useState(false);
@@ -137,6 +148,9 @@ export default function AttendancePage() {
       const res = await fetch(`/api/admin/attendance?${qs}`, { credentials: "include" });
       if (res.ok) {
         const payload = await res.json();
+        // a slow reply for a day that is no longer selected must not
+        // overwrite the list of the day now on screen
+        if (mode === "general" && dateRef.current && payload.date !== dateRef.current) return;
         setData(payload);
         if (mode === "general" && !date && payload.date) setDate(payload.date);
       }
@@ -154,6 +168,22 @@ export default function AttendancePage() {
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  // Track today's date; when the day rolls over while the admin is viewing
+  // "today" (page left open overnight), follow it to the new day.
+  useEffect(() => {
+    const tick = () => {
+      const now = riyadhToday();
+      const prev = todayRef.current;
+      if (now === prev) return;
+      todayRef.current = now;
+      setToday(now);
+      if (prev) setDate((d) => (d === prev ? now : d));
+    };
+    tick();
+    const interval = setInterval(tick, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const showResult = (r: ScanResult) => {
     // distinct tones: success chirp / duplicate double-blip / error buzz
@@ -207,12 +237,15 @@ export default function AttendancePage() {
             alreadyCheckedIn: "سجّل دخوله مسبقاً اليوم",
             rejected: "",
           };
+          // general check-ins are saved under the server's today, not the picked day
+          const savedDate: string | undefined = mode === "general" ? payload.date : undefined;
           showResult({
             kind,
             message: messages[kind],
             name: payload.fullName,
             teamName: payload.teamName,
             participantId: payload.participantId,
+            date: savedDate,
           });
           if (kind === "attended" || kind === "wasAbsent" || kind === "checkedIn") {
             setSessionScans((prev) => [
@@ -220,11 +253,17 @@ export default function AttendancePage() {
                 participantId: payload.participantId,
                 name: payload.fullName,
                 time: new Date().toLocaleTimeString("ar-SA"),
+                date: savedDate,
               },
               ...prev.slice(0, 19),
             ]);
           }
-          fetchData();
+          if (savedDate && savedDate !== dateRef.current) {
+            // jump the list to the day the check-in landed on (the effect refetches)
+            setDate(savedDate);
+          } else {
+            fetchData();
+          }
         } else {
           showResult({
             kind: "rejected",
@@ -245,7 +284,6 @@ export default function AttendancePage() {
   const handleDecoded = useCallback(
     (text: string) => {
       const code = text.trim().toUpperCase();
-      // legacy DYAM- accepted: badges issued before the rename stay scannable
       if (!code.startsWith("MAYDA-")) return; // stray QR — ignore silently
       submitCode(code, "scan");
     },
@@ -268,7 +306,8 @@ export default function AttendancePage() {
         body: JSON.stringify({
           participantId: scan.participantId,
           mode,
-          ...(mode === "event" ? { eventId } : { date }),
+          // undo the day the check-in was saved under, not the day on screen
+          ...(mode === "event" ? { eventId } : { date: scan.date ?? date }),
         }),
       });
       if (!res.ok) throw new Error();
@@ -399,9 +438,37 @@ export default function AttendancePage() {
               </Select>
             </div>
           ) : (
-            <div className="grid gap-2 md:max-w-xs">
-              <Label>اليوم</Label>
-              <Input type="date" dir="ltr" value={date} onChange={(e) => setDate(e.target.value)} />
+            <div className="space-y-2">
+              <div className="grid gap-2 md:max-w-xs">
+                <Label>اليوم</Label>
+                <Input
+                  type="date"
+                  dir="ltr"
+                  value={date}
+                  max={today || undefined}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v && today && v > today) return; // no future days
+                    setDate(v);
+                  }}
+                />
+              </div>
+              {today && (
+                <p className="text-xs text-muted-foreground">
+                  المسح يُسجَّل دائماً بتاريخ اليوم (<span dir="ltr">{today}</span>). هذا الحقل لعرض القوائم فقط.
+                </p>
+              )}
+              {today && date && date !== today && (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-yellow-500 bg-yellow-50 p-3 text-sm text-yellow-800 md:max-w-xl">
+                  <span>
+                    تعرض قائمة <span dir="ltr">{date}</span> — أي مسح الآن يُسجَّل بتاريخ اليوم{" "}
+                    <span dir="ltr">{today}</span>
+                  </span>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setDate(today)}>
+                    العودة إلى اليوم
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -426,6 +493,11 @@ export default function AttendancePage() {
                 <div className="text-sm mt-1">
                   {result.name}
                   {result.teamName ? ` — فريق ${result.teamName}` : ""}
+                </div>
+              )}
+              {result.date && (
+                <div className="text-sm mt-1">
+                  بتاريخ <span dir="ltr">{result.date}</span>
                 </div>
               )}
             </div>
