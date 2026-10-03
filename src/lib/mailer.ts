@@ -258,7 +258,7 @@ export function renderEmailHtml(title: string, bodyText: string, audience?: Emai
     </div>
     <div style="height:3px;background:#fccd8d"></div>
     <div style="padding:12px 24px;background:#fff2e9;color:#7b5b4a;font-size:12px;line-height:1.8">
-      هذه رسالة آلية من منصة جائزة مايدة محي الدين ناظر للابتكار — يرجى عدم الرد عليها.${supportHtml}
+      هذه رسالة آلية من منصة جائزة مايدة محي الدين ناظر للابتكار يرجى عدم الرد عليها.${supportHtml}
     </div>
   </div>
 </div>`;

@@ -140,7 +140,7 @@ const HARDCODED = [
     type: 'info',
     dashboardTitle: '', dashboardMessage: '',
     emailSubject: '',
-    emailBody: 'هذه رسالة آلية من منصة جائزة مايدة — يرجى عدم الرد عليها.',
+    emailBody: 'هذه رسالة آلية من منصة جائزة مايدة محي الدين ناظر للابتكار يرجى عدم الرد عليها.',
     emailEnabled: 'TRUE',
     variables: '',
     actionUrl: '',
