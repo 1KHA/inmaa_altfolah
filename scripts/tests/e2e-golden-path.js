@@ -145,7 +145,7 @@ async function main() {
   // ============ 6. badge ============
   section('6. digital badge');
   const badge = await req('/api/participant/badge', { cookie: pCookie });
-  check('badge issued', badge.status === 200 && /^MAYDA-[A-Z2-9]{12}$/.test(badge.json.badgeCode), JSON.stringify(badge.json));
+  check('badge issued', badge.status === 200 && /^INMAA-[A-Z2-9]{12}$/.test(badge.json.badgeCode), JSON.stringify(badge.json));
   check('  shows name + team', badge.json.fullName === 'قائد الرحلة' && badge.json.teamName === `${TAG} فريق`);
   const badgeCode = badge.json.badgeCode;
   check('badge page renders', (await fetch(BASE + '/participant-dashboard/badge')).status === 200);
@@ -181,7 +181,7 @@ async function main() {
 
   // the non-registered teammate must be rejected
   const mate = team.participants.find((p) => p.id !== leader.id);
-  const mateBadge = await prisma.participant.update({ where: { id: mate.id }, data: { badgeCode: 'MAYDA-MATETESTCODE' } });
+  const mateBadge = await prisma.participant.update({ where: { id: mate.id }, data: { badgeCode: 'INMAA-MATETESTCODE' } });
   const reject = await req('/api/admin/attendance/scan', {
     method: 'POST', cookie: aCookie, body: { badgeCode: mateBadge.badgeCode, mode: 'event', eventId: event.id },
   });

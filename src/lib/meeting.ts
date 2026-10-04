@@ -21,12 +21,15 @@ export function getMeetingBaseUrl(): string {
   return (process.env.MEETING_BASE_URL || 'https://meet.jit.si').replace(/\/+$/, '');
 }
 
-/** Unguessable per-booking room URL, e.g. https://meet.jit.si/Mayda-Ab3xYz9QkLmN */
+/**
+ * Unguessable per-booking room URL, e.g. https://meet.jit.si/Inmaa-Ab3xYz9QkLmN.
+ * Existing bookings keep the URL they were created with.
+ */
 export function generateMeetingUrl(): string {
   // 9 random bytes -> 12 URL-safe chars (~72 bits) — same "unlisted link"
   // security model as a Zoom/Meet invite.
   const token = crypto.randomBytes(9).toString('base64url');
-  return `${getMeetingBaseUrl()}/Mayda-${token}`;
+  return `${getMeetingBaseUrl()}/Inmaa-${token}`;
 }
 
 /** Path of the platform's tracked meeting link for a booking (see /api/meeting/join). */

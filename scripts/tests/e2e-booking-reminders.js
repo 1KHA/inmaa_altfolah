@@ -65,11 +65,11 @@ let savedSettings = null, settingsId = null;
   const solo = await mkP('solo');
   const slot = async (mentorId, minutesAhead) => prisma.mentorAvailability.create({ data: { mentorId, startTime: new Date(Date.now() + minutesAhead * MIN), endTime: new Date(Date.now() + (minutesAhead + 15) * MIN) } });
   const sSoon = await slot(mentor.id, 3), sLater = await slot(mentor.id, 10), sCancel = await slot(mentor.id, 4), sOrg = await slot(orgA.id, 2), sSix = await slot(mentor.id, 12);
-  const bSoon = await prisma.mentorBooking.create({ data: { participantId: leader.id, availabilityId: sSoon.id, status: 'booked', meetingUrl: 'https://meet.jit.si/Mayda-R1' } });
-  const bLater = await prisma.mentorBooking.create({ data: { participantId: leader.id, availabilityId: sLater.id, status: 'booked', meetingUrl: 'https://meet.jit.si/Mayda-R2' } });
-  const bCancel = await prisma.mentorBooking.create({ data: { participantId: solo.id, availabilityId: sCancel.id, status: 'cancelled', meetingUrl: 'https://meet.jit.si/Mayda-R3' } });
-  const bOrg = await prisma.mentorBooking.create({ data: { participantId: solo.id, availabilityId: sOrg.id, status: 'booked', meetingUrl: 'https://meet.jit.si/Mayda-R4', organizationId: org.id } });
-  const bSix = await prisma.mentorBooking.create({ data: { participantId: solo.id, availabilityId: sSix.id, status: 'booked', meetingUrl: 'https://meet.jit.si/Mayda-R5' } });
+  const bSoon = await prisma.mentorBooking.create({ data: { participantId: leader.id, availabilityId: sSoon.id, status: 'booked', meetingUrl: 'https://meet.jit.si/Inmaa-R1' } });
+  const bLater = await prisma.mentorBooking.create({ data: { participantId: leader.id, availabilityId: sLater.id, status: 'booked', meetingUrl: 'https://meet.jit.si/Inmaa-R2' } });
+  const bCancel = await prisma.mentorBooking.create({ data: { participantId: solo.id, availabilityId: sCancel.id, status: 'cancelled', meetingUrl: 'https://meet.jit.si/Inmaa-R3' } });
+  const bOrg = await prisma.mentorBooking.create({ data: { participantId: solo.id, availabilityId: sOrg.id, status: 'booked', meetingUrl: 'https://meet.jit.si/Inmaa-R4', organizationId: org.id } });
+  const bSix = await prisma.mentorBooking.create({ data: { participantId: solo.id, availabilityId: sSix.id, status: 'booked', meetingUrl: 'https://meet.jit.si/Inmaa-R5' } });
 
   section('auth');
   check('no secret -> 401', (await cron(null)).status === 401);

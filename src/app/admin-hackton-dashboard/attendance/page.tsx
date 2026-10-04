@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { Camera, Download, RotateCcw, ScanLine, Search, Volume2, VolumeX } from "lucide-react";
 import { playScanSound, unlockScanAudio, isScanSoundMuted, setScanSoundMuted } from "@/lib/scan-sounds";
 import { riyadhToday } from "@/lib/badge-dates";
+import { BADGE_PREFIX, hasBadgePrefix } from "@/lib/badge-prefix";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -284,7 +285,7 @@ export default function AttendancePage() {
   const handleDecoded = useCallback(
     (text: string) => {
       const code = text.trim().toUpperCase();
-      if (!code.startsWith("MAYDA-")) return; // stray QR — ignore silently
+      if (!hasBadgePrefix(code)) return; // stray QR — ignore silently
       submitCode(code, "scan");
     },
     [submitCode]
@@ -537,7 +538,7 @@ export default function AttendancePage() {
             <Input
               dir="ltr"
               className="text-left font-mono"
-              placeholder="MAYDA-XXXXXXXXXXXX"
+              placeholder={`${BADGE_PREFIX}XXXXXXXXXXXX`}
               value={manualCode}
               onChange={(e) => setManualCode(e.target.value)}
             />

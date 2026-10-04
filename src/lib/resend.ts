@@ -9,10 +9,11 @@
  *
  * Activation is env-driven — no code change to switch providers:
  *   RESEND_API_KEY  re_… key from Resend → API Keys
- *   MAIL_FROM       sender on a domain verified in Resend → Domains
+ *   MAIL_FROM       optional sender, default noreply@inma.org.sa; its domain
+ *                   must be verified in Resend → Domains
  *   MAIL_FROM_NAME  optional display name (falls back to EmailSettings)
- * Both RESEND_API_KEY and MAIL_FROM must be set, otherwise the SMTP settings
- * from the admin's EmailSettings are used and nothing changes.
+ * Without RESEND_API_KEY the SMTP settings from the admin's EmailSettings are
+ * used and nothing changes.
  *
  * Every send is POST /emails/batch with ONE email object per recipient, so
  * each copy is addressed to its recipient alone (BCC privacy without a
@@ -39,8 +40,15 @@ export const RESEND_BATCH_SIZE = 100;
 const RATE_LIMIT_RETRIES = 2;
 const MAX_RATE_LIMIT_WAIT_MS = 5_000;
 
+/** The platform's sender; MAIL_FROM overrides it per environment. */
+export const DEFAULT_MAIL_FROM = 'noreply@inma.org.sa';
+
+export function getMailFrom(): string {
+  return process.env.MAIL_FROM || DEFAULT_MAIL_FROM;
+}
+
 export function isResendConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.MAIL_FROM);
+  return Boolean(process.env.RESEND_API_KEY);
 }
 
 export interface ResendEmail {
@@ -96,7 +104,7 @@ export function summarizeRejections(rejected: RecipientFailure[], total: number)
 
 /** `Name <address>`; characters that would break the header are dropped from the name. */
 function formatFrom(fromName: string): string {
-  const address = process.env.MAIL_FROM as string;
+  const address = getMailFrom();
   const name = fromName.replace(/[<>"\r\n]/g, '').trim();
   return name ? `${name} <${address}>` : address;
 }

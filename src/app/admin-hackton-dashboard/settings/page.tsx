@@ -220,7 +220,7 @@ export default function SettingsPage() {
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                       />
                     </div>
-                    {field("fromEmail", "بريد المُرسِل", "email", "noreply@example.com")}
+                    {field("fromEmail", "بريد المُرسِل", "email", "noreply@inma.org.sa")}
                     {field("fromName", "اسم المُرسِل", "text", "هاكثون الطفولة")}
                     {field(
                       "adminInboxEmail",

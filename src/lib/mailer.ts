@@ -5,6 +5,7 @@ import { decryptSecret } from './crypto';
 import { getAppBaseUrl } from './credentials';
 import {
   isResendConfigured,
+  getMailFrom,
   sendViaResend,
   summarizeRejections,
   RESEND_BATCH_SIZE,
@@ -15,8 +16,8 @@ export type { RecipientFailure } from './resend';
 
 /**
  * Email delivery. Transport is chosen per call, not at boot:
- *   1. RESEND_API_KEY + MAIL_FROM set  -> Resend HTTPS API (see resend.ts)
- *   2. otherwise                       -> SMTP from the admin-configured EmailSettings row
+ *   1. RESEND_API_KEY set  -> Resend HTTPS API, sender MAIL_FROM or noreply@inma.org.sa (see resend.ts)
+ *   2. otherwise           -> SMTP from the admin-configured EmailSettings row
  * The EmailSettings `enabled` master switch gates sending for both transports.
  *
  * All sends are best-effort: callers wrap in try/catch (the codebase-wide
@@ -97,7 +98,7 @@ export async function sendIndividualEmails(params: {
         html: renderEmailHtml(i.subject, i.bodyText, audience),
         text: supportText ? `${i.bodyText}\n\n${supportText}` : i.bodyText,
       })),
-      process.env.MAIL_FROM_NAME || config.fromName
+      senderName(config)
     );
     if (result.error) console.error(`[email] resend batch ${result.ok ? 'partial' : 'failed'}: ${result.error}`);
     return result;
@@ -121,6 +122,11 @@ export async function sendIndividualEmails(params: {
   };
 }
 
+/** Display name on Resend sends: env, then the admin's EmailSettings, then the event name. */
+function senderName(config: SmtpConfig): string {
+  return process.env.MAIL_FROM_NAME || config.fromName || BRAND_NAME;
+}
+
 export async function getEmailSettings(): Promise<EmailSettingsRow | null> {
   return prisma.emailSettings.findFirst();
 }
@@ -138,8 +144,8 @@ export function toSmtpConfig(row: EmailSettingsRow): SmtpConfig | null {
       secure: row.secure,
       username: row.username,
       password: '',
-      fromEmail: process.env.MAIL_FROM as string,
-      fromName: row.fromName || process.env.MAIL_FROM_NAME || '',
+      fromEmail: getMailFrom(),
+      fromName: row.fromName || process.env.MAIL_FROM_NAME || BRAND_NAME,
     };
   }
 
@@ -317,7 +323,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
     const html = renderEmailHtml(title, bodyText, audience);
     const result = await sendViaResend(
       requested.map((email) => ({ to: email, subject, html, text })),
-      process.env.MAIL_FROM_NAME || config.fromName
+      senderName(config)
     );
     // `error` is also set on PARTIAL success (some recipients rejected) — log it either way.
     if (result.error) console.error(`[email] resend ${result.ok ? 'partial' : 'failed'}: ${result.error}`);

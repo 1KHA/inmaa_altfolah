@@ -1,15 +1,15 @@
 import crypto from 'crypto';
 import { prisma } from './prisma';
+import { BADGE_PREFIX, isLegacyBadgeCode } from './badge-prefix';
 
 /**
  * Badge codes for the QR attendance system.
  *
- * Random opaque tokens: MAYDA- + 12 uppercase base32 chars (~60 bits).
+ * Random opaque tokens: INMAA- + 12 uppercase base32 chars (~60 bits).
  * Every scan is verified server-side, so no signing is needed — the code is
  * just a lookup key. The prefix lets the scanner ignore stray QR reads.
  */
 
-const BADGE_PREFIX = 'MAYDA-';
 const ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789'; // no I/L/O/U/0/1 — print-legible
 const CODE_LENGTH = 12;
 
@@ -28,7 +28,10 @@ export function isBadgeCodeShaped(value: string): boolean {
 
 /**
  * Return the participant's badge code, generating and persisting one on first
- * use. Retries on the (astronomically unlikely) unique-collision.
+ * use — or replacing a code with a legacy prefix (MAYDA-), so the card always
+ * shows the current one. Attendance rows reference the participant, not the
+ * code, so a replacement loses nothing. Retries on the (astronomically
+ * unlikely) unique-collision.
  */
 export async function getOrCreateBadgeCode(participantId: string): Promise<string> {
   const participant = await prisma.participant.findUnique({
@@ -37,7 +40,7 @@ export async function getOrCreateBadgeCode(participantId: string): Promise<strin
   });
 
   if (!participant) throw new Error('participant not found');
-  if (participant.badgeCode) return participant.badgeCode;
+  if (participant.badgeCode && !isLegacyBadgeCode(participant.badgeCode)) return participant.badgeCode;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const code = generateBadgeCode();

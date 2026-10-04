@@ -57,9 +57,10 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
-      # Resend — leave empty to keep using SMTP. When BOTH the key and
-      # MAIL_FROM (an address on a domain verified in Resend) are set, all
-      # email sends via the Resend HTTPS API instead. See src/lib/resend.ts.
+      # Resend — leave the key empty to keep using SMTP. With the key set, all
+      # email sends via the Resend HTTPS API from MAIL_FROM (default
+      # noreply@inma.org.sa; its domain must be verified in Resend).
+      # See src/lib/resend.ts.
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MAIL_FROM: ${MAIL_FROM:-}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}

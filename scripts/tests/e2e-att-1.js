@@ -41,8 +41,8 @@ async function main() {
     (await api('/api/participant/badge', { cookie: 'token=' + jwt.sign({ id: 'x', mentorId: 'x', role: 'mentor' }, SECRET, { expiresIn: '10m' }) })).status === 401);
 
   const first = await api('/api/participant/badge', { cookie: pCookie(p1.id) });
-  check('first call returns 200 with a MAYDA- code',
-    first.status === 200 && /^MAYDA-[A-Z2-9]{12}$/.test(first.json.badgeCode), JSON.stringify(first.json));
+  check('first call returns 200 with an INMAA- code',
+    first.status === 200 && /^INMAA-[A-Z2-9]{12}$/.test(first.json.badgeCode), JSON.stringify(first.json));
   check('  carries name and team', first.json.fullName === 'مشارك أول' && first.json.teamName === `${TAG} فريق`);
 
   const dbRow = await prisma.participant.findUnique({ where: { id: p1.id }, select: { badgeCode: true } });
@@ -55,6 +55,14 @@ async function main() {
   check('another participant gets a DISTINCT code',
     other.status === 200 && other.json.badgeCode !== first.json.badgeCode);
   check('  solo participant has teamName null', other.json.teamName === null);
+
+  // A code issued under the old MAYDA- prefix is replaced on the next read
+  await prisma.participant.update({ where: { id: p2.id }, data: { badgeCode: 'MAYDA-LEGACYCODE23' } });
+  const upgraded = await api('/api/participant/badge', { cookie: pCookie(p2.id) });
+  const upgradedRow = await prisma.participant.findUnique({ where: { id: p2.id }, select: { badgeCode: true } });
+  check('legacy MAYDA- code is replaced with a new INMAA- code (returned and persisted)',
+    upgraded.status === 200 && /^INMAA-[A-Z2-9]{12}$/.test(upgraded.json.badgeCode) && upgradedRow.badgeCode === upgraded.json.badgeCode,
+    JSON.stringify({ api: upgraded.json.badgeCode, db: upgradedRow.badgeCode }));
 
   const page = await fetch(BASE + '/participant-dashboard/badge');
   check('badge page responds 200', page.status === 200, `status=${page.status}`);

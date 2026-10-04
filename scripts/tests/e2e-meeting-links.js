@@ -21,7 +21,7 @@ const prisma = new PrismaClient();
 const BASE = process.env.VERIFY_BASE_URL || 'http://localhost:3000';
 const SECRET = process.env.JWT_SECRET;
 const TAG = `ml${Date.now()}`;
-const URL_RE = /^https:\/\/meet\.jit\.si\/Mayda-[A-Za-z0-9_-]{12}$/;
+const URL_RE = /^https:\/\/meet\.jit\.si\/Inmaa-[A-Za-z0-9_-]{12}$/;
 
 let pass = 0, fail = 0;
 const made = { participants: [], teams: [], mentors: [] };
