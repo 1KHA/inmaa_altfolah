@@ -10,7 +10,7 @@ const { PrismaClient } = require(path.join(REPO, 'node_modules/@prisma/client'))
 
 const prisma = new PrismaClient();
 const BASE = process.env.VERIFY_BASE_URL || 'http://localhost:3000';
-const MAILPIT = 'http://localhost:8025';
+const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const SECRET = process.env.JWT_SECRET;
 const TAG = `p2-${Date.now()}`;
 

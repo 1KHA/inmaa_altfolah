@@ -22,7 +22,7 @@ export default function BadgeCard({ fullName, teamName, badgeCode }: BadgeCardPr
       width: 280,
       margin: 1,
       errorCorrectionLevel: "M",
-      color: { dark: "#620f10", light: "#ffffff" },
+      color: { dark: "#182f4e", light: "#ffffff" }, // --brand-navy-dark
     })
       .then((url) => {
         if (!cancelled) setQrDataUrl(url);
@@ -36,18 +36,21 @@ export default function BadgeCard({ fullName, teamName, badgeCode }: BadgeCardPr
   return (
     <div
       id="print-badge"
-      className="mx-auto w-full max-w-sm rounded-2xl border-2 border-[#620f10] bg-white shadow-lg overflow-hidden"
+      className="mx-auto w-full max-w-sm rounded-2xl border-2 border-primary bg-white shadow-lg overflow-hidden"
       dir="rtl"
     >
-      <div
-        className="text-white px-6 py-4 text-center"
-        style={{ background: "linear-gradient(135deg, #620f10 0%, #752c2d 55%, #864747 100%)" }}
-      >
+      <div className="bg-primary text-primary-foreground px-6 py-4 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logos/02.png" alt="جامعة دار الحكمة" className="h-12 mx-auto" />
+        <img src="/brand/logo-horizontal-light.svg" alt="هاكثون الطفولة" className="h-12 mx-auto" />
         <div className="text-xs opacity-80 mt-2">بطاقة مشارك</div>
       </div>
-      <div className="h-[3px] bg-[#fccd8d]" />
+      {/* The identity's four colour plates */}
+      <div aria-hidden className="flex h-[3px]">
+        <span className="flex-1 bg-brand-navy" />
+        <span className="flex-1 bg-brand-orange" />
+        <span className="flex-1 bg-brand-honey" />
+        <span className="flex-1 bg-brand-green" />
+      </div>
 
       <div className="px-6 py-5 text-center space-y-1">
         <div className="text-lg font-bold text-gray-900">{fullName}</div>
@@ -70,12 +73,12 @@ export default function BadgeCard({ fullName, teamName, badgeCode }: BadgeCardPr
       </div>
 
       <div className="pb-5 text-center">
-        <span className="inline-block px-3 py-1 rounded-full bg-[#fff2e9] text-[#761814] text-xs font-mono tracking-wider" dir="ltr">
+        <span className="inline-block px-3 py-1 rounded-full bg-brand-honey/20 text-primary-dark text-xs font-mono tracking-wider" dir="ltr">
           {badgeCode}
         </span>
       </div>
 
-      <div className="bg-[#f1f1f1] border-t px-6 py-2 text-center text-[10px] text-[#494b4c]">
+      <div className="bg-brand-cream border-t px-6 py-2 text-center text-[10px] text-muted-foreground">
         أبرِز هذه البطاقة للمشرف عند الدخول لتسجيل حضورك
       </div>
     </div>

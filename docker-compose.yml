@@ -34,7 +34,8 @@ services:
         NEXT_PUBLIC_REGISTRATION_CLOSED: ${NEXT_PUBLIC_REGISTRATION_CLOSED:-false}
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
-    image: mayda-hackathon-app:latest
+    # Overridable so a second checkout can build without retagging this one's image.
+    image: ${APP_IMAGE:-mayda-hackathon-app:latest}
     restart: unless-stopped
     depends_on:
       db:

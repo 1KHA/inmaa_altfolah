@@ -10,14 +10,13 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Checkbox } from '@/../../components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useToast } from '@/../../components/ui/use-toast'
 import Loader from '@/components/ui/loader'
-import SiteHeader from '@/app/landing/components/SiteHeader'
 import { HACKATHON_TRACKS } from '@/lib/tracks'
-import SiteFooter from '@/app/landing/components/SiteFooter'
+import PublicPageShell from '@/components/site/PublicPageShell'
 
 interface Participant {
   fullName: string
@@ -66,23 +65,13 @@ const ATTACHMENT_ACCEPT = ATTACHMENT_EXTENSIONS.map((e) => `.${e}`).join(',')
 
 /* Project-acceptance rules shown next to the idea-description field, so
    applicants read them before writing their idea. Display-only. */
+// Mirrors "شروط قبول المشاريع" on the home page
+// (src/app/_childhood-landing/components/EligibilitySection.tsx) — keep the two in sync.
 const IDEA_RULES = [
-  {
-    title: 'وضوح المشكلة وابتكارية الحل',
-    text: 'تحديد المشكلة المراد حلها، مع بيان ما إذا كانت جديدة أو سبق معالجتها، واشتراط أن يكون الحل المقترح مبتكراً.',
-  },
-  {
-    title: 'الارتباط بالمسارات وقابلية التطبيق',
-    text: 'ارتباط الفكرة مباشرةً بتحديات مسارات الهاكاثون المحددة، وقابليتها للتطبيق الفعلي والعملي على أرض الواقع.',
-  },
-  {
-    title: 'أصالة الفكرة',
-    text: 'ألا تكون الفكرة قد سبق لها الفوز بجائزة مايدة محي الدين ناظر للابتكار في الدورات السابقة.',
-  },
-  {
-    title: 'ضوابط المشاركة',
-    text: 'يُمنع مشاركة روابط الجلسات الإرشادية الافتراضية مع غير المقبولين في الهاكاثون.',
-  },
+  'وضوح المشكلة وابتكارية الحل',
+  'أصالة الفكرة',
+  'الارتباط بالمسار التقني وقابلية التطبيق',
+  'ضوابط المشاركة',
 ]
 
 function IdeaRulesDialog() {
@@ -93,8 +82,7 @@ function IdeaRulesDialog() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-[#620F10]/25 bg-[#620F10]/5 px-3 py-1.5 text-sm font-medium text-[#620F10] transition-colors hover:bg-[#620F10]/10"
-        style={{ fontFamily: 'Somar-Medium, Arial, sans-serif' }}
+        className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
       >
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <circle cx="12" cy="12" r="9" />
@@ -104,32 +92,30 @@ function IdeaRulesDialog() {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent dir="rtl" className="max-w-[95vw] sm:max-w-xl p-0 overflow-hidden">
-          <div className="h-2 w-full bg-gradient-to-l from-[#fff6eb] via-[#83bae4] to-[#80191a]" />
+        <DialogContent dir="rtl" aria-describedby={undefined} className="max-w-[95vw] sm:max-w-xl p-0 overflow-hidden">
+          {/* The identity's four colour plates */}
+          <div aria-hidden className="flex h-2 w-full">
+            <span className="flex-1 bg-brand-navy"></span>
+            <span className="flex-1 bg-brand-orange"></span>
+            <span className="flex-1 bg-brand-honey"></span>
+            <span className="flex-1 bg-brand-green"></span>
+          </div>
           <div className="p-5 sm:p-7">
             <DialogHeader className="text-right sm:text-right">
-              <DialogTitle className="text-xl sm:text-2xl" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
-                شروط قبول المشاريع في هاكاثون الابتكار
+              <DialogTitle className="text-xl sm:text-2xl text-primary font-bold">
+                شروط قبول المشاريع
               </DialogTitle>
-              <DialogDescription style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}>
-                اطلعي على هذه الشروط قبل كتابة فكرتك
-              </DialogDescription>
             </DialogHeader>
 
             <div className="mt-4 space-y-3 max-h-[60vh] overflow-y-auto pl-1">
               {IDEA_RULES.map((rule, i) => (
-                <div key={rule.title} className="flex items-start gap-3 rounded-xl border-2 border-gray-100 bg-gray-50/60 p-4">
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#620F10] text-sm font-bold text-white">
+                <div key={rule} className="flex items-center gap-3 rounded-xl border-2 border-gray-100 bg-gray-50/60 p-4">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
                     {i + 1}
                   </span>
-                  <div>
-                    <p className="font-semibold" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
-                      {rule.title}
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed text-gray-600" style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}>
-                      {rule.text}
-                    </p>
-                  </div>
+                  <p className="font-semibold text-primary">
+                    {rule}
+                  </p>
                 </div>
               ))}
             </div>
@@ -137,8 +123,7 @@ function IdeaRulesDialog() {
             <Button
               type="button"
               onClick={() => setOpen(false)}
-              className="mt-5 w-full bg-[#620F10] hover:bg-[#7a1a1b]"
-              style={{ fontFamily: 'Somar-Medium, Arial, sans-serif' }}
+              className="mt-5 w-full bg-primary hover:bg-primary-dark font-medium"
             >
               فهمت، لنبدأ
             </Button>
@@ -441,7 +426,7 @@ export default function RegisterTeamPage() {
   ) => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
-        <Label htmlFor={`${prefix}-fullName`} className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+        <Label htmlFor={`${prefix}-fullName`} className="text-base font-medium mb-2 block text-primary">
           الاسم كاملًا
         </Label>
         <Input 
@@ -449,12 +434,11 @@ export default function RegisterTeamPage() {
           required 
           value={participant.fullName || ''} 
           onChange={(e) => updateFn('fullName', e.target.value)}
-          className={`h-11 border-2 ${participant.fullName && participant.fullName.trim() ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-          style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+          className={`h-11 border-2 ${participant.fullName && participant.fullName.trim() ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-contactNumber`} className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+        <Label htmlFor={`${prefix}-contactNumber`} className="text-base font-medium mb-2 block text-primary">
           رقم التواصل
         </Label>
         <Input 
@@ -467,13 +451,12 @@ export default function RegisterTeamPage() {
             updateFn('contactNumber', digitsOnly)
           }} 
           dir="ltr"
-          className={`h-11 border-2 ${participant.contactNumber && participant.contactNumber.length === 10 ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-          style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+          className={`h-11 border-2 ${participant.contactNumber && participant.contactNumber.length === 10 ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
           placeholder="0501234567"
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-email`} className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+        <Label htmlFor={`${prefix}-email`} className="text-base font-medium mb-2 block text-primary">
           البريد الإلكتروني
         </Label>
         <Input 
@@ -483,37 +466,37 @@ export default function RegisterTeamPage() {
           value={participant.email} 
           onChange={(e) => updateFn('email', e.target.value)} 
           dir="ltr"
-          className={`h-11 border-2 ${participant.email && participant.email.trim() && isValidEmail(participant.email) ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-          style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+          className={`h-11 border-2 ${participant.email && participant.email.trim() && isValidEmail(participant.email) ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
           placeholder="example@email.com"
         />
       </div>
       <div>
-        <Label className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+        <Label className="text-base font-medium mb-2 block text-primary">
         جنس المتقدم
         </Label>
         <Select required onValueChange={(value) => updateFn('gender', value)} value={participant.gender}>
-          <SelectTrigger className={`h-11 border-2 ${participant.gender ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg text-right`} style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }} dir="rtl">
+          <SelectTrigger className={`h-11 border-2 ${participant.gender ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg text-right`} dir="rtl">
             <SelectValue placeholder="اختر الجنس..." />
           </SelectTrigger>
           <SelectContent className="text-right" dir="rtl">
-            <SelectItem value="female" className="text-right" style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}>أنثى</SelectItem>
+            <SelectItem value="male" className="text-right">ذكر</SelectItem>
+            <SelectItem value="female" className="text-right">أنثى</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
         <Checkbox 
           id={`${prefix}-isUniversityStudent`} 
           checked={participant.isUniversityStudent} 
           onCheckedChange={(checked: boolean | 'indeterminate') => updateFn('isUniversityStudent', !!checked)}
-          className="border-[#620F10] data-[state=checked]:bg-[#620F10]"
+          className="border-primary data-[state=checked]:bg-primary"
         />
-        <Label htmlFor={`${prefix}-isUniversityStudent`} className="text-base cursor-pointer" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+        <Label htmlFor={`${prefix}-isUniversityStudent`} className="text-base cursor-pointer text-primary font-medium">
           هل أنت طالب في الجامعة؟
         </Label>
       </div>
       <div>
-        <Label htmlFor={`${prefix}-universityMajor`} className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+        <Label htmlFor={`${prefix}-universityMajor`} className="text-base font-medium mb-2 block text-primary">
           اذكر تخصصك الجامعي
         </Label>
         <Input 
@@ -521,12 +504,11 @@ export default function RegisterTeamPage() {
           required 
           value={participant.universityMajor} 
           onChange={(e) => updateFn('universityMajor', e.target.value)}
-          className={`h-11 border-2 ${participant.universityMajor && participant.universityMajor.trim() ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-          style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+          className={`h-11 border-2 ${participant.universityMajor && participant.universityMajor.trim() ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-university`} className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+        <Label htmlFor={`${prefix}-university`} className="text-base font-medium mb-2 block text-primary">
           اذكر جامعتك
         </Label>
         <Input 
@@ -534,12 +516,11 @@ export default function RegisterTeamPage() {
           required 
           value={participant.university} 
           onChange={(e) => updateFn('university', e.target.value)}
-          className={`h-11 border-2 ${participant.university && participant.university.trim() ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-          style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+          className={`h-11 border-2 ${participant.university && participant.university.trim() ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-professionalField`} className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+        <Label htmlFor={`${prefix}-professionalField`} className="text-base font-medium mb-2 block text-primary">
           ماهو مجالك المهني؟
         </Label>
         <Input 
@@ -547,12 +528,11 @@ export default function RegisterTeamPage() {
           required 
           value={participant.professionalField} 
           onChange={(e) => updateFn('professionalField', e.target.value)}
-          className={`h-11 border-2 ${participant.professionalField && participant.professionalField.trim() ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-          style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+          className={`h-11 border-2 ${participant.professionalField && participant.professionalField.trim() ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-city`} className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+        <Label htmlFor={`${prefix}-city`} className="text-base font-medium mb-2 block text-primary">
           المدينة
         </Label>
         <Input 
@@ -560,19 +540,18 @@ export default function RegisterTeamPage() {
           required 
           value={participant.city} 
           onChange={(e) => updateFn('city', e.target.value)}
-          className={`h-11 border-2 ${participant.city && participant.city.trim() ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-          style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+          className={`h-11 border-2 ${participant.city && participant.city.trim() ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
         />
       </div>
-      <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
         <Checkbox 
           id={`${prefix}-canAttendHackathon`} 
           checked={participant.canAttendHackathon} 
           onCheckedChange={(checked: boolean | 'indeterminate') => updateFn('canAttendHackathon', !!checked)}
-          className="border-[#620F10] data-[state=checked]:bg-[#620F10]"
+          className="border-primary data-[state=checked]:bg-primary"
         />
-        <Label htmlFor={`${prefix}-canAttendHackathon`} className="text-base cursor-pointer" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
-          هل تستطيع التواجد خلال فترة الهاكاثون في مقر - جامعة دار الحكمة؟
+        <Label htmlFor={`${prefix}-canAttendHackathon`} className="text-base cursor-pointer text-primary font-medium">
+          هل تستطيع الحضور في مقر الهاكثون في الخبر؟
         </Label>
       </div>
     </div>
@@ -585,10 +564,10 @@ export default function RegisterTeamPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-12 mx-4 max-w-2xl w-full text-center shadow-2xl animate-in fade-in zoom-in duration-500">
             <div className="text-8xl mb-6">🎉</div>
-            <h1 className="text-5xl font-bold mb-6" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+            <h1 className="text-5xl font-bold mb-6 text-primary">
               تم التسجيل في التحدي بنجاح
             </h1>
-            <p className="text-2xl mb-8" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+            <p className="text-2xl mb-8 text-primary font-medium">
               شكرًا لك على التسجيل! سيتم التواصل معك قريبًا
             </p>
             <div className="flex justify-center space-x-4 text-4xl">
@@ -606,31 +585,27 @@ export default function RegisterTeamPage() {
       
       {/* Main content with smooth fade in */}
       <div 
-        className={`min-h-screen transition-opacity duration-500 ${contentVisible ? 'opacity-100' : 'opacity-0'} ${showCelebration ? 'pointer-events-none' : ''}`}
-        style={{ backgroundColor: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}
+        className={`transition-opacity duration-500 ${contentVisible ? 'opacity-100' : 'opacity-0'} ${showCelebration ? 'pointer-events-none' : ''}`}
       >
-      {/* Header (shared with the landing page) */}
-      <SiteHeader standalone />
-      
-      {/* Form Section */}
-      <div className="py-16 px-4 sm:px-6 lg:px-8">
+      {/* Header and footer shared with the home and login pages */}
+      <PublicPageShell>
         <div className="max-w-5xl mx-auto">
-        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+        <Card className="gradient-card rounded-3xl border-border/60 shadow-elegant">
           <CardHeader className="text-center pb-8 pt-10">
-            <CardTitle className="text-4xl font-bold mb-4" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+            <CardTitle className="text-4xl font-bold mb-4 text-primary">
               نموذج تسجيل المشاركين
             </CardTitle>
-            <CardDescription className="text-xl" style={{ color: '#620F10', fontFamily: 'Somar-Light, Arial, sans-serif' }}>
+            <CardDescription className="text-xl text-primary">
               {REGISTRATION_CLOSED ? 'انتهى التسجيل في الهاكاثون' : 'سجل للمشاركة في الهاكاثون وكن جزءًا من التغيير'}
             </CardDescription>
           </CardHeader>
           <CardContent className="px-10 pb-10">
             {REGISTRATION_CLOSED ? (
               <div className="text-center py-12">
-                <h2 className="text-5xl font-bold mb-6" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+                <h2 className="text-5xl font-bold mb-6 text-primary">
                   انتهى التسجيل
                 </h2>
-                <p className="text-2xl mb-8" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                <p className="text-2xl mb-8 text-primary font-medium">
                   نعتذر، لقد انتهت فترة التسجيل في الهاكاثون
                 </p>
               </div>
@@ -638,11 +613,11 @@ export default function RegisterTeamPage() {
               <form onSubmit={handleSubmit} className="space-y-8">
               {/* Registration Type Selection */}
               <div className="bg-gray-50/50 p-6 rounded-xl border-2 border-gray-100 space-y-6">
-                <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+                <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200 text-primary">
                   نوع المشاركة
                 </h3>
                 <div>
-                  <Label className="text-lg font-medium mb-4 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                  <Label className="text-lg font-medium mb-4 block text-primary">
                     هل ستشارك كفريق؟
                   </Label>
                   <RadioGroup 
@@ -651,15 +626,15 @@ export default function RegisterTeamPage() {
                     onValueChange={handleRegistrationTypeChange} 
                     className="flex flex-col sm:flex-row gap-6 mt-4"
                   >
-                    <div className="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-lg hover:border-[#620F10] transition-colors">
-                      <RadioGroupItem value="individual" id="individual" className="border-[#620F10]" />
-                      <Label htmlFor="individual" className="text-lg cursor-pointer" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                    <div className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-primary transition-colors">
+                      <RadioGroupItem value="individual" id="individual" className="border-primary" />
+                      <Label htmlFor="individual" className="text-lg cursor-pointer text-primary font-medium">
                         مشاركة فردية
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-lg hover:border-[#620F10] transition-colors">
-                      <RadioGroupItem value="team" id="team" className="border-[#620F10]" />
-                      <Label htmlFor="team" className="text-lg cursor-pointer" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                    <div className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-primary transition-colors">
+                      <RadioGroupItem value="team" id="team" className="border-primary" />
+                      <Label htmlFor="team" className="text-lg cursor-pointer text-primary font-medium">
                         مشاركة كفريق
                       </Label>
                     </div>
@@ -670,11 +645,11 @@ export default function RegisterTeamPage() {
               {/* Hackathon Track Selection - Show for both individual and team */}
               {formState.registrationType && (
                 <div className="bg-gray-50/50 p-6 rounded-xl border-2 border-gray-100 space-y-6">
-                  <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+                  <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200 text-primary">
                     مسار الهاكاثون
                   </h3>
                   <div>
-                    <Label className="text-lg font-medium mb-4 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                    <Label className="text-lg font-medium mb-4 block text-primary">
                       أي مسار من مسارات الهاكاثون؟
                     </Label>
                     <Select 
@@ -682,12 +657,12 @@ export default function RegisterTeamPage() {
                       onValueChange={(value) => handleStateChange('hackathonTrack', value)} 
                       value={formState.hackathonTrack}
                     >
-                      <SelectTrigger className="h-12 text-lg border-2 border-gray-200 focus:border-[#620F10] text-right" style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }} dir="rtl">
+                      <SelectTrigger className="h-12 text-lg border-2 border-gray-200 focus:border-primary text-right" dir="rtl">
                         <SelectValue placeholder="اختر المسار..." />
                       </SelectTrigger>
                       <SelectContent className="text-right" dir="rtl">
                         {HACKATHON_TRACKS.map((track) => (
-                          <SelectItem key={track} value={track} className="text-lg py-3 text-right" style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}>
+                          <SelectItem key={track} value={track} className="text-lg py-3 text-right">
                             {track}
                           </SelectItem>
                         ))}
@@ -700,12 +675,12 @@ export default function RegisterTeamPage() {
               {/* Team Information - Only show if team registration */}
               {formState.registrationType === 'team' && (
                 <div className="bg-gray-50/50 p-6 rounded-xl border-2 border-gray-100 space-y-6">
-                  <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+                  <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200 text-primary">
                     معلومات الفريق
                   </h3>
                   
                   <div>
-                    <Label htmlFor="team-name" className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                    <Label htmlFor="team-name" className="text-base font-medium mb-2 block text-primary">
                       اسم الفريق
                     </Label>
                     <Input 
@@ -713,14 +688,13 @@ export default function RegisterTeamPage() {
                       required 
                       value={formState.teamName} 
                       onChange={(e) => handleStateChange('teamName', e.target.value)}
-                      className={`h-11 border-2 ${formState.teamName && formState.teamName.trim() ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-                      style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+                      className={`h-11 border-2 ${formState.teamName && formState.teamName.trim() ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
                     />
                   </div>
 
                   <div>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <Label htmlFor="idea-description" className="text-base font-medium" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                      <Label htmlFor="idea-description" className="text-base font-medium text-primary">
                         صف الفكرة
                       </Label>
                       <IdeaRulesDialog />
@@ -731,13 +705,12 @@ export default function RegisterTeamPage() {
                       value={formState.ideaDescription} 
                       onChange={(e) => handleStateChange('ideaDescription', e.target.value)} 
                       rows={4}
-                      className={`border-2 ${formState.ideaDescription && formState.ideaDescription.trim() ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg resize-none`}
-                      style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+                      className={`border-2 ${formState.ideaDescription && formState.ideaDescription.trim() ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg resize-none`}
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="hear-about-us" className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                    <Label htmlFor="hear-about-us" className="text-base font-medium mb-2 block text-primary">
                       من أين سمعت عنا
                     </Label>
                     <Input 
@@ -745,29 +718,28 @@ export default function RegisterTeamPage() {
                       required 
                       value={formState.hearAboutUs || ''} 
                       onChange={(e) => handleStateChange('hearAboutUs', e.target.value)}
-                      className={`h-11 border-2 ${formState.hearAboutUs && formState.hearAboutUs.trim() ? 'border-gray-200 focus:border-[#620F10]' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-                      style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+                      className={`h-11 border-2 ${formState.hearAboutUs && formState.hearAboutUs.trim() ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="member-count" className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                    <Label htmlFor="member-count" className="text-base font-medium mb-2 block text-primary">
                       عدد أعضاء الفريق (شامل القائد)
                     </Label>
                     <Select value={String(formState.memberCount)} onValueChange={handleMemberCountChange}>
-                      <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#620F10] rounded-lg text-right" style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }} dir="rtl">
+                      <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-primary rounded-lg text-right" dir="rtl">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="text-right" dir="rtl">
-                        <SelectItem value="3" className="text-right" style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}>3 أعضاء</SelectItem>
-                        <SelectItem value="4" className="text-right" style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}>4 أعضاء</SelectItem>
-                        <SelectItem value="5" className="text-right" style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}>5 أعضاء</SelectItem>
+                        <SelectItem value="3" className="text-right">3 أعضاء</SelectItem>
+                        <SelectItem value="4" className="text-right">4 أعضاء</SelectItem>
+                        <SelectItem value="5" className="text-right">5 أعضاء</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <Label htmlFor="attachments-file" className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                    <Label htmlFor="attachments-file" className="text-base font-medium mb-2 block text-primary">
                       إضافة مرفقات (اختياري)
                     </Label>
                     <Input
@@ -775,10 +747,9 @@ export default function RegisterTeamPage() {
                       type="file"
                       accept={ATTACHMENT_ACCEPT}
                       onChange={handleAttachmentChange}
-                      className="h-11 border-2 border-gray-200 focus:border-[#620F10] rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#620F10] file:text-white hover:file:bg-[#4a0c0d]"
-                      style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+                      className="h-11 border-2 border-gray-200 focus:border-primary rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary-dark"
                     />
-                    <p className="text-sm mt-2" style={{ color: '#620F10', fontFamily: 'Somar-Light, Arial, sans-serif' }}>
+                    <p className="text-sm mt-2 text-primary">
                       ارفاق المتوفر من شعار، ملف تعريفي، الخ. (بحد أقصى {MAX_FILE_SIZE_MB} ميجابايت — PDF, Word, PowerPoint, ZIP, صور)
                     </p>
                   </div>
@@ -788,7 +759,7 @@ export default function RegisterTeamPage() {
               {/* Participant Information */}
               {formState.registrationType && (
                 <div className="bg-gray-50/50 p-6 rounded-xl border-2 border-gray-100 space-y-6">
-                  <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+                  <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200 text-primary">
                     {formState.registrationType === 'team' ? 'معلومات قائد الفريق' : 'معلوماتك الشخصية'}
                   </h3>
                   {renderParticipantFields(formState.leaderInfo, handleLeaderChange, 'leader')}
@@ -798,12 +769,12 @@ export default function RegisterTeamPage() {
               {/* Team Members Information - Only show if team registration */}
               {formState.registrationType === 'team' && formState.memberCount > 1 && (
                 <div className="bg-gray-50/50 p-6 rounded-xl border-2 border-gray-100 space-y-6">
-                  <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+                  <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200 text-primary">
                     معلومات أعضاء الفريق
                   </h3>
                   {formState.members.slice(0, formState.memberCount - 1).map((member: Participant, index: number) => (
                     <div key={index} className="bg-white p-6 border-2 border-gray-200 rounded-xl space-y-4 shadow-sm">
-                      <h4 className="font-bold text-xl mb-4" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+                      <h4 className="font-bold text-xl mb-4 text-primary">
                         العضو {index + 1}
                       </h4>
                       {renderParticipantFields(member, (field, value) => handleMemberChange(index, field, value), `member-${index}`)}
@@ -813,15 +784,15 @@ export default function RegisterTeamPage() {
               )}
               
               <div className="bg-gray-50/50 p-6 rounded-xl border-2 border-gray-100">
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center gap-3">
                   <Checkbox 
                     id="terms" 
                     required 
                     checked={formState.agreeToTerms} 
                     onCheckedChange={(checked) => handleStateChange('agreeToTerms', !!checked)}
-                    className="border-[#620F10] data-[state=checked]:bg-[#620F10]"
+                    className="border-primary data-[state=checked]:bg-primary"
                   />
-                  <Label htmlFor="terms" className="text-lg cursor-pointer" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                  <Label htmlFor="terms" className="text-lg cursor-pointer text-primary font-medium">
                     أوافق على الشروط والأحكام
                   </Label>
                 </div>
@@ -829,12 +800,7 @@ export default function RegisterTeamPage() {
 
               <Button 
                 type="submit" 
-                className="w-full text-xl py-4 font-bold rounded-xl transition-all duration-300 hover:shadow-lg disabled:opacity-50" 
-                style={{ 
-                  backgroundColor: '#620F10', 
-                  fontFamily: 'Somar-Bold, Arial, sans-serif',
-                  border: 'none'
-                }}
+                className="w-full h-14 rounded-full bg-brand-orange text-xl font-bold text-white hover:bg-brand-orange-dark glow-accent transition-smooth disabled:opacity-50" 
                 disabled={isSubmitting || !isFormValid()}
               >
                 {isSubmitting ? 'جاري الإرسال...' : 'إرسال التسجيل'}
@@ -844,10 +810,7 @@ export default function RegisterTeamPage() {
           </CardContent>
         </Card>
         </div>
-      </div>
-      
-      {/* Footer (shared with the landing page) */}
-      <SiteFooter standalone />
+      </PublicPageShell>
       </div>
     </>
   )

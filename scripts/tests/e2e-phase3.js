@@ -10,7 +10,7 @@ const { PrismaClient } = require(path.join(REPO, 'node_modules/@prisma/client'))
 
 const prisma = new PrismaClient();
 const BASE = process.env.VERIFY_BASE_URL || 'http://localhost:3000';
-const MAILPIT = 'http://localhost:8025';
+const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const SECRET = process.env.JWT_SECRET;
 const TAG = `p3${Date.now()}`;
 
@@ -61,7 +61,7 @@ async function main() {
   await prisma.emailSettings.update({
     where: { id: settingsRow.id },
     data: {
-      host: 'localhost', port: 1025, secure: false, username: '', password: '',
+      host: 'localhost', port: Number(process.env.MAILPIT_SMTP_PORT || 1025), secure: false, username: '', password: '',
       fromEmail: 'noreply@example.test', fromName: 'منصة دِيَم',
       adminInboxEmail: 'admins@example.test', enabled: true,
     },
@@ -252,7 +252,7 @@ async function main() {
   check('  row stamped emailStatus=failed', failRow?.emailStatus === 'failed', String(failRow?.emailStatus));
   check('  EmailLog captured the error',
     (await prisma.emailLog.count({ where: { templateKey: 'participantApproval', status: 'failed', error: { not: null } } })) >= 1);
-  await prisma.emailSettings.update({ where: { id: settingsRow.id }, data: { port: 1025 } });
+  await prisma.emailSettings.update({ where: { id: settingsRow.id }, data: { port: Number(process.env.MAILPIT_SMTP_PORT || 1025) } });
 
   // ============ badge data reaches the API ============
   section('emailStatus flows to the notifications API');

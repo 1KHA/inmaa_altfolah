@@ -201,7 +201,7 @@ export default function ParticipantDashboardPage() {
               <X className="ml-2 h-4 w-4" />
               إلغاء
             </Button>
-            <Button onClick={(e) => handleUpdateParticipant(e as any)} className="bg-[#12795a] hover:bg-[#0f6b4f] flex-1 sm:flex-none">
+            <Button onClick={(e) => handleUpdateParticipant(e as any)} className="bg-brand-green-dark hover:bg-brand-green-darker flex-1 sm:flex-none">
               <Save className="ml-2 h-4 w-4" />
               حفظ التغييرات
             </Button>

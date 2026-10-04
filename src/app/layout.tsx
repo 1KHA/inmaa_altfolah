@@ -1,31 +1,25 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/auth-context";
 import { Analytics } from "@vercel/analytics/next";
 
-const inter = Inter({ subsets: ["latin"] });
+// The typeface (Graphik Arabic) comes from globals.css through Tailwind's font-sans.
+
+const title = "هاكثون الطفولة | Childhood Hackathon";
+const description =
+  "هاكثون الطفولة: مختبر إنتاج مكثف لتصميم مبادرات تقنية تخدم الطفل والأسرة، بتنظيم جمعية إنماء لرعاية الطفولة في المنطقة الشرقية، 8 – 18 نوفمبر 2026.";
+const shareDescription = "من تحدٍ حقيقي إلى فرصة للابتكار، بحلول تقنية تخدم الطفل والأسرة.";
+const organizer = "جمعية إنماء لرعاية الطفولة";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://mayda-four.dyam.tech'),
-  title: "جائزة مايدة محي الدين ناظر للابتكار 4",
-  description: "تحدي يجمع طالبات الجامعات السعودية لاستكشاف وتوظيف الابتكارات الجامعية. توفر جائزة مايدة محي الدين ناظر للابتكار هاكاثون الابتكار، فرصة للعمل ضمن فرق تنافسية للعمل على تطوير حلول مبتكرة تسهم في تعزيز الاستدامة وجودة الحياة",
-  keywords: [
-    "جائزة مايدة محي الدين ناظر للابتكار 4",
-    "هاكاثون الابتكار",
-    "دار الحكمة",
-    "جامعة دار الحكمة",
-    "تحدي يجمع طلبة الجامعات لاستكشاف وتوظيف الابتكارات الجامعية",
-    "الاستدامة",
-    "جودة الحياة",
-    "الابتكار الجامعي",
-    "فرق تنافسية",
-    "حلول مبتكرة"
-  ],
-  authors: [{ name: "جامعة دار الحكمة" }],
-  creator: "جامعة دار الحكمة",
-  publisher: "جامعة دار الحكمة",
+  title,
+  description,
+  keywords: ["هاكثون", "هاكثون الطفولة", "الطفولة", "ابتكار", "الطفل", "الأسرة", "التقنية", "جمعية إنماء", "المنطقة الشرقية", "الخبر", "الجبيل"],
+  authors: [{ name: organizer }],
+  creator: organizer,
+  publisher: organizer,
   robots: {
     index: true,
     follow: true,
@@ -38,34 +32,33 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "جائزة مايدة محي الدين ناظر للابتكار 4",
-    description: "تحدي يجمع طالبات الجامعات السعودية لاستكشاف وتوظيف الابتكارات الجامعية. توفر جائزة مايدة محي الدين ناظر للابتكار هاكاثون الابتكار، فرصة للعمل ضمن فرق تنافسية للعمل على تطوير حلول مبتكرة تسهم في تعزيز الاستدامة وجودة الحياة",
-    url: "https://mayda-four.dyam.tech/",
-    siteName: "جائزة مايدة محي الدين ناظر للابتكار 4",
-    images: [
-      {
-        url: "https://mayda-four.dyam.tech/og.png",
-        width: 1200,
-        height: 630,
-        alt: "جائزة مايدة محي الدين ناظر للابتكار 4 - هاكاثون الابتكار في جامعة دار الحكمة"
-      }
-    ],
+    title,
+    description: shareDescription,
+    siteName: "هاكثون الطفولة",
+    type: "website",
     locale: "ar_SA",
-    type: "website"
+    images: [{ url: "/brand/og-image.png", alt: title }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "جائزة مايدة محي الدين ناظر للابتكار 4",
-    description: "تحدي يجمع طالبات الجامعات السعودية لاستكشاف وتوظيف الابتكارات الجامعية. توفر جائزة مايدة محي الدين ناظر للابتكار هاكاثون الابتكار، فرصة للعمل ضمن فرق تنافسية للعمل على تطوير حلول مبتكرة تسهم في تعزيز الاستدامة وجودة الحياة",
-    images: ["https://mayda-four.dyam.tech/og.png"],
-    creator: "@DAHUniversity"
+    title,
+    description: shareDescription,
+    images: ["/brand/og-image.png"],
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/brand/favicon.svg", type: "image/svg+xml" },
+      { url: "/brand/favicon.ico", sizes: "any" },
+    ],
+    apple: "/brand/apple-touch-icon.png",
   },
   alternates: {
     canonical: "https://mayda-four.dyam.tech/",
   }
+};
+
+export const viewport: Viewport = {
+  themeColor: "#FBF4EA",
 };
 
 export default function RootLayout({
@@ -75,7 +68,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl">
-      <body className={inter.className}>
+      <body className="antialiased">
         <AuthProvider>
           {children}
           <Toaster />

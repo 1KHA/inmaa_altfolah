@@ -55,7 +55,7 @@ let savedSettings = null, settingsId = null, savedEmail = null;
   settingsId = ts?.id; savedSettings = ts ? { maxBookingsPerMentor: ts.maxBookingsPerMentor, bookingCountResetAt: ts.bookingCountResetAt, mentorBookingMode: ts.mentorBookingMode } : null;
   const es = await prisma.emailSettings.findFirst();
   savedEmail = { id: es.id, data: { ...es } }; delete savedEmail.data.id; delete savedEmail.data.updatedAt;
-  await prisma.emailSettings.update({ where: { id: es.id }, data: { enabled: true, host: 'localhost', port: 1025, secure: false, username: '', password: '', fromEmail: 'noreply@example.test', fromName: 'E2E', adminInboxEmail: '' } });
+  await prisma.emailSettings.update({ where: { id: es.id }, data: { enabled: true, host: 'localhost', port: Number(process.env.MAILPIT_SMTP_PORT || 1025), secure: false, username: '', password: '', fromEmail: 'noreply@example.test', fromName: 'E2E', adminInboxEmail: '' } });
   await clearMp();
   // Start from the defaults: limit 3, no reset mark, individual mode
   await api('/api/admin/team-settings', { method: 'PUT', cookie: aCookie, body: { maxBookingsPerMentor: 3, mentorBookingMode: 'both' } });

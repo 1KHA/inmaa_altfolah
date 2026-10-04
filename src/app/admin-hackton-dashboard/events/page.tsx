@@ -831,9 +831,9 @@ export default function EventsPage() {
   const getEventTypeColor = (type: string) => {
     switch (type) {
       case "workshop":
-        return "bg-[#f9d69f]/40 text-[#5e1213]";
+        return "bg-brand-honey/20 text-primary-dark";
       case "talk":
-        return "bg-[#83bae4]/15 text-[#80191a]";
+        return "bg-brand-green/15 text-primary";
       case "ceremony":
         return "bg-green-100 text-green-800";
       case "mentoring":
@@ -841,7 +841,7 @@ export default function EventsPage() {
       case "deadline":
         return "bg-red-100 text-red-800";
       case "networking":
-        return "bg-[#83bae4]/15 text-[#80191a]";
+        return "bg-brand-green/15 text-primary";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -855,7 +855,7 @@ export default function EventsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "upcoming":
-        return "bg-[#f9d69f]/40 text-[#5e1213]";
+        return "bg-brand-honey/20 text-primary-dark";
       case "ongoing":
         return "bg-green-100 text-green-800";
       case "completed":
@@ -1772,7 +1772,7 @@ export default function EventsPage() {
                         <Badge 
                           className={
                             registration.status === "registered" 
-                              ? "bg-[#f9d69f]/40 text-[#5e1213]" 
+                              ? "bg-brand-honey/20 text-primary-dark" 
                               : registration.status === "attended" 
                               ? "bg-green-100 text-green-800" 
                               : registration.status === "absent"

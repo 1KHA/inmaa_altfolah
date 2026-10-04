@@ -3,8 +3,9 @@
 /**
  * Hackathon journey timeline shown in every dashboard header.
  *
- * Dates mirror the "رحلة المشاركة" section of the landing page
- * (src/app/landing/Landing.tsx) — keep the two in sync.
+ * Dates mirror the "رحلة المشارك" section of the home page
+ * (src/app/_childhood-landing/components/JourneySection.tsx) — keep the two in sync,
+ * except "الإرشاد والتوجيه", which is deliberately left out of the dashboards.
  * Exactly one event "shines" at a time: the first one whose end date has not
  * passed yet (an event keeps glowing until the END of its last day, Riyadh
  * time, then the next one takes over). Everything else is dimmed — finished
@@ -35,39 +36,32 @@ export interface TimelineEvent {
 
 export const TIMELINE_EVENTS: TimelineEvent[] = [
   {
-    shortName: "الاستقطاب والتسجيل",
-    name: "الاستقطاب والتسجيل",
-    dateLabel: "1 - 24 سبتمبر",
-    start: "2026-09-01",
-    end: "2026-09-24",
-  },
-  {
-    shortName: "الفرز والترشيح",
-    name: "الفـرز والترشـيح",
-    dateLabel: "13 - 30 سبتمبر",
-    start: "2026-09-13",
-    end: "2026-09-30",
-  },
-  {
-    shortName: "إيميلات القبول",
-    name: "الموعد النهائي لإرسال إيميلات القبول والرفض",
-    dateLabel: "30 سبتمبر",
-    start: "2026-09-30",
-    end: "2026-09-30",
-  },
-  {
-    shortName: "بدأ الهاكاثون",
-    name: "بدأ الهاكاثون (حضوري)",
-    dateLabel: "4 - 8 أكتوبر",
+    shortName: "التسجيل وتكوين الفرق",
+    name: "التسجيل وتكوين الفرق (إلكتروني)",
+    dateLabel: "4 - 23 أكتوبر",
     start: "2026-10-04",
-    end: "2026-10-08",
+    end: "2026-10-23",
   },
   {
-    shortName: "الحفل الختامي",
-    name: "الحفــل الختامــي",
-    dateLabel: "8 أكتوبر",
-    start: "2026-10-08",
-    end: "2026-10-08",
+    shortName: "القبول",
+    name: "القبول (إلكتروني)",
+    dateLabel: "24 أكتوبر",
+    start: "2026-10-24",
+    end: "2026-10-24",
+  },
+  {
+    shortName: "ورش العمل",
+    name: "ورش العمل (حضوري · مختبر الابتكار بالخبر)",
+    dateLabel: "8 - 11 نوفمبر",
+    start: "2026-11-08",
+    end: "2026-11-11",
+  },
+  {
+    shortName: "العرض النهائي",
+    name: "العرض النهائي (حضوري · مدينة الجبيل)",
+    dateLabel: "18 نوفمبر",
+    start: "2026-11-18",
+    end: "2026-11-18",
   },
 ];
 
@@ -100,19 +94,19 @@ function useNow(): number {
 
 const DOT: Record<Status, string> = {
   active:
-    "bg-amber-300 shadow-[0_0_10px_3px_rgba(252,211,77,0.85)] animate-pulse",
+    "bg-brand-honey shadow-[0_0_10px_3px_hsl(var(--brand-honey)/0.85)] animate-pulse",
   past: "bg-primary-foreground/40",
   future: "bg-primary-foreground/15",
 };
 
 const NAME: Record<Status, string> = {
-  active: "text-primary-foreground font-bold drop-shadow-[0_0_6px_rgba(252,211,77,0.8)]",
+  active: "text-primary-foreground font-bold drop-shadow-[0_0_6px_hsl(var(--brand-honey)/0.8)]",
   past: "text-primary-foreground/45",
   future: "text-primary-foreground/30",
 };
 
 const DATE: Record<Status, string> = {
-  active: "text-amber-200",
+  active: "text-brand-honey",
   past: "text-primary-foreground/35",
   future: "text-primary-foreground/25",
 };

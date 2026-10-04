@@ -77,7 +77,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_PILL: Record<string, string> = {
-  registered: "bg-[#f9d69f]/40 text-[#5e1213]",
+  registered: "bg-brand-honey/20 text-primary-dark",
   attended: "bg-green-100 text-green-800",
   absent: "bg-yellow-100 text-yellow-800",
   cancelled: "bg-red-100 text-red-800",
@@ -369,7 +369,7 @@ export default function AttendancePage() {
   const resultStyles: Record<ScanResult["kind"], string> = {
     attended: "bg-green-50 border-green-500 text-green-800",
     checkedIn: "bg-green-50 border-green-500 text-green-800",
-    wasAbsent: "bg-[#fff6eb] border-[#f9d69f] text-[#5e1213]",
+    wasAbsent: "bg-brand-cream border-brand-honey text-primary-dark",
     alreadyAttended: "bg-yellow-50 border-yellow-500 text-yellow-800",
     alreadyCheckedIn: "bg-yellow-50 border-yellow-500 text-yellow-800",
     rejected: "bg-red-50 border-red-500 text-red-800",
@@ -514,7 +514,7 @@ export default function AttendancePage() {
             </>
           ) : (
             <div className="text-center">
-              <Button onClick={() => { unlockScanAudio(); setCameraOn(true); }} className="bg-[#80191a] hover:bg-[#80191a]">
+              <Button onClick={() => { unlockScanAudio(); setCameraOn(true); }} className="bg-primary hover:bg-primary">
                 <Camera className="ml-2 h-4 w-4" />
                 تشغيل الكاميرا للمسح
               </Button>

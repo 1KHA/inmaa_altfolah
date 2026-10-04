@@ -476,7 +476,7 @@ export default function ParticipantsPage() {
                   <BulkApproveButton
                     target="participants"
                     size="default"
-                    className="gap-2 bg-[#12795a] hover:bg-[#0f6b4f]"
+                    className="gap-2 bg-brand-green-dark hover:bg-brand-green-darker"
                     onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
                   />
                   <BulkApproveButton
@@ -497,7 +497,7 @@ export default function ParticipantsPage() {
               <BulkApproveButton
                 target="participants"
                 ids={Array.from(selectedIds)}
-                className="bg-[#12795a] hover:bg-[#0f6b4f]"
+                className="bg-brand-green-dark hover:bg-brand-green-darker"
                 onDone={() => { setSelectedIds(new Set()); fetchIndividualParticipants(searchQuery); }}
               />
               <BulkApproveButton
@@ -600,7 +600,7 @@ export default function ParticipantsPage() {
                       <td className="border p-2">{participant.city || participant.residence || 'غير متوفر'}</td>
                       <td className="border p-2">{getStatusBadge(participant.status)}</td>
                       <td className="border p-2 whitespace-nowrap text-xs" title="حجوزات · انضم · مكتملة">
-                        {(() => { const s = sessionStats[participant.id]; return s ? <span><span className="font-semibold">{s.booked}</span> حجز · <span className="text-[#80191a]">{s.joined}</span> انضم · <span className="text-green-700">{s.completed}</span> مكتملة</span> : <span className="text-gray-400">—</span>; })()}
+                        {(() => { const s = sessionStats[participant.id]; return s ? <span><span className="font-semibold">{s.booked}</span> حجز · <span className="text-primary">{s.joined}</span> انضم · <span className="text-green-700">{s.completed}</span> مكتملة</span> : <span className="text-gray-400">—</span>; })()}
                       </td>
                       <td className="border p-2">
                         <div className="flex items-center gap-1">
@@ -631,7 +631,7 @@ export default function ParticipantsPage() {
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
-                            className="p-1 rounded-md hover:bg-muted text-[#80191a]"
+                            className="p-1 rounded-md hover:bg-muted text-primary"
                             title="تعديل البيانات"
                             onClick={() => setEditingParticipant(participant)}
                           >

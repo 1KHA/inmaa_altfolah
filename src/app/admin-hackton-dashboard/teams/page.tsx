@@ -129,7 +129,7 @@ export default function TeamsPage() {
       .catch(() => {});
   }, []);
   const fmtSessions = (s?: { booked: number; joined: number; completed: number }) =>
-    s ? <span><span className="font-semibold">{s.booked}</span> حجز · <span className="text-[#80191a]">{s.joined}</span> انضم · <span className="text-green-700">{s.completed}</span> مكتملة</span> : <span className="text-gray-400">—</span>;
+    s ? <span><span className="font-semibold">{s.booked}</span> حجز · <span className="text-primary">{s.joined}</span> انضم · <span className="text-green-700">{s.completed}</span> مكتملة</span> : <span className="text-gray-400">—</span>;
   const [savingMember, setSavingMember] = useState(false);
   const [participantEmail, setParticipantEmail] = useState("");
   const [makeLeader, setMakeLeader] = useState(false);
@@ -750,7 +750,7 @@ export default function TeamsPage() {
                   <BulkApproveButton
                     target="teams"
                     size="default"
-                    className="gap-2 bg-[#12795a] hover:bg-[#0f6b4f]"
+                    className="gap-2 bg-brand-green-dark hover:bg-brand-green-darker"
                     onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
                   />
                   <BulkApproveButton
@@ -771,7 +771,7 @@ export default function TeamsPage() {
               <BulkApproveButton
                 target="teams"
                 ids={Array.from(selectedIds)}
-                className="bg-[#12795a] hover:bg-[#0f6b4f]"
+                className="bg-brand-green-dark hover:bg-brand-green-darker"
                 onDone={() => { setSelectedIds(new Set()); fetchTeams(searchQuery); }}
               />
               <BulkApproveButton
@@ -1012,7 +1012,7 @@ export default function TeamsPage() {
                                       <td className="p-2">{p.university}</td>
                                       <td className="p-2 text-center">
                                         {p.isLeader ? (
-                                          <span className="px-2 py-1 rounded-full text-xs bg-[#f9d69f]/40 text-[#5e1213]">
+                                          <span className="px-2 py-1 rounded-full text-xs bg-brand-honey/20 text-primary-dark">
                                             نعم
                                           </span>
                                         ) : "لا"}
@@ -1169,7 +1169,7 @@ export default function TeamsPage() {
                   <p className="col-span-2"><strong>النتائج المتوقعة:</strong> {selectedTeam.ideaResults}</p>
                   <p><strong>هل شاركت الفكرة من قبل؟</strong> {selectedTeam.hasParticipated ? 'نعم' : 'لا'}</p>
                   {selectedTeam.hasParticipated && <p><strong>تفاصيل المشاركة:</strong> {selectedTeam.participationDetails}</p>}
-                  {selectedTeam.attachmentPath && <p><strong>المرفقات:</strong> <a href={selectedTeam.attachmentPath} target="_blank" rel="noopener noreferrer" className="text-[#80191a] hover:underline">عرض المرفق</a></p>}
+                  {selectedTeam.attachmentPath && <p><strong>المرفقات:</strong> <a href={selectedTeam.attachmentPath} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">عرض المرفق</a></p>}
                 </div>
               </div>
 
@@ -1183,7 +1183,7 @@ export default function TeamsPage() {
                         <h4 className="font-medium">{p.isLeader ? 'قائد الفريق' : `العضو ${index}`}</h4>
                         <div className="flex items-center gap-2">
                           {!p.isLeader && (
-                            <Button size="sm" variant="outline" className="gap-1 text-[#80191a] border-[#ecdfd2]" onClick={() => setLeaderCandidate(p)}>
+                            <Button size="sm" variant="outline" className="gap-1 text-primary border-border" onClick={() => setLeaderCandidate(p)}>
                               <Users className="h-4 w-4" />
                               تعيين قائداً
                             </Button>

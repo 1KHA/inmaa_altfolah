@@ -1,55 +1,43 @@
-import type { Metadata } from "next";
-import Landing from "./landing/Landing";
+import ChildhoodLanding from "./_childhood-landing/ChildhoodLanding";
+import { CONTACT, EVENT } from "./_childhood-landing/content/event";
 
 /*
- * Home page. Renders the coded landing page (src/app/landing), which stays a
- * self-contained, portable folder; this file is only the route + SEO wrapper.
- * The previous image-based home page now lives at /legacy-home (noindex).
+ * Home page. Renders the Childhood Hackathon landing page
+ * (src/app/_childhood-landing, a private folder with no route of its own);
+ * this file is only the route + structured data. Title, description, share
+ * image and icons are the site-wide ones in the root layout. The previous
+ * Mayda landing page still answers at /landing.
  */
 
-export const metadata: Metadata = {
-  title: "جائزة مايدة محي الدين ناظر للابتكار 4",
-  description:
-    "تحدي يجمع طالبات الجامعات السعودية لاستكشاف وتوظيف الابتكارات الجامعية. توفر جائزة مايدة محي الدين ناظر للابتكار هاكاثون الابتكار، فرصة للعمل ضمن فرق تنافسية للعمل على تطوير حلول مبتكرة تسهم في تعزيز الاستدامة وجودة الحياة",
-};
+const description =
+  "هاكثون الطفولة: مختبر إنتاج مكثف لتصميم مبادرات تقنية تخدم الطفل والأسرة، بتنظيم جمعية إنماء لرعاية الطفولة في المنطقة الشرقية، 8 – 18 نوفمبر 2026.";
 
-/* Event rich-result data, carried over from the old home page (it used to be
-   injected client-side; served in the HTML now so crawlers always see it). */
+/* Event rich-result data, served in the HTML so crawlers always see it. */
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "Event",
-  name: "جائزة مايدة محي الدين ناظر للابتكار 4",
-  description:
-    "تحدي يجمع طالبات الجامعات السعودية لاستكشاف وتوظيف الابتكارات الجامعية. توفر جائزة مايدة محي الدين ناظر للابتكار هاكاثون الابتكار، فرصة للعمل ضمن فرق تنافسية للعمل على تطوير حلول مبتكرة تسهم في تعزيز الاستدامة وجودة الحياة",
+  name: EVENT.name,
+  alternateName: EVENT.nameEn,
+  description,
   organizer: {
     "@type": "Organization",
-    name: "جامعة دار الحكمة",
-    url: "https://dah.edu.sa",
+    name: EVENT.organizer,
+    url: CONTACT.website,
   },
   location: {
     "@type": "Place",
-    name: "جامعة دار الحكمة",
+    name: EVENT.venue,
     address: {
       "@type": "PostalAddress",
-      addressLocality: "جدة",
+      addressLocality: "الخبر",
+      addressRegion: EVENT.region,
       addressCountry: "SA",
     },
   },
-  keywords: [
-    "جائزة مايدة محي الدين ناظر للابتكار",
-    "جائزة مايدة",
-    "هاكاثون الابتكار",
-    "دار الحكمة",
-    "جامعة دار الحكمة",
-    "الاستدامة",
-    "جودة الحياة",
-  ],
   eventStatus: "https://schema.org/EventScheduled",
   eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-  startDate: "2026-10-04T16:00:00+03:00",
-  endDate: "2026-10-08T21:00:00+03:00",
-  image: "https://mayda-four.dyam.tech/og.png",
-  url: "https://mayda-four.dyam.tech/",
+  startDate: "2026-11-08",
+  endDate: "2026-11-18",
 };
 
 export default function HomePage() {
@@ -59,7 +47,7 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <Landing />
+      <ChildhoodLanding />
     </>
   );
 }

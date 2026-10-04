@@ -250,7 +250,7 @@ export default function SettingsPage() {
                     </Label>
                   </div>
 
-                  <Button type="submit" disabled={saving} className="bg-[#80191a] hover:bg-[#80191a]">
+                  <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary">
                     <Save className="ml-2 h-4 w-4" />
                     {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
                   </Button>

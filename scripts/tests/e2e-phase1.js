@@ -9,7 +9,7 @@ const { PrismaClient } = require(path.join(REPO, 'node_modules/@prisma/client'))
 
 const prisma = new PrismaClient();
 const BASE = process.env.VERIFY_BASE_URL || 'http://localhost:3000';
-const MAILPIT = 'http://localhost:8025';
+const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const SECRET = process.env.JWT_SECRET;
 
 let pass = 0, fail = 0;
@@ -61,7 +61,7 @@ async function main() {
   const put = await api('/api/admin/email-settings', {
     method: 'PUT', cookie: aCookie,
     body: {
-      host: 'localhost', port: 1025, secure: false,
+      host: 'localhost', port: Number(process.env.MAILPIT_SMTP_PORT || 1025), secure: false,
       username: '', password: 'super-secret-smtp-pass',
       fromEmail: 'noreply@example.test', fromName: 'منصة دِيَم',
       adminInboxEmail: 'admins@example.test', enabled: false,
@@ -95,7 +95,7 @@ async function main() {
     method: 'POST', cookie: aCookie,
     body: {
       toEmail: 'tester@example.test',
-      host: 'localhost', port: 1025, secure: false, username: '',
+      host: 'localhost', port: Number(process.env.MAILPIT_SMTP_PORT || 1025), secure: false, username: '',
       fromEmail: 'unsaved-values@example.test', fromName: 'اختبار غير محفوظ',
     },
   });

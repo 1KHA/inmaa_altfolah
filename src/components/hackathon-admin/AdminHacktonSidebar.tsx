@@ -41,9 +41,9 @@ export default function AdminHacktonSidebar() {
   const { logout } = useAuth();
 
   return (
-    <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col" dir="rtl">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-bold">إدارة الهاكاثون</h2>
+    <div className="w-64 bg-card border-r border-border flex flex-col" dir="rtl">
+      <div className="p-4 border-b border-border">
+        <h2 className="text-xl font-bold text-primary">إدارة الهاكاثون</h2>
       </div>
       <nav className="flex-1 p-4 space-y-2">
         {navItems.map((item) => (
@@ -56,18 +56,18 @@ export default function AdminHacktonSidebar() {
                 : "text-foreground/70 hover:bg-secondary hover:text-primary"
             }`}
           >
-            <item.icon className="w-5 h-5 ml-3" />
+            <item.icon className="w-5 h-5 me-3" />
             {item.name}
           </Link>
         ))}
       </nav>
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-t border-border">
         <Button 
           variant="ghost" 
-          className="w-full flex items-center justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+          className="w-full flex items-center justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={logout}
         >
-          <LogOut className="w-5 h-5 ml-3" />
+          <LogOut className="w-5 h-5 me-3" />
           تسجيل الخروج
         </Button>
       </div>

@@ -42,18 +42,21 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Image
-        src="/logos/02.png"
-        alt="جامعة دار الحكمة"
-        width={224}
-        height={224}
-        priority
-        className="mb-6 w-28 h-auto"
-      />
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-hero py-12 px-4 sm:px-6 lg:px-8">
+      <Link href="/" className="mb-6">
+        <Image
+          src="/brand/logo-vertical.svg"
+          alt="هاكثون الطفولة"
+          width={547}
+          height={1018}
+          priority
+          unoptimized
+          className="h-32 w-auto"
+        />
+      </Link>
+      <Card className="w-full max-w-md gradient-card rounded-3xl border-border/60 shadow-elegant">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
+          <CardTitle className="text-2xl font-bold text-center text-primary">
             نسيت كلمة المرور؟
           </CardTitle>
           <CardDescription className="text-center">

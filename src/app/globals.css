@@ -2,7 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Arabic Fonts */
+/* Graphik Arabic — the identity typeface (8 weights, Arabic + Latin), the
+   default for every page via Tailwind's font-sans */
+@font-face { font-family: 'Graphik Arabic'; font-style: normal; font-display: swap; font-weight: 100; src: url('./fonts/GraphikArabic-Thin.woff2') format('woff2'); }
+@font-face { font-family: 'Graphik Arabic'; font-style: normal; font-display: swap; font-weight: 200; src: url('./fonts/GraphikArabic-ExtraLight.woff2') format('woff2'); }
+@font-face { font-family: 'Graphik Arabic'; font-style: normal; font-display: swap; font-weight: 300; src: url('./fonts/GraphikArabic-Light.woff2') format('woff2'); }
+@font-face { font-family: 'Graphik Arabic'; font-style: normal; font-display: swap; font-weight: 400; src: url('./fonts/GraphikArabic-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'Graphik Arabic'; font-style: normal; font-display: swap; font-weight: 500; src: url('./fonts/GraphikArabic-Medium.woff2') format('woff2'); }
+@font-face { font-family: 'Graphik Arabic'; font-style: normal; font-display: swap; font-weight: 600; src: url('./fonts/GraphikArabic-SemiBold.woff2') format('woff2'); }
+@font-face { font-family: 'Graphik Arabic'; font-style: normal; font-display: swap; font-weight: 700; src: url('./fonts/GraphikArabic-Bold.woff2') format('woff2'); }
+@font-face { font-family: 'Graphik Arabic'; font-style: normal; font-display: swap; font-weight: 900; src: url('./fonts/GraphikArabic-Black.woff2') format('woff2'); }
+
+/* Somar — the previous identity's face, still used by /legacy-home */
 @font-face {
   font-family: 'Somar-Bold';
   src: url('/fonts/ArbFONTS-Somar-Bold.otf') format('opentype');
@@ -26,53 +37,81 @@
 
 @layer base {
   /*
-   * Dashboard design tokens — the visual identity in visual_identity/colors.md:
-   *   #80191a main red · #83bae4 blue · #f9d69f sand · #fff6eb cream
+   * Design tokens — the هاكثون الطفولة visual identity (the home page,
+   * src/app/_childhood-landing):
+   *   navy #22406B · orange #E2653B · honey #F0A63B · green #70A288
+   *   cream #FBF4EA for backgrounds · ink #2A2118 for text
    * Every shadcn component (Button, Card, Badge, Tabs, Progress, …) reads these,
-   * so the admin, mentor and participant dashboards inherit the palette from
-   * here; only the headers set brand colours directly.
+   * so the login/register pages and the admin, mentor and participant
+   * dashboards inherit the identity from here. The landing page overrides a
+   * few of them (orange accent, honey secondary) in childhood-landing.css.
    */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 20 25.5% 18.4%;        /* warm ink instead of blue-black */
+    /* Brand palette, also exposed to Tailwind as brand-* (bg-brand-honey/20, …).
+       The -dark shades are for text and fills that must carry white or sit on
+       a tint: honey and green are too light for either. */
+    --brand-navy: 215 52% 28%;          /* #22406B النيلي */
+    --brand-navy-dark: 215 52% 20%;
+    --brand-orange: 15 74% 56%;         /* #E2653B البرتقالي */
+    --brand-orange-dark: 15 70% 44%;    /* #BF4922, white text 5:1 */
+    --brand-honey: 35 86% 59%;          /* #F0A63B العسلي */
+    --brand-honey-dark: 33 80% 32%;     /* #935810, 4.9:1 on a honey tint */
+    --brand-green: 149 21% 54%;         /* #70A288 الأخضر */
+    --brand-green-dark: 149 32% 30%;    /* #34654C, white text 6.7:1 */
+    --brand-green-darker: 149 35% 23%;
+    --brand-cream: 35 68% 95%;          /* #FBF4EA */
+    --brand-ink: 30 27% 13%;            /* #2A2118 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 20 25.5% 18.4%;
+    --background: var(--brand-cream);
+    --foreground: var(--brand-ink);
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 20 25.5% 18.4%;
+    /* #FFFBF5 — warm white, lifts cards off the cream */
+    --card: 36 100% 98%;
+    --card-foreground: var(--brand-ink);
 
-    /* brand red */
-    --primary: 359.4 67.3% 30%;
-    --primary-foreground: 33 100% 96.1%; /* cream */
+    --popover: 36 100% 98%;
+    --popover-foreground: var(--brand-ink);
 
-    /* cream surface for secondary buttons / chips */
-    --secondary: 33 100% 96.1%;
-    --secondary-foreground: 359.4 67.3% 30%;
+    --primary: var(--brand-navy);
+    --primary-foreground: var(--brand-cream);
+    --primary-dark: var(--brand-navy-dark);
 
-    --muted: 33 60% 95%;
-    --muted-foreground: 23.1 11.9% 42.7%;
+    /* sand surface for secondary buttons / chips */
+    --secondary: 35 45% 90%;
+    --secondary-foreground: var(--brand-navy);
 
-    /* sand — hover/highlight */
-    --accent: 36.7 88.2% 80%;
-    --accent-foreground: 359.2 67.9% 22%;
+    --muted: 35 45% 90%;
+    --muted-foreground: 30 12% 38%;      /* #6D6155 — 5.5:1 on cream */
 
-    /* kept distinct from the brand red so "danger" still reads as danger */
-    --destructive: 357 65% 45%;
-    --destructive-foreground: 210 40% 98%;
+    /* honey tint — hover/highlight for menus, ghost buttons, select items */
+    --accent: 35 86% 92%;
+    --accent-foreground: var(--brand-navy-dark);
 
-    --border: 30 40.6% 87.5%;
-    --input: 30 40.6% 87.5%;
-    --ring: 206 64.2% 70.4%;             /* identity blue, for focus rings */
+    /* kept clear of the brand orange so "danger" still reads as danger */
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* charts: red → blue → sand → deep red → warm gray */
-    --chart-1: 359.4 67.3% 30%;
-    --chart-2: 206 64.2% 70.4%;
-    --chart-3: 36.7 88.2% 80%;
-    --chart-4: 359.2 67.9% 22%;
-    --chart-5: 23.1 11.9% 42.7%;
+    --border: 35 40% 84%;
+    --input: 35 40% 84%;
+    --ring: var(--brand-orange);
 
-    --radius: 0.5rem;
+    /* charts: the four primaries in palette order, then warm gray */
+    --chart-1: var(--brand-navy);
+    --chart-2: var(--brand-orange);
+    --chart-3: var(--brand-honey);
+    --chart-4: var(--brand-green);
+    --chart-5: 30 12% 38%;
+
+    --radius: 0.75rem;
+
+    --gradient-hero: linear-gradient(180deg, hsl(var(--brand-cream)) 0%, hsl(36 80% 93%) 100%);
+    --gradient-card: linear-gradient(160deg, hsl(var(--card)) 0%, hsl(var(--brand-cream)) 100%);
+
+    --shadow-glow: 0 12px 32px -8px hsl(var(--brand-orange) / 0.45);
+    --shadow-card: 0 14px 34px -18px hsl(var(--brand-navy) / 0.35);
+
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
 
   .dark {
@@ -276,6 +315,23 @@ html, body {
   }
 }
 
+/* react-big-calendar's own colours (blue events, light-blue "today") in the
+   identity palette. One class deeper than the library's rules so they win
+   whatever the stylesheet order; per-event inline colours still override. */
+.rbc-calendar .rbc-event,
+.rbc-calendar .rbc-day-slot .rbc-background-event {
+  background-color: hsl(var(--primary));
+}
+.rbc-calendar .rbc-event.rbc-selected {
+  background-color: hsl(var(--primary-dark));
+}
+.rbc-calendar .rbc-today {
+  background-color: hsl(var(--brand-honey) / 0.12);
+}
+.rbc-calendar .rbc-current-time-indicator {
+  background-color: hsl(var(--brand-orange));
+}
+
 /* react-big-calendar (mentor availability, participant booking, admin
    mentor calendar): slots are 15 minutes, so the event box only has room
    for the time. Hide the status/title text in the time grid and keep the
@@ -294,4 +350,135 @@ html, body {
 }
 .rbc-time-view .rbc-event-content {
   display: none;
+}
+
+/* ------------------------------------------------------------------------
+ * Identity classes (from the هاكثون الطفولة landing page). They live in
+ * Tailwind's base layer so that utilities still override them, e.g.
+ * `leading-tight` beats `.arabic-text`'s line-height.
+ * ---------------------------------------------------------------------- */
+@layer base {
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+
+  .glow-accent {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-elegant {
+    box-shadow: var(--shadow-card);
+  }
+
+  .arabic-text {
+    font-family: 'Graphik Arabic', 'Segoe UI', Tahoma, sans-serif;
+    line-height: 1.7;
+  }
+
+  /* Pill-outlined section title (honey outline, orange type) */
+  .brand-pill {
+    @apply inline-flex items-center rounded-full border border-brand-honey px-8 py-2 text-brand-orange font-bold;
+  }
+
+  /* Navy rule on the reading-start edge, used beside key statements */
+  .brand-rule {
+    border-inline-start: 6px solid hsl(var(--brand-navy));
+    padding-inline-start: 1.25rem;
+  }
+
+  /* Organic swatch shapes from the identity's colour plates */
+  .blob {
+    border-radius: 58% 42% 46% 54% / 60% 58% 42% 40%;
+  }
+
+  .blob-alt {
+    border-radius: 44% 56% 55% 45% / 58% 45% 55% 42%;
+  }
+
+  /* Hero entrance animations */
+  @keyframes childhood-fade-in-up {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes childhood-fade-in-right {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes childhood-scale-in {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .animate-fade-in-up {
+    animation: childhood-fade-in-up 0.8s ease-out forwards;
+  }
+
+  .animate-fade-in-right {
+    animation: childhood-fade-in-right 0.8s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: childhood-scale-in 0.8s ease-out forwards;
+  }
+
+  .animation-delay-200 { animation-delay: 0.2s; opacity: 0; }
+  .animation-delay-300 { animation-delay: 0.3s; opacity: 0; }
+  .animation-delay-400 { animation-delay: 0.4s; opacity: 0; }
+  .animation-delay-500 { animation-delay: 0.5s; opacity: 0; }
+  .animation-delay-600 { animation-delay: 0.6s; opacity: 0; }
+  .animation-delay-800 { animation-delay: 0.8s; opacity: 0; }
+  .animation-delay-1000 { animation-delay: 1s; }
+  .animation-delay-1200 { animation-delay: 1.2s; }
+
+  /* Scroll-triggered animations (_childhood-landing/hooks/useScrollAnimation adds .animate-in) */
+  .animate-on-scroll {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s ease-out;
+  }
+
+  .animate-on-scroll.animate-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .animate-on-scroll-scale {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.8s ease-out;
+  }
+
+  .animate-on-scroll-scale.animate-in {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* Staggered animations for children */
+  .stagger-children > * {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease-out;
+  }
+
+  .stagger-children.animate-in > *:nth-child(1) { transition-delay: 0.1s; }
+  .stagger-children.animate-in > *:nth-child(2) { transition-delay: 0.2s; }
+  .stagger-children.animate-in > *:nth-child(3) { transition-delay: 0.3s; }
+  .stagger-children.animate-in > *:nth-child(4) { transition-delay: 0.4s; }
+  .stagger-children.animate-in > *:nth-child(5) { transition-delay: 0.5s; }
+  .stagger-children.animate-in > *:nth-child(6) { transition-delay: 0.6s; }
+
+  .stagger-children.animate-in > * {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

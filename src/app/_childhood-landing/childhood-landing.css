@@ -1,0 +1,60 @@
+/* هاكثون الطفولة landing page.
+   The identity (palette, gradients, shadows, Graphik Arabic) is site-wide in
+   src/app/globals.css. This scope only holds where the landing differs from
+   the app pages: the orange accent and honey secondary of the marketing page
+   (the dashboards use quieter tints for hover states) and rounder corners. */
+
+.childhood-landing {
+  /* Orange passes contrast only for large/bold text (3.4:1 on white); keep small text in ink or navy */
+  --accent: var(--brand-orange);
+  --accent-foreground: 0 0% 100%;
+  --accent-hover: var(--brand-orange-dark);
+
+  --secondary: var(--brand-honey);
+  --secondary-foreground: var(--brand-ink);
+
+  --radius: 1rem;
+
+  font-family: 'Graphik Arabic', 'Segoe UI', Tahoma, sans-serif;
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.childhood-landing ::selection {
+  background: hsl(var(--brand-honey) / 0.45);
+  color: hsl(var(--brand-ink));
+}
+
+/* Page-level rules, applied only while the landing page is mounted */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.childhood-landing) {
+    scroll-behavior: smooth;
+  }
+}
+
+/* So overscroll doesn't flash a flat colour */
+body:has(.childhood-landing) {
+  background: var(--gradient-hero);
+}
+
+html:has(.childhood-landing) ::-webkit-scrollbar,
+html:has(.childhood-landing)::-webkit-scrollbar {
+  width: 8px;
+}
+
+html:has(.childhood-landing) ::-webkit-scrollbar-track,
+html:has(.childhood-landing)::-webkit-scrollbar-track {
+  background: hsl(var(--brand-cream));
+}
+
+html:has(.childhood-landing) ::-webkit-scrollbar-thumb,
+html:has(.childhood-landing)::-webkit-scrollbar-thumb {
+  background: hsl(var(--brand-honey));
+  border-radius: 4px;
+}
+
+html:has(.childhood-landing) ::-webkit-scrollbar-thumb:hover,
+html:has(.childhood-landing)::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--brand-orange-dark));
+}

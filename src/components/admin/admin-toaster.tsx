@@ -92,7 +92,7 @@ export function AdminToaster() {
         return `${baseClasses} bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500`;
       case "info":
       default:
-        return `${baseClasses} bg-[#f9d69f]/40 text-[#5e1213] border-l-4 border-[#f9d69f]`;
+        return `${baseClasses} bg-brand-honey/20 text-primary-dark border-l-4 border-brand-honey`;
     }
   };
   

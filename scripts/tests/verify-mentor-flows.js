@@ -72,13 +72,13 @@ async function main() {
   // ---- 2. approval fires only on the transition ---------------------------
   // Route email to Mailpit for this section: approval must email the mentor
   // their login details (fresh temporary password + login URL).
-  const MAILPIT = 'http://localhost:8025';
+  const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
   const settingsRow = await prisma.emailSettings.findFirst();
   const originalSettings = settingsRow ? { ...settingsRow } : null;
   if (settingsRow) {
     await prisma.emailSettings.update({
       where: { id: settingsRow.id },
-      data: { host: 'localhost', port: 1025, secure: false, username: '', password: '', fromEmail: 'noreply@example.test', fromName: 'منصة دِيَم', adminInboxEmail: '', enabled: true },
+      data: { host: 'localhost', port: Number(process.env.MAILPIT_SMTP_PORT || 1025), secure: false, username: '', password: '', fromEmail: 'noreply@example.test', fromName: 'منصة دِيَم', adminInboxEmail: '', enabled: true },
     });
     await fetch(MAILPIT + '/api/v1/messages', { method: 'DELETE' });
   }

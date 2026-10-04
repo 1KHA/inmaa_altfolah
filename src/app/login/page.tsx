@@ -10,8 +10,7 @@ import { useToast } from '../../../components/ui/use-toast'
 import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
 import Loader from '@/components/ui/loader'
-import SiteHeader from '@/app/landing/components/SiteHeader'
-import SiteFooter from '@/app/landing/components/SiteFooter'
+import PublicPageShell from '@/components/site/PublicPageShell'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -96,38 +95,31 @@ export default function LoginPage() {
       {showLoader && <Loader isVisible={loaderVisible} />}
       
       {/* Main content with smooth fade in */}
-      <div 
-        className={`min-h-screen flex flex-col transition-opacity duration-500 ${contentVisible ? 'opacity-100' : 'opacity-0'}`}
-        style={{ backgroundColor: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}
-      >
-        {/* Header (shared with the landing and registration pages) */}
-        <SiteHeader standalone />
-        
-        {/* Form Section — flex-1 keeps the footer at the bottom on tall screens */}
-        <div className="flex-1 py-16 px-4 sm:px-6 lg:px-8">
+      <div className={`transition-opacity duration-500 ${contentVisible ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Header and footer shared with the home and registration pages */}
+        <PublicPageShell>
           <div className="max-w-md mx-auto">
-            <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
-              <CardHeader className="text-center pb-8 pt-10">
-                <CardTitle className="text-4xl font-bold mb-4" style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}>
+            <Card className="gradient-card rounded-3xl border-border/60 shadow-elegant">
+              <CardHeader className="text-center pb-8 pt-10 space-y-4">
+                <CardTitle className="text-4xl font-black text-primary">
                   تسجيل الدخول
                 </CardTitle>
-                <CardDescription className="text-xl" style={{ color: '#620F10', fontFamily: 'Somar-Light, Arial, sans-serif' }}>
+                <CardDescription className="text-lg font-light text-primary arabic-text">
                   أدخل بريدك الإلكتروني وكلمة المرور للوصول إلى لوحة التحكم
                 </CardDescription>
               </CardHeader>
-              <CardContent className="px-10 pb-10">
+              <CardContent className="px-6 pb-10 sm:px-10">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {errorMessage && (
                     <div
                       role="alert"
-                      className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-                      style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+                      className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
                     >
                       {errorMessage}
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-base font-medium mb-2 block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                    <Label htmlFor="email" className="text-base font-medium mb-2 block text-primary">
                       البريد الإلكتروني
                     </Label>
                     <Input
@@ -138,19 +130,17 @@ export default function LoginPage() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       dir="ltr"
-                      className="h-11 border-2 border-gray-200 focus:border-[#620F10] rounded-lg"
-                      style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+                      className="h-11 border-2 bg-white focus-visible:border-primary rounded-xl"
                     />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between mb-2">
-                      <Label htmlFor="password" className="text-base font-medium block" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                      <Label htmlFor="password" className="text-base font-medium block text-primary">
                         كلمة المرور
                       </Label>
                       <Link
                         href="/forgot-password"
-                        className="text-xs font-medium hover:underline"
-                        style={{ color: '#620F10', fontFamily: 'Somar-Light, Arial, sans-serif' }}
+                        className="text-xs font-medium text-primary/80 hover:text-primary hover:underline"
                       >
                         نسيت كلمة المرور؟
                       </Link>
@@ -163,18 +153,12 @@ export default function LoginPage() {
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       dir="ltr"
-                      className="h-11 border-2 border-gray-200 focus:border-[#620F10] rounded-lg"
-                      style={{ fontFamily: 'Somar-Light, Arial, sans-serif' }}
+                      className="h-11 border-2 bg-white focus-visible:border-primary rounded-xl"
                     />
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full text-xl py-4 font-bold rounded-xl transition-all duration-300 hover:shadow-lg disabled:opacity-50" 
-                    style={{ 
-                      backgroundColor: '#620F10', 
-                      fontFamily: 'Somar-Bold, Arial, sans-serif',
-                      border: 'none'
-                    }}
+                    className="w-full h-12 rounded-full bg-brand-orange text-lg font-bold text-white hover:bg-brand-orange-dark glow-accent transition-smooth disabled:opacity-50" 
                     disabled={isLoading}
                   >
                     {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
@@ -182,13 +166,12 @@ export default function LoginPage() {
                 </form>
                 
                 <div className="mt-8 text-center space-y-2">
-                  <p className="text-base" style={{ color: '#620F10', fontFamily: 'Somar-Medium, Arial, sans-serif' }}>
+                  <p className="text-base text-muted-foreground">
                     ليس لديك حساب؟
                   </p>
                   <Link 
                     href="/register-team" 
-                    className="text-base hover:underline" 
-                    style={{ color: '#620F10', fontFamily: 'Somar-Bold, Arial, sans-serif' }}
+                    className="text-base font-bold text-primary underline-offset-8 hover:underline"
                   >
                     سجل فريقك
                   </Link>
@@ -196,10 +179,7 @@ export default function LoginPage() {
               </CardContent>
             </Card>
           </div>
-        </div>
-        
-        {/* Footer (shared with the landing and registration pages) */}
-        <SiteFooter standalone />
+        </PublicPageShell>
       </div>
     </>
   )

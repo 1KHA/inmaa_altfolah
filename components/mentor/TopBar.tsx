@@ -58,7 +58,7 @@ export default function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-[#80191a] text-primary-foreground">
+    <header className="sticky top-0 z-40 border-b bg-primary text-primary-foreground">
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center">
           <button
@@ -75,12 +75,13 @@ export default function TopBar() {
 
           <Link href="/mentor-dashboard" className="flex items-center">
             <Image
-              src="/brand/logonew.png"
-              alt="جائزة مايدة محي الدين ناظر للابتكار"
-              width={1458}
-              height={259}
+              src="/brand/logo-horizontal-light.svg"
+              alt="هاكثون الطفولة"
+              width={1459}
+              height={611}
               priority
-              className="h-7 w-auto shrink-0 sm:h-9 md:h-10"
+              unoptimized
+              className="h-9 w-auto shrink-0 md:h-10"
             />
             <span className="ml-1 hidden sm:inline rounded-md bg-primary-foreground/20 px-1.5 py-0.5 text-xs font-medium">
               لوحة المرشد

@@ -22,7 +22,7 @@ export default function TopBar() {
   }, [pathname])
 
   return (
-    <header className="sticky top-0 z-40 bg-[#80191a] text-primary-foreground text-right" dir="rtl">
+    <header className="sticky top-0 z-40 bg-primary text-primary-foreground text-right" dir="rtl">
       <div className="h-12 flex items-center justify-between px-4">
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -33,12 +33,13 @@ export default function TopBar() {
             <span className="sr-only">القائمة</span>
           </button>
           <Image
-              src="/brand/logonew.png"
-              alt="جائزة مايدة محي الدين ناظر للابتكار"
-              width={1458}
-              height={259}
+              src="/brand/logo-horizontal-light.svg"
+              alt="هاكثون الطفولة"
+              width={1459}
+              height={611}
               priority
-              className="h-7 w-auto shrink-0 sm:h-9 md:h-10"
+              unoptimized
+              className="h-9 w-auto shrink-0 md:h-10"
             />
         </div>
         {/* Hackathon journey timeline */}
@@ -52,7 +53,7 @@ export default function TopBar() {
           <div className="hidden text-sm sm:block">لوحة تحكم</div>
           <NotificationDropdown
             userType="admin"
-            className="text-primary-foreground hover:bg-[#5e1213]"
+            className="text-primary-foreground hover:bg-primary-foreground/10"
           />
         </div>
       </div>

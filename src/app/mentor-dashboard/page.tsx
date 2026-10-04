@@ -164,12 +164,12 @@ export default function MentorDashboardPage() {
   ] as const;
 
   const colorClasses: Record<string, { bg: string; icon: string; value: string }> = {
-    blue: { bg: "to-[#fff6eb]", icon: "text-[#80191a]", value: "text-[#80191a]" },
-    green: { bg: "to-[#83bae4]/20", icon: "text-[#2b6b93]", value: "text-[#2b6b93]" },
-    purple: { bg: "to-[#fff6eb]", icon: "text-[#80191a]", value: "text-[#80191a]" },
-    red: { bg: "to-[#f9d69f]/30", icon: "text-[#5e1213]", value: "text-[#5e1213]" },
-    yellow: { bg: "to-[#f9d69f]/30", icon: "text-[#a5762a]", value: "text-[#a5762a]" },
-    cyan: { bg: "to-[#fff6eb]", icon: "text-[#80191a]", value: "text-[#80191a]" },
+    blue: { bg: "to-brand-cream", icon: "text-primary", value: "text-primary" },
+    green: { bg: "to-brand-green/20", icon: "text-brand-green-dark", value: "text-brand-green-dark" },
+    purple: { bg: "to-brand-cream", icon: "text-primary", value: "text-primary" },
+    red: { bg: "to-brand-honey/15", icon: "text-primary-dark", value: "text-primary-dark" },
+    yellow: { bg: "to-brand-honey/15", icon: "text-brand-honey-dark", value: "text-brand-honey-dark" },
+    cyan: { bg: "to-brand-cream", icon: "text-primary", value: "text-primary" },
   };
 
   return (
@@ -185,7 +185,7 @@ export default function MentorDashboardPage() {
             هذه نظرة عامة على جلساتك ومواعيدك
           </p>
           {mentor?.organization && (
-            <div className="mt-2 inline-flex items-center gap-2 rounded-full border bg-[#fff6eb] text-[#5e1213] px-3 py-1 text-xs">
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border bg-brand-cream text-primary-dark px-3 py-1 text-xs">
               {mentor.organization.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={mentor.organization.logoUrl} alt="" className="h-5 w-5 rounded object-contain bg-white" />
@@ -243,13 +243,13 @@ export default function MentorDashboardPage() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
-            <CalendarClock className="h-5 w-5 text-[#80191a]" />
+            <CalendarClock className="h-5 w-5 text-primary" />
             الجلسة القادمة
           </CardTitle>
         </CardHeader>
         <CardContent>
           {nextSession ? (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg bg-[#fff6eb] border border-[#ecdfd2]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg bg-brand-cream border border-border">
               <div className="min-w-0">
                 <div className="font-semibold break-words">{nextSession.participant.name}</div>
                 <div className="text-sm text-muted-foreground break-all">
@@ -263,13 +263,13 @@ export default function MentorDashboardPage() {
                     )}
                   </div>
                 )}
-                <div className="text-sm text-[#80191a] mt-1">
+                <div className="text-sm text-primary mt-1">
                   {fmt(nextSession.availability.startTime)}
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
                 {nextSession.meetingUrl && (
-                  <Button asChild className="bg-[#12795a] hover:bg-[#0f6b4f] w-full sm:w-auto">
+                  <Button asChild className="bg-brand-green-dark hover:bg-brand-green-darker w-full sm:w-auto">
                     <a href={`/api/meeting/join/${nextSession.id}`} target="_blank" rel="noopener noreferrer">
                       دخول الاجتماع
                     </a>
@@ -293,19 +293,19 @@ export default function MentorDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Button asChild variant="outline" className="h-auto py-4 justify-start gap-3">
           <Link href="/mentor-dashboard/availability">
-            <CalendarPlus className="h-5 w-5 text-[#80191a]" />
+            <CalendarPlus className="h-5 w-5 text-primary" />
             <span>إدارة مواعيد التوفر</span>
           </Link>
         </Button>
         <Button asChild variant="outline" className="h-auto py-4 justify-start gap-3">
           <Link href="/mentor-dashboard/sessions">
-            <ListChecks className="h-5 w-5 text-[#80191a]" />
+            <ListChecks className="h-5 w-5 text-primary" />
             <span>جلسات الإرشاد</span>
           </Link>
         </Button>
         <Button asChild variant="outline" className="h-auto py-4 justify-start gap-3">
           <Link href="/mentor-dashboard/notifications">
-            <Bell className="h-5 w-5 text-[#80191a]" />
+            <Bell className="h-5 w-5 text-primary" />
             <span>الإشعارات</span>
           </Link>
         </Button>

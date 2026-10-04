@@ -41,7 +41,7 @@ const STATUS_LABEL: Record<string, string> = { booked: "محجوز", cancelled: 
 const STATUS_CLASS: Record<string, string> = {
   booked: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
-  completed: "bg-[#f9d69f]/40 text-[#5e1213]",
+  completed: "bg-brand-honey/20 text-primary-dark",
 };
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
@@ -124,12 +124,12 @@ export default function AdminBookingsPage() {
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#5e1213] flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary-dark flex items-center gap-2">
             <CalendarClock className="h-7 w-7" />
             حجوزات الموجهين
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            اليوم {fmtDay(todayKey())} — <span className="font-semibold text-[#80191a]">{todayCount}</span> حجز نشط. الأوقات بتوقيت الرياض.
+            اليوم {fmtDay(todayKey())} — <span className="font-semibold text-primary">{todayCount}</span> حجز نشط. الأوقات بتوقيت الرياض.
           </p>
         </div>
         <div className="flex gap-2">
@@ -180,7 +180,7 @@ export default function AdminBookingsPage() {
             <div className="space-y-1">
               <Label>الجهة</Label>
               <Select value={orgFilter} onValueChange={setOrgFilter}>
-                <SelectTrigger><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-[#80191a]" /><SelectValue placeholder="كل الجهات" /></div></SelectTrigger>
+                <SelectTrigger><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /><SelectValue placeholder="كل الجهات" /></div></SelectTrigger>
                 <SelectContent dir="rtl">
                   <SelectItem value="all">كل الجهات</SelectItem>
                   {orgs.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
@@ -191,7 +191,7 @@ export default function AdminBookingsPage() {
             <div className="space-y-1">
               <Label>الموجه</Label>
               <Select value={mentorFilter} onValueChange={setMentorFilter}>
-                <SelectTrigger><div className="flex items-center gap-2"><Users className="h-4 w-4 text-[#80191a]" /><SelectValue placeholder="كل الموجهين" /></div></SelectTrigger>
+                <SelectTrigger><div className="flex items-center gap-2"><Users className="h-4 w-4 text-primary" /><SelectValue placeholder="كل الموجهين" /></div></SelectTrigger>
                 <SelectContent dir="rtl">
                   <SelectItem value="all">كل الموجهين</SelectItem>
                   {mentors.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
@@ -213,29 +213,29 @@ export default function AdminBookingsPage() {
             <div className="space-y-1">
               <Label htmlFor="q">بحث</Label>
               <div className="relative">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#80191a] pointer-events-none" />
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary pointer-events-none" />
                 <Input id="q" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="موجه، مشارك، بريد، جوال، جهة..." className="pr-9" />
               </div>
             </div>
           </div>
           <div className="text-sm text-muted-foreground">
-            {allDays ? "كل الأيام" : fmtDay(day)} · {hourLabel(fromHour)}–{toHour === 24 ? "24:00" : hourLabel(toHour)} · <span className="font-semibold text-[#80191a]">{filtered.length}</span> حجز
+            {allDays ? "كل الأيام" : fmtDay(day)} · {hourLabel(fromHour)}–{toHour === 24 ? "24:00" : hourLabel(toHour)} · <span className="font-semibold text-primary">{filtered.length}</span> حجز
           </div>
         </CardContent>
       </Card>
 
       {/* Results grouped by day, ordered by time */}
       {loading ? (
-        <div className="p-8 text-center text-[#80191a]">جاري تحميل الحجوزات...</div>
+        <div className="p-8 text-center text-primary">جاري تحميل الحجوزات...</div>
       ) : groups.length === 0 ? (
         <Card className="border-0 shadow-sm"><CardContent className="p-10 text-center text-muted-foreground">لا توجد حجوزات مطابقة{!allDays ? ` في ${fmtDay(day)}` : ""}.</CardContent></Card>
       ) : (
         groups.map((g) => (
           <Card key={g.key} className="border-0 shadow-sm overflow-hidden">
-            <CardHeader className="py-3 bg-[#fff6eb]/70">
-              <CardTitle className="text-base font-bold text-[#5e1213] flex items-center gap-2">
-                <CalendarClock className="h-5 w-5 text-[#80191a]" />
-                {fmtDay(g.key)}{g.key === todayKey() && <Badge className="bg-[#80191a] text-white">اليوم</Badge>}
+            <CardHeader className="py-3 bg-brand-cream/70">
+              <CardTitle className="text-base font-bold text-primary-dark flex items-center gap-2">
+                <CalendarClock className="h-5 w-5 text-primary" />
+                {fmtDay(g.key)}{g.key === todayKey() && <Badge className="bg-primary text-white">اليوم</Badge>}
                 <Badge variant="secondary" className="font-normal">{g.items.length} حجز</Badge>
               </CardTitle>
             </CardHeader>
@@ -244,12 +244,12 @@ export default function AdminBookingsPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/40">
                     <tr className="text-right">
-                      <th className="p-3 font-semibold text-[#5e1213] w-[130px]">الوقت</th>
-                      <th className="p-3 font-semibold text-[#5e1213]">الموجه</th>
-                      <th className="p-3 font-semibold text-[#5e1213]">الجهة</th>
-                      <th className="p-3 font-semibold text-[#5e1213]">المشارك</th>
-                      <th className="p-3 font-semibold text-[#5e1213] w-[170px]">الحالة / الحضور</th>
-                      <th className="p-3 font-semibold text-[#5e1213] w-[120px] text-center">الاجتماع</th>
+                      <th className="p-3 font-semibold text-primary-dark w-[130px]">الوقت</th>
+                      <th className="p-3 font-semibold text-primary-dark">الموجه</th>
+                      <th className="p-3 font-semibold text-primary-dark">الجهة</th>
+                      <th className="p-3 font-semibold text-primary-dark">المشارك</th>
+                      <th className="p-3 font-semibold text-primary-dark w-[170px]">الحالة / الحضور</th>
+                      <th className="p-3 font-semibold text-primary-dark w-[120px] text-center">الاجتماع</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -268,7 +268,7 @@ export default function AdminBookingsPage() {
                               {b.organization.logoUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={b.organization.logoUrl} alt="" className="h-7 w-7 rounded object-contain border bg-white shrink-0" />
-                              ) : <Building2 className="h-4 w-4 text-[#80191a] shrink-0" />}
+                              ) : <Building2 className="h-4 w-4 text-primary shrink-0" />}
                               <span className="truncate max-w-[160px]" title={b.organization.name}>{b.organization.name}</span>
                             </div>
                           ) : <span className="text-gray-400 text-xs">—</span>}
@@ -288,7 +288,7 @@ export default function AdminBookingsPage() {
                         </td>
                         <td className="p-3 text-center">
                           {b.meetingUrl && b.status === "booked" ? (
-                            <Button asChild size="sm" className="bg-[#12795a] hover:bg-[#0f6b4f] h-8 text-xs gap-1">
+                            <Button asChild size="sm" className="bg-brand-green-dark hover:bg-brand-green-darker h-8 text-xs gap-1">
                               <a href={`/api/meeting/join/${b.id}`} target="_blank" rel="noopener noreferrer"><Video className="h-3.5 w-3.5" />دخول</a>
                             </Button>
                           ) : <span className="text-gray-400 text-xs">—</span>}

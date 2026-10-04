@@ -42,7 +42,7 @@ async function api(pathname, { cookie: ck, method = 'GET', body } = {}) {
   return { status: res.status, json };
 }
 
-const MAILPIT = 'http://localhost:8025';
+const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const mp = async (p) => (await fetch(MAILPIT + p)).json();
 const clearMp = async () => { await fetch(MAILPIT + '/api/v1/messages', { method: 'DELETE' }); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -139,7 +139,7 @@ async function main() {
   await prisma.emailSettings.update({
     where: { id: settingsRow.id },
     data: {
-      host: 'localhost', port: 1025, secure: false, username: '', password: '',
+      host: 'localhost', port: Number(process.env.MAILPIT_SMTP_PORT || 1025), secure: false, username: '', password: '',
       fromEmail: 'noreply@example.test', fromName: 'منصة دِيَم',
       adminInboxEmail: '', enabled: true,
     },

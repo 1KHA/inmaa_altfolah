@@ -360,8 +360,8 @@ export default function DashboardPage() {
                     stats.recentNotifications.map((notification) => {
                       // Determine icon and color based on notification type
                       let IconComponent = Bell;
-                      let bgColor = "bg-[#f9d69f]/40";
-                      let textColor = "text-[#80191a]";
+                      let bgColor = "bg-brand-honey/20";
+                      let textColor = "text-primary";
                       
                       if (notification.type === "success") {
                         IconComponent = CheckCircle;
@@ -497,7 +497,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-blue-500" 
+                      className="h-full bg-primary" 
                       style={{ 
                         width: `${stats?.totalEventRegistrations && stats?.totalParticipants && stats?.totalEvents
                           ? Math.min(100, (stats.totalEventRegistrations / (stats.totalParticipants * Math.max(stats.totalEvents, 1))) * 100)
@@ -518,7 +518,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-green-500" 
+                      className="h-full bg-brand-green" 
                       style={{ 
                         width: `${stats?.completedMentorBookings && stats?.totalMentorBookings
                           ? Math.min(100, (stats.completedMentorBookings / Math.max(stats.totalMentorBookings, 1)) * 100)
@@ -539,7 +539,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-purple-500" 
+                      className="h-full bg-brand-orange" 
                       style={{ 
                         width: `${stats?.totalSubmissions && stats?.totalTeams && stats?.milestones?.length
                           ? Math.min(100, (stats.totalSubmissions / (stats.totalTeams * Math.max(stats.milestones.length, 1))) * 100)
@@ -628,7 +628,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="h-2 bg-secondary rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-green-500" 
+                            className="h-full bg-brand-green" 
                             style={{ 
                               width: `${stats?.totalSubmissions ? (stats.acceptedSubmissions / stats.totalSubmissions) * 100 : 0}%` 
                             }}
@@ -645,7 +645,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="h-2 bg-secondary rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-yellow-500" 
+                            className="h-full bg-brand-honey" 
                             style={{ 
                               width: `${stats?.totalSubmissions ? (stats.pendingSubmissions / stats.totalSubmissions) * 100 : 0}%` 
                             }}
@@ -664,7 +664,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="h-2 bg-secondary rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-blue-500" 
+                            className="h-full bg-primary" 
                             style={{ 
                               width: `${stats?.totalSubmissions && stats?.totalTeams && stats.milestones?.length
                                 ? (stats.totalSubmissions / (stats.totalTeams * stats.milestones.length)) * 100

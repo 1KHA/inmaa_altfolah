@@ -120,7 +120,7 @@ export default function NotificationDropdown({ userType, className }: Notificati
       case 'error':
         return 'text-red-600';
       default:
-        return 'text-blue-600';
+        return 'text-primary';
     }
   };
 
@@ -203,7 +203,7 @@ export default function NotificationDropdown({ userType, className }: Notificati
               <DropdownMenuItem
                 key={notification.id}
                 className={`p-3 cursor-pointer border-b last:border-b-0 ${
-                  !notification.isRead ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'
+                  !notification.isRead ? 'bg-accent/60 hover:bg-accent' : 'hover:bg-muted/50'
                 }`}
                 onClick={() => handleNotificationClick(notification)}
               >
@@ -218,7 +218,7 @@ export default function NotificationDropdown({ userType, className }: Notificati
                         {notification.title}
                       </h4>
                       {!notification.isRead && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 ml-2"></div>
+                        <div className="w-2 h-2 bg-brand-orange rounded-full flex-shrink-0 ml-2"></div>
                       )}
                     </div>
                     

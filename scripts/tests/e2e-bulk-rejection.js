@@ -111,7 +111,7 @@ async function mkSolo(n, status = 'pending', extra = {}) {
   savedSettings = { ...settings }; delete savedSettings.id; delete savedSettings.updatedAt;
   await prisma.emailSettings.update({
     where: { id: settings.id },
-    data: { enabled: true, host: '127.0.0.1', port: 1025, secure: false, username: '', password: '', fromEmail: 'noreply@example.test', fromName: 'E2E', adminInboxEmail: '' },
+    data: { enabled: true, host: '127.0.0.1', port: Number(process.env.MAILPIT_SMTP_PORT || 1025), secure: false, username: '', password: '', fromEmail: 'noreply@example.test', fromName: 'E2E', adminInboxEmail: '' },
   });
   await clearMp();
 

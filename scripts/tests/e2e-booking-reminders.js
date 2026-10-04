@@ -52,7 +52,7 @@ let savedSettings = null, settingsId = null;
   const aCookie = cookie({ id: admin.id, username: admin.username, role: 'admin' });
   const settings = await prisma.emailSettings.findFirst();
   settingsId = settings.id; savedSettings = { ...settings }; delete savedSettings.id; delete savedSettings.updatedAt;
-  await prisma.emailSettings.update({ where: { id: settings.id }, data: { enabled: true, host: 'localhost', port: 1025, secure: false, username: '', password: '', fromEmail: 'noreply@example.test', fromName: 'E2E', adminInboxEmail: '' } });
+  await prisma.emailSettings.update({ where: { id: settings.id }, data: { enabled: true, host: 'localhost', port: Number(process.env.MAILPIT_SMTP_PORT || 1025), secure: false, username: '', password: '', fromEmail: 'noreply@example.test', fromName: 'E2E', adminInboxEmail: '' } });
   await clearMp();
 
   const org = await prisma.organization.create({ data: { name: `${TAG} org` } }); made.orgs.push(org.id);

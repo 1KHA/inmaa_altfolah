@@ -42,7 +42,7 @@ function getTypeColor(type: string) {
     case "error":
       return "text-red-600";
     default:
-      return "text-[#80191a]";
+      return "text-primary";
   }
 }
 
@@ -193,7 +193,7 @@ export default function NotificationsList() {
                   onClick={() => handleClick(notification)}
                   className={`flex items-start gap-3 p-4 cursor-pointer transition-colors ${
                     !notification.isRead
-                      ? "bg-[#fff6eb] hover:bg-[#f9d69f]/40 dark:bg-blue-950/30 dark:hover:bg-blue-950/50"
+                      ? "bg-brand-cream hover:bg-brand-honey/20 dark:bg-blue-950/30 dark:hover:bg-blue-950/50"
                       : "hover:bg-muted/50"
                   }`}
                 >
@@ -205,7 +205,7 @@ export default function NotificationsList() {
                         {notification.title}
                       </h4>
                       {!notification.isRead && (
-                        <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                        <span className="w-2 h-2 bg-brand-orange rounded-full flex-shrink-0" />
                       )}
                     </div>
 

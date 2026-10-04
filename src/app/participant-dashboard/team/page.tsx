@@ -439,7 +439,7 @@ export default function TeamManagementPage() {
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {participant.isLeader && (
-                          <span className="px-2 py-1 rounded-full text-xs bg-[#f9d69f]/40 text-[#5e1213] whitespace-nowrap">قائد</span>
+                          <span className="px-2 py-1 rounded-full text-xs bg-brand-honey/20 text-primary-dark whitespace-nowrap">قائد</span>
                         )}
                         <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${participant.canAttend ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                           {participant.canAttend ? 'يمكنه الحضور' : 'لا يمكنه الحضور'}
@@ -542,7 +542,7 @@ export default function TeamManagementPage() {
                       </td>
                       <td className="p-2 sm:p-4 text-center">
                         {participant.isLeader && (
-                          <span className="px-2 py-1 rounded-full text-xs bg-[#f9d69f]/40 text-[#5e1213]">قائد</span>
+                          <span className="px-2 py-1 rounded-full text-xs bg-brand-honey/20 text-primary-dark">قائد</span>
                         )}
                       </td>
                       <td className="p-2 sm:p-4">

@@ -12,6 +12,8 @@ newlandpage
 oldmdfiles
 mdfiles
 memory-bank
+# Separate Vite project (gitignored) — tsconfig's **/*.tsx would type-check it
+move
 prisma/dev.db
 test-auth.js
 *.md

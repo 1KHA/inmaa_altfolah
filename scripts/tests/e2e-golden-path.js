@@ -15,7 +15,7 @@ const { PrismaClient } = require(path.join(REPO, 'node_modules/@prisma/client'))
 
 const prisma = new PrismaClient();
 const BASE = process.env.VERIFY_BASE_URL || 'http://localhost:3000';
-const MAILPIT = 'http://localhost:8025';
+const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 const SECRET = process.env.JWT_SECRET;
 const TAG = `gp${Date.now()}`;
 const PASSWORD = 'GoldenPath!2026';
@@ -51,7 +51,7 @@ async function main() {
   await prisma.emailSettings.update({
     where: { id: settings.id },
     data: {
-      host: 'localhost', port: 1025, secure: false, username: '', password: '',
+      host: 'localhost', port: Number(process.env.MAILPIT_SMTP_PORT || 1025), secure: false, username: '', password: '',
       fromEmail: 'noreply@example.test', fromName: 'منصة دِيَم',
       adminInboxEmail: 'admins@example.test', enabled: true,
     },

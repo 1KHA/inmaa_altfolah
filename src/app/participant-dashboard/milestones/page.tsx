@@ -124,7 +124,7 @@ export default function ParticipantMilestonesPage() {
       );
     } else {
       return (
-        <div className="flex items-center gap-1 text-[#80191a] bg-[#fff6eb] px-2 py-1 rounded-full text-xs">
+        <div className="flex items-center gap-1 text-primary bg-brand-cream px-2 py-1 rounded-full text-xs">
           <Clock className="h-3 w-3" />
           <span>{daysRemaining} أيام متبقية</span>
         </div>

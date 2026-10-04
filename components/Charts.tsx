@@ -36,7 +36,8 @@ const defaultPieData = [
   { name: "المشاركين الفرديين", value: 32 },
 ]
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"]
+// The identity palette (--chart-1…5 in globals.css), then the deep navy
+const COLORS = [1, 2, 3, 4, 5].map((n) => `hsl(var(--chart-${n}))`).concat("hsl(var(--primary-dark))")
 
 interface LineChartProps {
   data?: Array<{ name: string; users: number }>
@@ -51,7 +52,7 @@ export function LineChart({ data = defaultLineData }: LineChartProps) {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Line type="monotone" dataKey="users" stroke="#8884d8" name="عدد المستخدمين" />
+        <Line type="monotone" dataKey="users" stroke="hsl(var(--chart-1))" name="عدد المستخدمين" />
       </RechartsLineChart>
     </ResponsiveContainer>
   )
@@ -91,7 +92,7 @@ export function BarChart({ data = defaultBarData }: BarChartProps) {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Bar dataKey="count" fill="#8884d8" name="عدد الفرق" />
+        <Bar dataKey="count" fill="hsl(var(--chart-1))" name="عدد الفرق" />
       </RechartsBarChart>
     </ResponsiveContainer>
   )
@@ -136,7 +137,7 @@ export function PieChart({ data = defaultPieData }: PieChartProps) {
           cy="50%" 
           labelLine={true} 
           outerRadius={80} 
-          fill="#8884d8" 
+          fill="hsl(var(--chart-1))" 
           dataKey="value"
           label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
         >

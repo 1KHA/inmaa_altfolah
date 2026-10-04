@@ -103,7 +103,7 @@ function TemplateRow({
         <span className="flex items-center gap-2">
           <span className="font-medium text-sm">{template.label}</span>
           {template.isCustomized && (
-            <span className="px-2 py-0.5 rounded-full text-xs bg-[#f9d69f]/40 text-[#5e1213]">مخصص</span>
+            <span className="px-2 py-0.5 rounded-full text-xs bg-brand-honey/20 text-primary-dark">مخصص</span>
           )}
           {!template.emailEnabled && (
             <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
@@ -129,7 +129,7 @@ function TemplateRow({
             <p className="text-xs text-muted-foreground">هذا القالب بدون متغيرات.</p>
           )}
           {template.variables.includes("password") && (
-            <p className="text-xs text-[#80191a]">
+            <p className="text-xs text-primary">
               يُرسل هذا البريد لكل مستلم على حدة ببياناته الخاصة: <code dir="ltr">{"{{email}}"}</code>{" "}
               و <code dir="ltr">{"{{password}}"}</code> و <code dir="ltr">{"{{loginUrl}}"}</code> —
               كلمة المرور تُنشأ عند القبول ولا تصل إلا لصاحبها.
@@ -185,7 +185,7 @@ function TemplateRow({
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={save} disabled={saving} size="sm" className="bg-[#80191a] hover:bg-[#80191a]">
+            <Button onClick={save} disabled={saving} size="sm" className="bg-primary hover:bg-primary">
               <Save className="ml-2 h-4 w-4" />
               {saving ? "جاري الحفظ..." : "حفظ"}
             </Button>

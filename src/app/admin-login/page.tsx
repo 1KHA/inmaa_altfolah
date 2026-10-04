@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -116,10 +118,10 @@ export default function AdminLoginPage() {
   // running, or the form (and its error) would vanish mid-attempt.
   if (authLoading && !isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">جاري التحقق من حالة تسجيل الدخول...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري التحقق من حالة تسجيل الدخول...</p>
         </div>
       </div>
     );
@@ -128,20 +130,31 @@ export default function AdminLoginPage() {
   // Don't show login form if user is already logged in (will redirect)
   if (user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">جاري إعادة التوجيه...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري إعادة التوجيه...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-hero py-12 px-4 sm:px-6 lg:px-8">
+      <Link href="/" className="mb-6">
+        <Image
+          src="/brand/logo-vertical.svg"
+          alt="هاكثون الطفولة"
+          width={547}
+          height={1018}
+          priority
+          unoptimized
+          className="h-32 w-auto"
+        />
+      </Link>
+      <Card className="w-full max-w-md gradient-card rounded-3xl border-border/60 shadow-elegant">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
+          <CardTitle className="text-2xl font-bold text-center text-primary">
             تسجيل دخول المسؤول
           </CardTitle>
           <CardDescription className="text-center">

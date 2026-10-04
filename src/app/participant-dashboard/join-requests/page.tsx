@@ -173,7 +173,7 @@ export default function JoinRequestsPage() {
         <Card>
           <CardContent className="p-3 sm:p-4 text-center flex flex-col items-center">
             <div className="flex items-center justify-center mb-2">
-              <Users className="h-5 w-5 text-[#80191a]" />
+              <Users className="h-5 w-5 text-primary" />
             </div>
             <h3 className="text-2xl font-bold">{joinRequests.length}</h3>
             <p className="text-muted-foreground">إجمالي الطلبات</p>

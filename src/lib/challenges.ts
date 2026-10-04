@@ -19,9 +19,7 @@
  * text; migrate those rows explicitly if a label ever changes.
  */
 export const CHALLENGES = [
-  'تعزيز الدمج المجتمعي لكبار السن والمكفوفين',
-  'إثراء تجربة ضيوف الرحمن في المدن المقدسة',
-  'الحلول الاجتماعية المستدامة',
+  'المسار التقني',
 ] as const;
 
 export type Challenge = (typeof CHALLENGES)[number];
@@ -39,24 +37,14 @@ export type Challenge = (typeof CHALLENGES)[number];
  *   - the import validator, so a file uploaded with English track names is
  *     accepted and normalised instead of rejected as "unknown track"
  *
- * `keywords` are the DISTINCTIVE words for each track. "water" is deliberately
- * absent — it appears in four of the five names and would match everything.
+ * `keywords` are the DISTINCTIVE words for each track. Generic words such as
+ * "track" are deliberately absent — they would match any input.
  */
 export const TRACK_ALIASES: { ar: Challenge; en: string; keywords: string[] }[] = [
   {
-    ar: 'تعزيز الدمج المجتمعي لكبار السن والمكفوفين',
-    en: 'Social Inclusion for Elderly and Blind',
-    keywords: ['inclusion', 'elderly', 'blind', 'visually'],
-  },
-  {
-    ar: 'إثراء تجربة ضيوف الرحمن في المدن المقدسة',
-    en: 'Enriching the Experience of Pilgrims in the Holy Cities',
-    keywords: ['pilgrims', 'pilgrim', 'hajj', 'umrah', 'holy'],
-  },
-  {
-    ar: 'الحلول الاجتماعية المستدامة',
-    en: 'Sustainable Social Solutions',
-    keywords: ['sustainable', 'sustainability', 'social'],
+    ar: 'المسار التقني',
+    en: 'Technical Track',
+    keywords: ['technical', 'tech', 'technology'],
   },
 ];
 

@@ -169,7 +169,7 @@ function MentorProfile() {
             <div className="mt-2 flex flex-wrap items-center justify-center md:justify-start gap-2">
                 {getStatusBadge(mentor.status)}
                 {mentor.organization && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-[#fff6eb] text-[#5e1213] px-3 py-1 text-xs">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-brand-cream text-primary-dark px-3 py-1 text-xs">
                     {mentor.organization.logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={mentor.organization.logoUrl} alt="" className="h-5 w-5 rounded object-contain bg-white" />
