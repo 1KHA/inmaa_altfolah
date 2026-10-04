@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/notification-auth';
 import { decryptSecret } from '@/lib/crypto';
 import { sendEmail, type SmtpConfig } from '@/lib/mailer';
-import { isMandrillConfigured } from '@/lib/mandrill';
+import { isResendConfigured } from '@/lib/resend';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
       fromName: String(body.fromName ?? saved?.fromName ?? '').trim(),
     };
 
-    // Mandrill sends over HTTPS and ignores the SMTP fields entirely.
-    if (!isMandrillConfigured() && (!config.host || !config.fromEmail)) {
+    // Resend sends over HTTPS and ignores the SMTP fields entirely.
+    if (!isResendConfigured() && (!config.host || !config.fromEmail)) {
       return NextResponse.json(
         { error: 'يرجى تعبئة خادم SMTP وبريد المُرسِل قبل الاختبار' },
         { status: 400 }
@@ -59,10 +59,10 @@ export async function POST(request: NextRequest) {
     const result = await sendEmail({
       config,
       to: toEmail,
-      subject: 'رسالة اختبار — جائزة مايدة محي الدين ناظر للابتكار',
+      subject: 'رسالة اختبار — هاكثون الطفولة',
       title: 'اختبار إعدادات البريد الإلكتروني',
       bodyText:
-        'تهانينا! إذا وصلتك هذه الرسالة فإن إعدادات SMTP تعمل بشكل صحيح.\nيمكنك الآن تفعيل إشعارات البريد الإلكتروني من صفحة الإعدادات.',
+        'تهانينا! إذا وصلتك هذه الرسالة فإن إعدادات البريد الإلكتروني تعمل بشكل صحيح.\nيمكنك الآن تفعيل إشعارات البريد الإلكتروني من صفحة الإعدادات.',
     });
 
     if (result.ok) {

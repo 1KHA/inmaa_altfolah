@@ -3,23 +3,24 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/auth-context";
 import { Analytics } from "@vercel/analytics/next";
+import { getSiteUrl } from "@/lib/site";
+import { EVENT } from "./_childhood-landing/content/event";
+import { SITE_TITLE, SITE_DESCRIPTION, SHARE_DESCRIPTION, shareMetadata } from "./seo";
 
 // The typeface (Graphik Arabic) comes from globals.css through Tailwind's font-sans.
 
-const title = "هاكثون الطفولة | Childhood Hackathon";
-const description =
-  "هاكثون الطفولة: مختبر إنتاج مكثف لتصميم مبادرات تقنية تخدم الطفل والأسرة، بتنظيم جمعية إنماء لرعاية الطفولة في المنطقة الشرقية، 8 – 18 نوفمبر 2026.";
-const shareDescription = "من تحدٍ حقيقي إلى فرصة للابتكار، بحلول تقنية تخدم الطفل والأسرة.";
-const organizer = "جمعية إنماء لرعاية الطفولة";
-
+// Site-wide defaults. Each public page sets its own canonical URL and og:url
+// (pageMetadata in ./seo.ts); a site-wide canonical here would mark every page
+// as a duplicate of the home page.
 export const metadata: Metadata = {
-  metadataBase: new URL('https://mayda-four.dyam.tech'),
-  title,
-  description,
+  metadataBase: new URL(getSiteUrl()),
+  title: { default: SITE_TITLE, template: `%s | ${EVENT.name}` },
+  description: SITE_DESCRIPTION,
+  applicationName: EVENT.name,
   keywords: ["هاكثون", "هاكثون الطفولة", "الطفولة", "ابتكار", "الطفل", "الأسرة", "التقنية", "جمعية إنماء", "المنطقة الشرقية", "الخبر", "الجبيل"],
-  authors: [{ name: organizer }],
-  creator: organizer,
-  publisher: organizer,
+  authors: [{ name: EVENT.organizer }],
+  creator: EVENT.organizer,
+  publisher: EVENT.organizer,
   robots: {
     index: true,
     follow: true,
@@ -31,30 +32,14 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  openGraph: {
-    title,
-    description: shareDescription,
-    siteName: "هاكثون الطفولة",
-    type: "website",
-    locale: "ar_SA",
-    images: [{ url: "/brand/og-image.png", alt: title }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title,
-    description: shareDescription,
-    images: ["/brand/og-image.png"],
-  },
+  ...shareMetadata(SITE_TITLE, SHARE_DESCRIPTION),
   icons: {
     icon: [
       { url: "/brand/favicon.svg", type: "image/svg+xml" },
-      { url: "/brand/favicon.ico", sizes: "any" },
+      { url: "/favicon.ico", sizes: "any" },
     ],
     apple: "/brand/apple-touch-icon.png",
   },
-  alternates: {
-    canonical: "https://mayda-four.dyam.tech/",
-  }
 };
 
 export const viewport: Viewport = {

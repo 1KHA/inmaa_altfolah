@@ -9,6 +9,7 @@
  * See mdfiles/acceptance-credentials-email.md.
  */
 import crypto from 'crypto';
+import { getSiteUrl } from './site';
 
 /** Unambiguous alphabet: no 0/O, 1/l/I — the password is read from an email. */
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -24,20 +25,9 @@ export function generatePassword(length: number = PASSWORD_LENGTH): string {
 /** Shown in place of {{password}} when the participant already had one. */
 export const PASSWORD_UNCHANGED_TEXT = 'كلمة المرور الحالية لحسابك (لم تتغير)';
 
-/**
- * Public base URL of the app, for links inside emails.
- * NEXT_PUBLIC_APP_URL wins; on Vercel the production domain is available
- * automatically as VERCEL_PROJECT_PRODUCTION_URL.
- */
+/** Public base URL of the app, for links inside emails. See src/lib/site.ts. */
 export function getAppBaseUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL;
-  if (explicit) return explicit.replace(/\/+$/, '');
-  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  if (vercel) return `https://${vercel.replace(/\/+$/, '')}`;
-  // Last resort only: set NEXT_PUBLIC_APP_URL per environment (the Docker stack
-  // and `npm run dev:local-db` point it at localhost so e-mail images and login
-  // links resolve while testing).
-  return 'https://mayda-four.dyam.tech';
+  return getSiteUrl();
 }
 
 /** Participant login page (participants sign in with email + password). */

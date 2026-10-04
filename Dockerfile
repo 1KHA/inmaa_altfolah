@@ -21,12 +21,15 @@ COPY . .
 ARG NEXT_PUBLIC_REGISTRATION_CLOSED=false
 ARG NEXT_PUBLIC_SUPABASE_URL=
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# Site origin for canonical/share URLs, robots.txt and sitemap.xml (src/lib/site.ts)
+ARG NEXT_PUBLIC_APP_URL=
 
 # The build never talks to a real database, but prisma/schema.prisma requires
 # DATABASE_URL/DIRECT_URL to be set for `prisma generate`, so use placeholders.
 ENV NEXT_PUBLIC_REGISTRATION_CLOSED=$NEXT_PUBLIC_REGISTRATION_CLOSED \
     NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+    NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     DATABASE_TYPE=postgresql \
     DATABASE_URL=postgresql://build:build@localhost:5432/build \
     DIRECT_URL=postgresql://build:build@localhost:5432/build \

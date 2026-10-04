@@ -1,6 +1,6 @@
 /**
  * Integration test for the broadcast email queue (src/lib/email-queue.ts)
- * against a real Postgres, with the transport faked (no SMTP/Mandrill needed).
+ * against a real Postgres, with the transport faked (no SMTP/Resend needed).
  *
  * Usage:
  *   DATABASE_URL=postgresql://... DATABASE_TYPE=postgresql JWT_SECRET=x \
@@ -55,8 +55,8 @@ function fakeSend(rules = {}) {
     for (const e of bcc) {
       seen.set(e, (seen.get(e) || 0) + 1);
       if (e.includes('bounce')) rejected.push({ email: e, reason: 'rejected: hard-bounce', permanent: true });
-      else if (e.includes('flaky') && seen.get(e) === 1) rejected.push({ email: e, reason: 'Mandrill request failed: ECONNRESET' });
-      else if (e.includes('dead')) rejected.push({ email: e, reason: 'Mandrill HTTP 503' });
+      else if (e.includes('flaky') && seen.get(e) === 1) rejected.push({ email: e, reason: 'Resend request failed: ECONNRESET' });
+      else if (e.includes('dead')) rejected.push({ email: e, reason: 'Resend service_unavailable: HTTP 503' });
       else accepted.push(e);
     }
     return { ok: accepted.length > 0, messageId: accepted.length ? 'mid-' + calls.length : undefined, error: rejected.length ? 'some rejected' : undefined, accepted, rejected };

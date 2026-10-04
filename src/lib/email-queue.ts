@@ -294,8 +294,8 @@ async function processBatch(
   nowMs: number
 ): Promise<{ sent: number; failed: number; retried: number }> {
   // Rows with their own body (credentials) are delivered as individual
-  // emails — each addressed to its recipient alone, never BCC (Mandrill: one
-  // merge-var call per batch; SMTP: one message each). Shared rows share the
+  // emails — each addressed to its recipient alone, never BCC (Resend: one
+  // batch call per batch; SMTP: one message each). Shared rows share the
   // broadcast body and go out as one BCC.
   const individual = rows.every((r) => r.body != null);
   const subject = broadcast.emailSubject || broadcast.title;
@@ -436,7 +436,7 @@ export async function drainEmailQueue(options: DrainOptions): Promise<DrainResul
       touched.add(broadcastId);
 
       // Rows carrying their own content are batched by what the transport
-      // can carry per call (Mandrill 100 via merge vars, SMTP 5 sequential);
+      // can carry per call (Resend 100 per batch call, SMTP 5 sequential);
       // the rest share the broadcast body and go out in BCC chunks.
       const individualRows = list.filter((r) => r.body != null);
       const sharedRows = list.filter((r) => r.body == null);

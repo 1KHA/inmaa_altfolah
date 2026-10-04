@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Landing from "./Landing";
 
+/*
+ * The previous project's landing page, kept for reference only. Not linked
+ * from anywhere and excluded from search engines; the home page
+ * (src/app/_childhood-landing) is the current landing page.
+ */
 export const metadata: Metadata = {
-  title: "جائزة مايدة محي الدين ناظر للابتكار 4",
-  description:
-    "تحدي يجمع طالبات الجامعات السعودية لاستكشاف وتوظيف الابتكارات الجامعية. توفر جائزة مايدة محي الدين ناظر للابتكار هاكاثون الابتكار، فرصة للعمل ضمن فرق تنافسية للعمل على تطوير حلول مبتكرة تسهم في تعزيز الاستدامة وجودة الحياة",
+  robots: { index: false, follow: false },
 };
 
 export default function LandingPage() {

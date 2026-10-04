@@ -1,16 +1,18 @@
 import ChildhoodLanding from "./_childhood-landing/ChildhoodLanding";
 import { CONTACT, EVENT } from "./_childhood-landing/content/event";
+import { getSiteUrl } from "@/lib/site";
+import { SITE_DESCRIPTION, SHARE_IMAGE, pageMetadata } from "./seo";
 
 /*
  * Home page. Renders the Childhood Hackathon landing page
  * (src/app/_childhood-landing, a private folder with no route of its own);
- * this file is only the route + structured data. Title, description, share
- * image and icons are the site-wide ones in the root layout. The previous
- * Mayda landing page still answers at /landing.
+ * this file is only the route + metadata + structured data. Title,
+ * description, share image and icons are the site-wide ones (./seo.ts).
  */
 
-const description =
-  "هاكثون الطفولة: مختبر إنتاج مكثف لتصميم مبادرات تقنية تخدم الطفل والأسرة، بتنظيم جمعية إنماء لرعاية الطفولة في المنطقة الشرقية، 8 – 18 نوفمبر 2026.";
+export const metadata = pageMetadata({ path: "/" });
+
+const siteUrl = getSiteUrl();
 
 /* Event rich-result data, served in the HTML so crawlers always see it. */
 const structuredData = {
@@ -18,7 +20,9 @@ const structuredData = {
   "@type": "Event",
   name: EVENT.name,
   alternateName: EVENT.nameEn,
-  description,
+  description: SITE_DESCRIPTION,
+  url: `${siteUrl}/`,
+  image: [`${siteUrl}${SHARE_IMAGE.url}`],
   organizer: {
     "@type": "Organization",
     name: EVENT.organizer,

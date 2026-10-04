@@ -221,7 +221,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     {field("fromEmail", "بريد المُرسِل", "email", "noreply@example.com")}
-                    {field("fromName", "اسم المُرسِل", "text", "جائزة مايدة محي الدين ناظر للابتكار")}
+                    {field("fromName", "اسم المُرسِل", "text", "هاكثون الطفولة")}
                     {field(
                       "adminInboxEmail",
                       "بريد إشعارات المشرفين (صندوق مشترك)",

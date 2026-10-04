@@ -4,20 +4,19 @@ import { prisma } from './prisma';
 import { decryptSecret } from './crypto';
 import { getAppBaseUrl } from './credentials';
 import {
-  isMandrillConfigured,
-  sendViaMandrill,
-  sendViaMandrillMerge,
+  isResendConfigured,
+  sendViaResend,
   summarizeRejections,
-  MANDRILL_MERGE_BATCH_SIZE,
+  RESEND_BATCH_SIZE,
   type RecipientFailure,
-} from './mandrill';
+} from './resend';
 
-export type { RecipientFailure } from './mandrill';
+export type { RecipientFailure } from './resend';
 
 /**
  * Email delivery. Transport is chosen per call, not at boot:
- *   1. MAILCHIMP_API_KEY + MAIL_FROM set  -> Mandrill HTTPS API (see mandrill.ts)
- *   2. otherwise                          -> SMTP from the admin-configured EmailSettings row
+ *   1. RESEND_API_KEY + MAIL_FROM set  -> Resend HTTPS API (see resend.ts)
+ *   2. otherwise                       -> SMTP from the admin-configured EmailSettings row
  * The EmailSettings `enabled` master switch gates sending for both transports.
  *
  * All sends are best-effort: callers wrap in try/catch (the codebase-wide
@@ -51,25 +50,22 @@ export interface EmailSettingsRow {
 export const BCC_BATCH_SIZE = 50;
 
 /**
- * Recipients per Mandrill API call. Mandrill accepts up to 1,000 per call;
- * 500 leaves headroom and turns a 5,000-recipient broadcast into 10 HTTPS
- * round-trips instead of 100. See mdfiles/email-queue.md §Option 1.
+ * Per-call recipient cap for whichever transport is active right now. Resend
+ * takes 100 emails per batch call (one per recipient), so a 5,000-recipient
+ * broadcast is 50 HTTPS round-trips. See mdfiles/email-queue.md §Option 1.
  */
-export const MANDRILL_BATCH_SIZE = 500;
-
-/** Per-call recipient cap for whichever transport is active right now. */
 export function getBatchSize(): number {
-  return isMandrillConfigured() ? MANDRILL_BATCH_SIZE : BCC_BATCH_SIZE;
+  return isResendConfigured() ? RESEND_BATCH_SIZE : BCC_BATCH_SIZE;
 }
 
 /**
  * How many INDIVIDUAL emails (each with its own content) one send call may
- * carry: Mandrill takes 100 per merge-var call; SMTP has to send them one by
- * one, so a small batch keeps the queue's time-budget checks frequent.
+ * carry: Resend takes 100 per batch call; SMTP has to send them one by one,
+ * so a small batch keeps the queue's time-budget checks frequent.
  */
 export const SMTP_INDIVIDUAL_BATCH_SIZE = 5;
 export function getIndividualBatchSize(): number {
-  return isMandrillConfigured() ? MANDRILL_MERGE_BATCH_SIZE : SMTP_INDIVIDUAL_BATCH_SIZE;
+  return isResendConfigured() ? RESEND_BATCH_SIZE : SMTP_INDIVIDUAL_BATCH_SIZE;
 }
 
 export interface IndividualEmail {
@@ -80,7 +76,7 @@ export interface IndividualEmail {
 
 /**
  * Send a batch of emails that each have their OWN subject/body (credentials):
- * one merge-var API call on Mandrill, a sequential loop on SMTP. Returns one
+ * one batch API call on Resend, a sequential loop on SMTP. Returns one
  * aggregated per-recipient result, exactly like sendEmail().
  */
 export async function sendIndividualEmails(params: {
@@ -91,19 +87,19 @@ export async function sendIndividualEmails(params: {
   const { config, items, audience } = params;
   if (items.length === 0) return { ok: false, error: 'no recipients', accepted: [], rejected: [] };
 
-  if (isMandrillConfigured()) {
+  if (isResendConfigured()) {
     const supportText = renderSupportChannelsText(audience);
-    console.log(`📧 Email transport: mandrill merge batch (${items.length} individual recipients)`);
-    const result = await sendViaMandrillMerge(
+    console.log(`📧 Email transport: resend batch (${items.length} individual recipients)`);
+    const result = await sendViaResend(
       items.map((i) => ({
-        email: i.to,
+        to: i.to,
         subject: i.subject,
         html: renderEmailHtml(i.subject, i.bodyText, audience),
         text: supportText ? `${i.bodyText}\n\n${supportText}` : i.bodyText,
       })),
       process.env.MAIL_FROM_NAME || config.fromName
     );
-    if (result.error) console.error(`[email] mandrill merge ${result.ok ? 'partial' : 'failed'}: ${result.error}`);
+    if (result.error) console.error(`[email] resend batch ${result.ok ? 'partial' : 'failed'}: ${result.error}`);
     return result;
   }
 
@@ -133,9 +129,9 @@ export async function getEmailSettings(): Promise<EmailSettingsRow | null> {
  * Settings row -> plaintext SMTP config, or null when incomplete/undecryptable.
  */
 export function toSmtpConfig(row: EmailSettingsRow): SmtpConfig | null {
-  // Mandrill ignores the SMTP fields — never block sending on a blank host or
+  // Resend ignores the SMTP fields — never block sending on a blank host or
   // an undecryptable password when it is the active transport.
-  if (isMandrillConfigured()) {
+  if (isResendConfigured()) {
     return {
       host: row.host,
       port: row.port,
@@ -192,7 +188,19 @@ export type EmailAudience = 'participant' | 'mentor' | 'admin';
 export const SUPPORT_EMAIL = 'wmvc@wadimakkah.sa';
 export const SUPPORT_TELEGRAM_URL = 'https://t.me/+4boPQPRmGuAzNmI0';
 
-const FOOTER_LINK_STYLE = 'color:#620f10;text-decoration:none';
+/** Shown in every email — kept as text so it survives clients that block images. */
+const BRAND_NAME = 'هاكثون الطفولة';
+const BRAND_TAGLINE = 'من تحدٍ حقيقي... إلى فرصة للابتكار';
+const ORGANIZER_NAME = 'جمعية إنماء لرعاية الطفولة';
+
+/* The هاكثون الطفولة palette as literal hex: email clients ignore CSS variables. */
+const NAVY = '#22406b';
+const ORANGE = '#e2653b';
+const HONEY = '#f0a63b';
+const GREEN = '#70a288';
+const CREAM = '#fbf4ea';
+
+const FOOTER_LINK_STYLE = `color:${NAVY};text-decoration:none`;
 
 /**
  * Support-channels lines for the grey footer, same style as the automated
@@ -230,35 +238,38 @@ export function renderEmailHtml(title: string, bodyText: string, audience?: Emai
   const baseUrl = getAppBaseUrl();
   const supportHtml = renderSupportChannelsHtml(audience);
 
+  // The identity's four colour plates as a table row: Outlook ignores flex and gradients.
+  const plates = [NAVY, ORANGE, HONEY, GREEN]
+    .map((color) => `<td style="height:4px;line-height:4px;font-size:0;background:${color}">&nbsp;</td>`)
+    .join('');
+
   return `<style>
-  /* Phones get the smaller logo strip. Inline styles carry the desktop size, so
-     a client that drops <style> (older Outlook, some Gmail cases) simply keeps
+  /* Phones get smaller logos. Inline styles carry the desktop size, so a
+     client that drops <style> (older Outlook, some Gmail cases) simply keeps
      the desktop sizes — nothing breaks, the logos are just bigger. !important
      is required to beat the inline styles and the width/height attributes. */
   @media only screen and (max-width: 480px) {
-    .em-logo1 { width: 43px !important; height: 43px !important; }
-    .em-logo2 { width: 38px !important; height: 38px !important; }
-    .em-logo3 { width: 76px !important; height: 34px !important; }
+    .em-logo { width: 120px !important; height: 50px !important; }
+    .em-org { width: 72px !important; height: 42px !important; }
   }
 </style>
-<div dir="rtl" lang="ar" style="direction:rtl;text-align:right;font-family:Tahoma,Arial,sans-serif;background:#f4f6f8;padding:24px">
-  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e6e2df">
-    <div style="background:#ffffff;padding:18px 24px;text-align:center;border-bottom:1px solid #efeae6">
-      <img class="em-logo1" src="${baseUrl}/logos/logo011.webp" alt="" width="85" height="85" style="width:85px;height:85px;display:inline-block;border:0;vertical-align:middle;margin:0 8px">
-      <img class="em-logo2" src="${baseUrl}/logos/02.png" alt="جامعة دار الحكمة" width="76" height="76" style="width:76px;height:76px;display:inline-block;border:0;vertical-align:middle;margin:0 8px">
-      <img class="em-logo3" src="${baseUrl}/logos/03.png" alt="" width="152" height="68" style="width:152px;height:68px;display:inline-block;border:0;vertical-align:middle;margin:0 8px">
+<div dir="rtl" lang="ar" style="direction:rtl;text-align:right;font-family:Tahoma,Arial,sans-serif;background:${CREAM};padding:24px">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e8dcc9">
+    <div style="background:#ffffff;padding:20px 24px;text-align:center">
+      <img class="em-logo" src="${baseUrl}/email/childhood-logo.png" alt="${BRAND_NAME}" width="168" height="70" style="width:168px;height:70px;display:inline-block;border:0;vertical-align:middle;margin:0 10px">
+      <img class="em-org" src="${baseUrl}/email/inma-logo.png" alt="${ORGANIZER_NAME}" width="96" height="56" style="width:96px;height:56px;display:inline-block;border:0;vertical-align:middle;margin:0 10px">
     </div>
-    <div style="background:#620f10;padding:12px 24px;text-align:center">
-      <img src="${baseUrl}/email/hikma-mark.png" alt="" width="25" height="44" style="width:25px;height:44px;display:inline-block;border:0;vertical-align:middle;margin:0 6px">
-      <span style="color:#fccd8d;font-size:15px;font-weight:bold">جائزة مايدة محي الدين ناظر للابتكار 4</span>
+    <div style="background:${NAVY};padding:12px 24px;text-align:center">
+      <div style="color:${CREAM};font-size:15px;font-weight:bold">${BRAND_NAME}</div>
+      <div style="color:${HONEY};font-size:13px;margin-top:2px">${BRAND_TAGLINE}</div>
     </div>
     <div style="padding:24px">
-      <h2 style="margin:0 0 12px;font-size:16px;color:#620f10">${titleHtml}</h2>
-      <p style="margin:0;font-size:14px;line-height:1.9;color:#494b4c">${bodyHtml}</p>
+      <h2 style="margin:0 0 12px;font-size:16px;color:${NAVY}">${titleHtml}</h2>
+      <p style="margin:0;font-size:14px;line-height:1.9;color:#4a3f35">${bodyHtml}</p>
     </div>
-    <div style="height:3px;background:#fccd8d"></div>
-    <div style="padding:12px 24px;background:#fff2e9;color:#7b5b4a;font-size:12px;line-height:1.8">
-      هذه رسالة آلية من منصة جائزة مايدة محي الدين ناظر للابتكار يرجى عدم الرد عليها.${supportHtml}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;table-layout:fixed"><tr>${plates}</tr></table>
+    <div style="padding:12px 24px;background:${CREAM};color:#6d6155;font-size:12px;line-height:1.8">
+      هذه رسالة آلية من منصة ${BRAND_NAME} يرجى عدم الرد عليها.${supportHtml}
     </div>
   </div>
 </div>`;
@@ -297,22 +308,22 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
   const supportText = renderSupportChannelsText(audience);
   const text = supportText ? `${bodyText}\n\n${supportText}` : bodyText;
 
-  if (isMandrillConfigured()) {
-    console.log(`📧 Email transport: mandrill (to=${to ?? 'sender'}, bcc=${bcc?.length ?? 0})`);
-    const result = await sendViaMandrill({
-      to,
-      bcc,
-      subject,
-      html: renderEmailHtml(title, bodyText, audience),
-      text,
-      fromName: process.env.MAIL_FROM_NAME || config.fromName,
-    });
+  const requested = [...(to ? [to] : []), ...(bcc ?? [])];
+
+  if (isResendConfigured()) {
+    console.log(`📧 Email transport: resend (to=${to ?? 'none'}, bcc=${bcc?.length ?? 0})`);
+    // One copy per address, each addressed to its recipient alone: BCC
+    // privacy without the sender self-copy the SMTP path needs.
+    const html = renderEmailHtml(title, bodyText, audience);
+    const result = await sendViaResend(
+      requested.map((email) => ({ to: email, subject, html, text })),
+      process.env.MAIL_FROM_NAME || config.fromName
+    );
     // `error` is also set on PARTIAL success (some recipients rejected) — log it either way.
-    if (result.error) console.error(`[email] mandrill ${result.ok ? 'partial' : 'failed'}: ${result.error}`);
+    if (result.error) console.error(`[email] resend ${result.ok ? 'partial' : 'failed'}: ${result.error}`);
     return result;
   }
 
-  const requested = [...(to ? [to] : []), ...(bcc ?? [])];
   const transport = buildTransport(config);
 
   try {
