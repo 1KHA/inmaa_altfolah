@@ -201,9 +201,7 @@ const ORGANIZER_NAME = 'جمعية إنماء لرعاية الطفولة';
 
 /* The هاكثون الطفولة palette as literal hex: email clients ignore CSS variables. */
 const NAVY = '#22406b';
-const ORANGE = '#e2653b';
 const HONEY = '#f0a63b';
-const GREEN = '#70a288';
 const CREAM = '#fbf4ea';
 
 const FOOTER_LINK_STYLE = `color:${NAVY};text-decoration:none`;
@@ -244,11 +242,8 @@ export function renderEmailHtml(title: string, bodyText: string, audience?: Emai
   const baseUrl = getAppBaseUrl();
   const supportHtml = renderSupportChannelsHtml(audience);
 
-  // The identity's four colour plates as a table row: Outlook ignores flex and gradients.
-  const plates = [NAVY, ORANGE, HONEY, GREEN]
-    .map((color) => `<td style="height:4px;line-height:4px;font-size:0;background:${color}">&nbsp;</td>`)
-    .join('');
-
+  // The line above the footer is a table cell, not an empty div: Outlook would
+  // draw the div a full text line tall.
   return `<style>
   /* Phones get smaller logos. Inline styles carry the desktop size, so a
      client that drops <style> (older Outlook, some Gmail cases) simply keeps
@@ -273,7 +268,7 @@ export function renderEmailHtml(title: string, bodyText: string, audience?: Emai
       <h2 style="margin:0 0 12px;font-size:16px;color:${NAVY}">${titleHtml}</h2>
       <p style="margin:0;font-size:14px;line-height:1.9;color:#4a3f35">${bodyHtml}</p>
     </div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;table-layout:fixed"><tr>${plates}</tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr><td style="height:3px;line-height:3px;font-size:0;background:${NAVY}">&nbsp;</td></tr></table>
     <div style="padding:12px 24px;background:${CREAM};color:#6d6155;font-size:12px;line-height:1.8">
       هذه رسالة آلية من منصة ${BRAND_NAME} يرجى عدم الرد عليها.${supportHtml}
     </div>
