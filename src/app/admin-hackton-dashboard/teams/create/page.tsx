@@ -33,6 +33,7 @@ import { CHALLENGES } from '@/lib/challenges'
 import { Checkbox } from '@/../../components/ui/checkbox'
 import { useToast } from '@/../../components/ui/use-toast'
 import { prepareUpload, validateUploadFile, UPLOAD_ACCEPT, UPLOAD_HINT } from '@/lib/client-upload'
+import { TEAM_MIN_MEMBERS, TEAM_SIZE_OPTIONS } from '@/lib/constants'
 
 /** Mirrors the participant shape the API reads. */
 interface Participant {
@@ -68,9 +69,9 @@ const initialFormState = {
   hearAboutUs: '',
   leaderInfo: { ...initialParticipantState },
   // members EXCLUDES the leader. memberCount is the TOTAL team size, matching
-  // the public form; the API accepts 2 or 3 total (1–2 members + leader).
-  members: [{ ...initialParticipantState }],
-  memberCount: 2,
+  // the public form; the API accepts TEAM_MIN_MEMBERS–TEAM_MAX_MEMBERS total.
+  members: Array(TEAM_MIN_MEMBERS - 1).fill(null).map(() => ({ ...initialParticipantState })),
+  memberCount: TEAM_MIN_MEMBERS,
 }
 
 type FormState = typeof initialFormState
@@ -318,8 +319,9 @@ export default function AdminCreateTeamPage() {
                 <Select value={String(formState.memberCount)} onValueChange={handleMemberCountChange}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent className="text-right" dir="rtl">
-                    <SelectItem value="2" className="text-right">2 أعضاء</SelectItem>
-                    <SelectItem value="3" className="text-right">3 أعضاء</SelectItem>
+                    {TEAM_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-right">{n} أعضاء</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

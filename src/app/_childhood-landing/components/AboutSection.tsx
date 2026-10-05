@@ -6,6 +6,7 @@ import { useScrollAnimation } from "../hooks/useScrollAnimation";
 import { SectionHeading } from "./SectionHeading";
 import { EVENT } from "../content/event";
 import { toneAt } from "../lib/brand";
+import { TEAM_MIN_MEMBERS, TEAM_MAX_MEMBERS } from "@/lib/constants";
 
 const keyFigures = [
   { value: "50", label: "مشاركًا" },
@@ -18,7 +19,7 @@ const facts = [
   {
     icon: Users,
     title: "الفئة المستهدفة",
-    description: "طلبة الجامعات والممارسون والعاملون والمهتمون بمجال الطفولة والابتكار، بإجمالي 50 مشاركًا موزعين على 12 فريقًا بواقع 4–5 مشاركين لكل فريق."
+    description: `طلبة الجامعات والممارسون والعاملون والمهتمون بمجال الطفولة والابتكار، بإجمالي 50 مشاركًا موزعين على 12 فريقًا بواقع ${TEAM_MIN_MEMBERS}–${TEAM_MAX_MEMBERS} مشاركين لكل فريق.`
   },
   {
     icon: Cpu,

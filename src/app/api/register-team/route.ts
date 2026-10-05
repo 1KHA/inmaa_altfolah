@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client'
 import { dispatchNotification } from '@/lib/notify'
 import { uploadToStorage } from '@/lib/supabase-storage'
 import { buildStorageFilename } from '@/lib/storage-keys'
-import { MAX_FILE_SIZE, MAX_FILE_SIZE_MB } from '@/lib/constants'
+import { MAX_FILE_SIZE, MAX_FILE_SIZE_MB, TEAM_MIN_MEMBERS, TEAM_MAX_MEMBERS } from '@/lib/constants'
 
 // Ensure this route is dynamic
 export const dynamic = 'force-dynamic';
@@ -76,8 +76,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Required team fields are missing.' }, { status: 400 })
       }
       
-      if (!members || members.length < 2 || members.length > 4) {
-        return NextResponse.json({ error: 'A team must have between 3 and 5 members total (including leader).' }, { status: 400 })
+      // `members` excludes the leader
+      if (!members || members.length < TEAM_MIN_MEMBERS - 1 || members.length > TEAM_MAX_MEMBERS - 1) {
+        return NextResponse.json({ error: `A team must have between ${TEAM_MIN_MEMBERS} and ${TEAM_MAX_MEMBERS} members total (including leader).` }, { status: 400 })
       }
     }
 

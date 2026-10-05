@@ -4,11 +4,12 @@ import { Lightbulb, BadgeCheck, Cpu, ShieldCheck } from "lucide-react";
 import { useScrollAnimation } from "../hooks/useScrollAnimation";
 import { SectionHeading } from "./SectionHeading";
 import { toneAt } from "../lib/brand";
+import { TEAM_MIN_MEMBERS, TEAM_MAX_MEMBERS } from "@/lib/constants";
 
 const teamConditions = [
   "أن يكون المتقدم طالبًا جامعيًا أو ممارسًا في أحد المجالات المرتبطة بالطفولة أو التقنية أو تصميم الحلول.",
   "يُتاح التقديم للمواطنين والمقيمين إقامة نظامية داخل المملكة العربية السعودية.",
-  "أن يتكوّن كل فريق من 4–5 مشاركين.",
+  `أن يتكوّن كل فريق من ${TEAM_MIN_MEMBERS}–${TEAM_MAX_MEMBERS} مشاركين.`,
   "التقديم عبر نموذج التسجيل وتعبئة جميع الأسئلة بشكل كامل.",
   "الالتزام بحضور جميع فعاليات الهاكاثون.",
   "احترام الجميع وتحمّل مسؤولية السلوك."

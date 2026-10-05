@@ -250,14 +250,14 @@ export function renderEmailHtml(title: string, bodyText: string, audience?: Emai
      the desktop sizes — nothing breaks, the logos are just bigger. !important
      is required to beat the inline styles and the width/height attributes. */
   @media only screen and (max-width: 480px) {
-    .em-logo { width: 120px !important; height: 50px !important; }
+    .em-logo { width: 100px !important; height: 42px !important; }
     .em-org { width: 72px !important; height: 42px !important; }
   }
 </style>
 <div dir="rtl" lang="ar" style="direction:rtl;text-align:right;font-family:Tahoma,Arial,sans-serif;background:${CREAM};padding:24px">
   <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e8dcc9">
     <div style="background:#ffffff;padding:20px 24px;text-align:center">
-      <img class="em-logo" src="${baseUrl}/email/childhood-logo.png" alt="${BRAND_NAME}" width="168" height="70" style="width:168px;height:70px;display:inline-block;border:0;vertical-align:middle;margin:0 10px">
+      <img class="em-logo" src="${baseUrl}/email/childhood-logo.png" alt="${BRAND_NAME}" width="134" height="56" style="width:134px;height:56px;display:inline-block;border:0;vertical-align:middle;margin:0 10px">
       <img class="em-org" src="${baseUrl}/email/inma-logo.png" alt="${ORGANIZER_NAME}" width="96" height="56" style="width:96px;height:56px;display:inline-block;border:0;vertical-align:middle;margin:0 10px">
     </div>
     <div style="background:${NAVY};padding:12px 24px;text-align:center">

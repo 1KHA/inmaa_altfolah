@@ -23,11 +23,17 @@ export const ALLOWED_FILE_TYPES = [
 export const SLOT_STEP_MINUTES = 15;
 export const SLOT_TIMESLOTS_PER_HOUR = 60 / SLOT_STEP_MINUTES;
 
-// Maximum team size (leader + members). This hackathon's rule is 3-5 members,
-// matching the public registration form and the conditions section of the
-// landing page. Enforced server-side when a team leader adds a member; the add
-// window itself is stored in TeamSettings.
+// Team size, leader included: 2-5. The public registration form and the
+// admin "create team" form offer exactly this range, /api/register-team
+// enforces it, and a team leader cannot add members past the maximum (the add
+// window itself is stored in TeamSettings).
+export const TEAM_MIN_MEMBERS = 2;
 export const TEAM_MAX_MEMBERS = 5;
+/** Choices for the "team size" pickers: TEAM_MIN_MEMBERS..TEAM_MAX_MEMBERS. */
+export const TEAM_SIZE_OPTIONS = Array.from(
+  { length: TEAM_MAX_MEMBERS - TEAM_MIN_MEMBERS + 1 },
+  (_, i) => TEAM_MIN_MEMBERS + i
+);
 
 // Hides public team registration (the /register-team page redirects to /login,
 // and every "سجل فريقك" entry point is hidden). Registration is OPEN here, so

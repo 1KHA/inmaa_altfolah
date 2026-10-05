@@ -3,7 +3,7 @@
  * Re-applies this hackathon's rules to the upstream e2e fixtures.
  *
  * The suites come from the dyamhackathon repo, which runs a different event:
- * teams of 2-3 there vs 3-5 here, a 30-member cap vs 5, and its own challenge
+ * teams of 2-3 there vs 2-5 here, a 30-member cap vs 5, and its own challenge
  * tracks. Run this after pulling test files from upstream:
  *
  *   node scripts/tests/adapt-fixtures.js
@@ -19,7 +19,8 @@ const read = (f) => fs.readFileSync(path.join(DIR, f), 'utf8');
 const write = (f, s) => fs.writeFileSync(path.join(DIR, f), s);
 const note = (f, what) => edits.push(`${f}: ${what}`);
 
-// 1) teams need 3-5 members here, so single-member fixtures get a second one
+// 1) single-member fixtures get a second one (written for the old 3-5 rule;
+//    a team of 3 is still within 2-5, so the fixtures keep it)
 for (const f of ['e2e-golden-path.js', 'e2e-upload-paths.js']) {
   let s = read(f);
   const m = s.match(/fd\.set\('members', JSON\.stringify\(\[\{([^\n]*?)\}\]\)\);/);

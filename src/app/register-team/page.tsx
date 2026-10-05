@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { REGISTRATION_CLOSED, MAX_FILE_SIZE, MAX_FILE_SIZE_MB } from '@/lib/constants'
+import { REGISTRATION_CLOSED, MAX_FILE_SIZE, MAX_FILE_SIZE_MB, TEAM_MIN_MEMBERS, TEAM_SIZE_OPTIONS } from '@/lib/constants'
 import { uploadFileToSupabase } from '@/lib/supabase-client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -52,8 +52,8 @@ const initialFormState = {
   hearAboutUs: '',
   agreeToTerms: false,
   leaderInfo: initialParticipantState,
-  members: Array(2).fill(null).map(() => ({ ...initialParticipantState })),
-  memberCount: 3, // Default to 3 members (leader + 2)
+  members: Array(TEAM_MIN_MEMBERS - 1).fill(null).map(() => ({ ...initialParticipantState })),
+  memberCount: TEAM_MIN_MEMBERS, // total team size, leader included; members[] holds the rest
 }
 
 type FormState = typeof initialFormState;
@@ -731,9 +731,9 @@ export default function RegisterTeamPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="text-right" dir="rtl">
-                        <SelectItem value="3" className="text-right">3 أعضاء</SelectItem>
-                        <SelectItem value="4" className="text-right">4 أعضاء</SelectItem>
-                        <SelectItem value="5" className="text-right">5 أعضاء</SelectItem>
+                        {TEAM_SIZE_OPTIONS.map((n) => (
+                          <SelectItem key={n} value={String(n)} className="text-right">{n} أعضاء</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
