@@ -9,7 +9,8 @@ const { loadEnv } = require('./load-env');
 // Load environment variables from .env file
 loadEnv();
 
-const BUCKET_NAME = 'uploads';
+// Keep in step with STORAGE_BUCKET in src/lib/storage-keys.ts
+const BUCKET_NAME = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'inmaa';
 const REQUIRED_FOLDERS = ['milestones', 'teams'];
 
 async function setupSupabaseStorage() {

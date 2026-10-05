@@ -8,6 +8,14 @@
  * where the schema stores it (e.g. MilestoneSubmission.fileName).
  */
 
+/**
+ * Supabase Storage bucket for every upload (team attachments `teams/`,
+ * milestone files `milestones/`), shared by the browser and the server.
+ * NEXT_PUBLIC_ so the browser bundle sees an override; it is inlined at build
+ * time, so changing it needs a rebuild.
+ */
+export const STORAGE_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'inmaa';
+
 /** Lower-case, ASCII-only extension (max 10 chars); 'bin' when unusable. */
 export function safeExtension(originalName: string): string {
   const raw = originalName.includes('.') ? originalName.split('.').pop() || '' : '';

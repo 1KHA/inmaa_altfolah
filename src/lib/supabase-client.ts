@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { safeExtension } from './storage-keys';
+import { safeExtension, STORAGE_BUCKET } from './storage-keys';
 
 // Client-side Supabase client using anon key (safe for browser).
 // Created lazily: this module is also evaluated on the server while Next
@@ -43,18 +43,18 @@ async function ensureBucketExists(): Promise<void> {
     }
     
     // Check if our bucket exists
-    const bucketExists = buckets.some(bucket => bucket.name === 'uploads');
+    const bucketExists = buckets.some(bucket => bucket.name === STORAGE_BUCKET);
     
     if (!bucketExists) {
       // Create the bucket if it doesn't exist
-      const { error: createError } = await supabase.storage.createBucket('uploads', {
+      const { error: createError } = await supabase.storage.createBucket(STORAGE_BUCKET, {
         public: true, // Make bucket public
       });
       
       if (createError) {
-        console.error(`Error creating bucket uploads:`, createError);
+        console.error(`Error creating bucket ${STORAGE_BUCKET}:`, createError);
       } else {
-        console.log(`Created bucket uploads`);
+        console.log(`Created bucket ${STORAGE_BUCKET}`);
       }
     }
   } catch (error) {
@@ -75,7 +75,7 @@ async function ensureFolderExists(folder: string): Promise<void> {
     
     // Check if folder exists
     const { data, error } = await supabase.storage
-      .from('uploads')
+      .from(STORAGE_BUCKET)
       .list(folder);
     
     if (error) {
@@ -87,7 +87,7 @@ async function ensureFolderExists(folder: string): Promise<void> {
       // Create an empty file in the folder to create it
       // This is a common workaround since many storage systems don't have explicit "create folder" operations
       await supabase.storage
-        .from('uploads')
+        .from(STORAGE_BUCKET)
         .upload(`${folder}/.folder`, new Blob([''], { type: 'text/plain' }), {
           upsert: true
         });
@@ -121,7 +121,7 @@ export async function uploadFileToSupabase(
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from('uploads')
+      .from(STORAGE_BUCKET)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -134,7 +134,7 @@ export async function uploadFileToSupabase(
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('uploads')
+      .from(STORAGE_BUCKET)
       .getPublicUrl(filePath);
 
     return {
@@ -157,7 +157,7 @@ export async function deleteFileFromSupabase(filePath: string): Promise<void> {
     await ensureBucketExists();
     
     const { error } = await supabase.storage
-      .from('uploads')
+      .from(STORAGE_BUCKET)
       .remove([filePath]);
 
     if (error) {

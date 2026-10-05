@@ -7,7 +7,7 @@
  * (FUNCTION_PAYLOAD_TOO_LARGE), so the advertised 25 MB limit was unreachable.
  *
  * NOW: the browser uploads straight to Supabase Storage (bucket
- * `uploads`, folders `teams/` and `milestones/`) and the API receives
+ * STORAGE_BUCKET — `inmaa` — folders `teams/` and `milestones/`) and the API receives
  * only the resulting public URL — the function payload is a few KB whatever
  * the file size. When direct upload is unavailable (no NEXT_PUBLIC_SUPABASE_*
  * at build time, e.g. local dev) or fails (storage policy), callers fall back

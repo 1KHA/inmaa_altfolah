@@ -1,8 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { sanitizeStorageFilename } from './storage-keys';
+import { sanitizeStorageFilename, STORAGE_BUCKET } from './storage-keys';
 
-// Default bucket name - make sure this bucket exists in your Supabase project
-const DEFAULT_BUCKET = 'uploads';
+const DEFAULT_BUCKET = STORAGE_BUCKET;
 
 // Lazy-initialize Supabase client only when needed
 function getSupabaseClient(): SupabaseClient {
