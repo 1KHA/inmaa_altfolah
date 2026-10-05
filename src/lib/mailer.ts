@@ -191,8 +191,7 @@ export function escapeHtml(value: string): string {
 /** Who an email is addressed to — selects the support-channels footer. */
 export type EmailAudience = 'participant' | 'mentor' | 'admin';
 
-export const SUPPORT_EMAIL = 'wmvc@wadimakkah.sa';
-export const SUPPORT_TELEGRAM_URL = 'https://t.me/+4boPQPRmGuAzNmI0';
+export const SUPPORT_EMAIL = 'info@inma.org.sa';
 
 /** Shown in every email — kept as text so it survives clients that block images. */
 const BRAND_NAME = 'هاكثون الطفولة';
@@ -207,27 +206,20 @@ const CREAM = '#fbf4ea';
 const FOOTER_LINK_STYLE = `color:${NAVY};text-decoration:none`;
 
 /**
- * Support-channels lines for the grey footer, same style as the automated
- * message line: e-mail and the Telegram group. Only participants and mentors
- * get them; admin/unknown audiences get nothing extra.
+ * Support line for the footer, same style as the automated-message line: the
+ * organiser's e-mail. Only participants and mentors get it; admin/unknown
+ * audiences get nothing extra.
  */
 function renderSupportChannelsHtml(audience?: EmailAudience): string {
   if (audience !== 'participant' && audience !== 'mentor') return '';
   const mail = `<a href="mailto:${SUPPORT_EMAIL}" style="${FOOTER_LINK_STYLE}" dir="ltr">${SUPPORT_EMAIL}</a>`;
-  const telegram = `<a href="${SUPPORT_TELEGRAM_URL}" style="${FOOTER_LINK_STYLE}" dir="ltr">${SUPPORT_TELEGRAM_URL}</a>`;
-  return (
-    `<div style="margin-top:8px">للاستفسار يرجى التواصل عبر القنوات التالية:</div>` +
-    `<div>البريد: ${mail}</div>` +
-    `<div>تيليجرام: ${telegram}</div>`
-  );
+  return `<div style="margin-top:8px">للاستفسار يرجى التواصل عبر البريد الإلكتروني: ${mail}</div>`;
 }
 
-/** Plain-text twin of the support-channels footer (for the text/plain part). */
+/** Plain-text twin of the support line (for the text/plain part). */
 export function renderSupportChannelsText(audience?: EmailAudience): string {
   if (audience !== 'participant' && audience !== 'mentor') return '';
-  return `للاستفسار يرجى التواصل عبر القنوات التالية:
-البريد: ${SUPPORT_EMAIL}
-تيليجرام: ${SUPPORT_TELEGRAM_URL}`;
+  return `للاستفسار يرجى التواصل عبر البريد الإلكتروني: ${SUPPORT_EMAIL}`;
 }
 
 /**
