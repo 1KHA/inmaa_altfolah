@@ -9,7 +9,7 @@ export const EVENT = {
   region: "المنطقة الشرقية",
   venue: "مختبر الابتكار بالخبر",
   closingVenue: "مدينة الخبر",
-  dateRange: "8 – 18 نوفمبر 2026",
+  dateRange: "8 – 19 نوفمبر 2026",
 };
 
 // Hero countdown target in Riyadh time (UTC+3)

@@ -41,7 +41,7 @@ const structuredData = {
   eventStatus: "https://schema.org/EventScheduled",
   eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
   startDate: "2026-11-08",
-  endDate: "2026-11-18",
+  endDate: "2026-11-19",
 };
 
 export default function HomePage() {
