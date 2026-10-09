@@ -39,7 +39,7 @@ const journeyStages = [
   {
     phase: "5",
     title: "العرض النهائي",
-    date: "18 نوفمبر 2026",
+    date: "19 نوفمبر 2026",
     mode: `حضوري · ${EVENT.closingVenue}`,
     icon: Presentation
   }

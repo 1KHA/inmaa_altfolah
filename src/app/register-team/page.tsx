@@ -551,7 +551,7 @@ export default function RegisterTeamPage() {
           className="border-primary data-[state=checked]:bg-primary"
         />
         <Label htmlFor={`${prefix}-canAttendHackathon`} className="text-base cursor-pointer text-primary font-medium">
-          هل تستطيع الحضور في مقر الهاكثون في الخبر؟
+          هل يمكنك الحضور شخصيًا إلى مقر الهاكثون في مدينة الخبر؟
         </Label>
       </div>
     </div>
