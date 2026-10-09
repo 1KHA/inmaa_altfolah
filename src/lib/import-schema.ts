@@ -11,6 +11,7 @@
  * on approval (see mdfiles/acceptance-credentials-email.md).
  */
 import { CHALLENGES } from './challenges';
+import { PROFESSIONAL_FIELDS } from './professional-fields';
 
 export type EntityKey = 'teams' | 'participants' | 'mentors' | 'teams-with-leader';
 
@@ -27,7 +28,7 @@ export interface ColumnSpec {
   note: string;
 }
 
-export const PROFESSIONAL_FIELDS = ['ذكاء اصناعي', 'علم البيانات', 'برمجة'] as const;
+export { PROFESSIONAL_FIELDS };
 export const GENDERS = ['ذكر', 'أنثى'] as const;
 
 export const IMPORT_SPECS: Record<EntityKey, { labelAr: string; columns: ColumnSpec[] }> = {

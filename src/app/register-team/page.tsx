@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useToast } from '@/../../components/ui/use-toast'
 import Loader from '@/components/ui/loader'
 import { HACKATHON_TRACKS } from '@/lib/tracks'
+import { PROFESSIONAL_FIELD_OPTIONS, professionalFieldExamples } from '@/lib/professional-fields'
 import PublicPageShell from '@/components/site/PublicPageShell'
 
 interface Participant {
@@ -523,13 +524,23 @@ export default function RegisterTeamPage() {
         <Label htmlFor={`${prefix}-professionalField`} className="text-base font-medium mb-2 block text-primary">
           ماهو مجالك المهني؟
         </Label>
-        <Input 
-          id={`${prefix}-professionalField`} 
-          required 
-          value={participant.professionalField} 
-          onChange={(e) => updateFn('professionalField', e.target.value)}
-          className={`h-11 border-2 ${participant.professionalField && participant.professionalField.trim() ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg`}
-        />
+        <Select required onValueChange={(value) => updateFn('professionalField', value)} value={participant.professionalField}>
+          <SelectTrigger id={`${prefix}-professionalField`} className={`h-11 border-2 ${participant.professionalField ? 'border-gray-200 focus:border-primary' : 'border-red-300 focus:border-red-500'} rounded-lg text-right`} dir="rtl">
+            <SelectValue placeholder="اختر المجال الأقرب لما ستسهم به في الفريق..." />
+          </SelectTrigger>
+          <SelectContent className="text-right" dir="rtl">
+            {PROFESSIONAL_FIELD_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value} description={option.examples} className="text-right">
+                {option.value}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {professionalFieldExamples(participant.professionalField) && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            أمثلة: {professionalFieldExamples(participant.professionalField)}
+          </p>
+        )}
       </div>
       <div>
         <Label htmlFor={`${prefix}-city`} className="text-base font-medium mb-2 block text-primary">

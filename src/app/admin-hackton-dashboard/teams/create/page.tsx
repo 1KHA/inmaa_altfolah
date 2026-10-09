@@ -34,6 +34,7 @@ import { Checkbox } from '@/../../components/ui/checkbox'
 import { useToast } from '@/../../components/ui/use-toast'
 import { prepareUpload, validateUploadFile, UPLOAD_ACCEPT, UPLOAD_HINT } from '@/lib/client-upload'
 import { TEAM_MIN_MEMBERS, TEAM_SIZE_OPTIONS } from '@/lib/constants'
+import { PROFESSIONAL_FIELD_OPTIONS } from '@/lib/professional-fields'
 
 /** Mirrors the participant shape the API reads. */
 interface Participant {
@@ -211,7 +212,16 @@ export default function AdminCreateTeamPage() {
       </div>
       <div>
         <Label htmlFor={`${prefix}-professionalField`}>ماهو مجالك المهني؟</Label>
-        <Input id={`${prefix}-professionalField`} required value={participant.professionalField} onChange={(e) => updateFn('professionalField', e.target.value)} placeholder="مثال: علم البيانات" />
+        <Select required onValueChange={(value) => updateFn('professionalField', value)} value={participant.professionalField}>
+          <SelectTrigger id={`${prefix}-professionalField`}><SelectValue placeholder="اختر المجال..." /></SelectTrigger>
+          <SelectContent className="text-right" dir="rtl">
+            {PROFESSIONAL_FIELD_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value} description={option.examples} className="text-right">
+                {option.value}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div>
         {/* Stored in Participant.city — the public form labels this column the

@@ -49,9 +49,9 @@ const TEAMS_WITH_LEADER = toRows('teams-with-leader');
 
 const EXAMPLES = {
   participants: [
-    ['sara@example.com',  'سارة عبدالله', '0501111111', 'أنثى', 'TRUE',  'جامعة الملك سعود', 'علوم حاسب', 'برمجة',        'https://github.com/sara',  'TRUE',  'فريق المياه', 'TRUE'],
-    ['omar@example.com',  'عمر خالد',     '0502222222', 'ذكر',  'TRUE',  'جامعة الملك سعود', 'هندسة',      'علم البيانات', 'https://github.com/omar',  'TRUE',  'فريق المياه', 'FALSE'],
-    ['huda@example.com',  'هدى فهد',      '0503333333', 'أنثى', 'FALSE', '',                 '',           'ذكاء اصناعي',  'https://github.com/huda',  'FALSE', '',            'FALSE'],
+    ['sara@example.com',  'سارة عبدالله', '0501111111', 'أنثى', 'TRUE',  'جامعة الملك سعود', 'علوم حاسب', 'التقنية',      'https://github.com/sara',  'TRUE',  'فريق المياه', 'TRUE'],
+    ['omar@example.com',  'عمر خالد',     '0502222222', 'ذكر',  'TRUE',  'جامعة الملك سعود', 'هندسة',      'التصميم',      'https://github.com/omar',  'TRUE',  'فريق المياه', 'FALSE'],
+    ['huda@example.com',  'هدى فهد',      '0503333333', 'أنثى', 'FALSE', '',                 '',           'التنفيذ والأثر', 'https://github.com/huda',  'FALSE', '',            'FALSE'],
   ],
   teams: [
     ['فريق المياه', CHALLENGES[0], 'حل ذكي لرصد تسربات شبكات المياه', 'تويتر'],
@@ -63,10 +63,10 @@ const EXAMPLES = {
   'teams-with-leader': [
     ['فريق المياه', CHALLENGES[0], 'حل ذكي لرصد تسربات شبكات المياه', 'تويتر',
      'sara@example.com', 'سارة عبدالله', '0501111111', 'أنثى', 'TRUE',
-     'جامعة الملك سعود', 'علوم حاسب', 'برمجة', 'https://github.com/sara', 'TRUE'],
+     'جامعة الملك سعود', 'علوم حاسب', 'التقنية', 'https://github.com/sara', 'TRUE'],
     ['فريق الاستدامة', CHALLENGES[0], 'منصة لترشيد الاستهلاك المنزلي', 'صديق',
      'omar@example.com', 'عمر خالد', '0502222222', 'ذكر', 'FALSE',
-     '', '', 'علم البيانات', 'https://github.com/omar', 'TRUE'],
+     '', '', 'التصميم', 'https://github.com/omar', 'TRUE'],
   ],
 };
 
