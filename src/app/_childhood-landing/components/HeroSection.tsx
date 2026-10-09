@@ -1,8 +1,52 @@
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { CalendarDays, MapPin, Users } from "lucide-react";
-import { EVENT, REGISTER_URL } from "../content/event";
+import { EVENT, PATRON, REGISTER_URL } from "../content/event";
 import { Countdown } from "./Countdown";
+import { HeroCarousel } from "./HeroCarousel";
+
+/** The hackathon mark on a soft honey shape (first slide of the hero carousel). */
+function LogoMark() {
+  return (
+    <div className="relative w-full max-w-md">
+      {/* Soft honey shape behind the icon */}
+      <div aria-hidden className="blob absolute inset-0 bg-brand-honey/25 scale-110"></div>
+      {/* Main image */}
+      <img
+        src="/brand/logo-icon.svg"
+        alt=""
+        className="relative z-10 w-full h-auto p-10 transform hover:scale-105 transition-bounce animate-scale-in animation-delay-500"
+      />
+      {/* Floating organic shapes */}
+      <div aria-hidden className="blob absolute -top-6 -right-6 w-16 h-16 bg-brand-green opacity-80 animate-pulse animation-delay-1000"></div>
+      <div aria-hidden className="blob-alt absolute -bottom-4 -left-4 w-12 h-12 bg-brand-orange opacity-80 animate-pulse animation-delay-1200"></div>
+    </div>
+  );
+}
+
+/** The royal patron's portrait on a quiet circular backdrop, with the title beneath (second slide). */
+function PatronFigure() {
+  return (
+    <figure className="relative mx-auto w-full max-w-[18rem] sm:max-w-sm lg:max-w-md text-center">
+      <div className="relative">
+        <div aria-hidden className="absolute inset-x-6 bottom-0 aspect-square rounded-full bg-brand-honey/25"></div>
+        <img
+          src={PATRON.image}
+          alt={`${PATRON.honorific} ${PATRON.name}، ${PATRON.position}`}
+          width={1068}
+          height={1118}
+          className="relative w-full h-auto"
+        />
+      </div>
+      <figcaption className="relative -mt-4 rounded-2xl border border-brand-honey/60 bg-card/95 px-4 py-3 shadow-elegant space-y-0.5">
+        <p className="text-xs lg:text-sm text-muted-foreground arabic-text">تحت رعاية</p>
+        <p className="text-sm lg:text-base font-medium text-primary arabic-text">{PATRON.honorific}</p>
+        <p className="text-base lg:text-xl font-black text-primary arabic-text whitespace-nowrap">{PATRON.name}</p>
+        <p className="text-sm lg:text-base font-bold text-accent arabic-text">{PATRON.position}</p>
+      </figcaption>
+    </figure>
+  );
+}
 
 export function HeroSection() {
   return (
@@ -52,21 +96,13 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Hero Image */}
         <div className="relative order-1 lg:order-2 flex justify-center animate-fade-in-right animation-delay-300">
-          <div className="relative w-full max-w-md">
-            {/* Soft honey shape behind the icon */}
-            <div aria-hidden className="blob absolute inset-0 bg-brand-honey/25 scale-110"></div>
-            {/* Main image */}
-            <img
-              src="/brand/logo-icon.svg"
-              alt=""
-              className="relative z-10 w-full h-auto p-10 transform hover:scale-105 transition-bounce animate-scale-in animation-delay-500"
-            />
-            {/* Floating organic shapes */}
-            <div aria-hidden className="blob absolute -top-6 -right-6 w-16 h-16 bg-brand-green opacity-80 animate-pulse animation-delay-1000"></div>
-            <div aria-hidden className="blob-alt absolute -bottom-4 -left-4 w-12 h-12 bg-brand-orange opacity-80 animate-pulse animation-delay-1200"></div>
-          </div>
+          <HeroCarousel
+            slides={[
+              { label: "شعار هاكثون الطفولة", content: <LogoMark /> },
+              { label: "الرعاية الكريمة", content: <PatronFigure /> },
+            ]}
+          />
         </div>
       </div>
     </section>

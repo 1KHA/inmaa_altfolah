@@ -42,3 +42,12 @@ export const NAV_LINKS = [
   { href: "/#prizes", label: "الجوائز" },
   { href: "/#partners", label: "الشركاء" },
 ];
+
+// Royal patronage of the hackathon (second slide of the hero carousel)
+export const PATRON = {
+  honorific: "صاحب السمو الملكي الأمير",
+  name: "سعود بن نايف بن عبدالعزيز آل سعود",
+  position: "أمير المنطقة الشرقية",
+  // Cut-out portrait with a transparent background (1068 × 1118)
+  image: "/7f4a7299-7e38-4bfb-ab6b-55b971b988da_0.webp",
+};
