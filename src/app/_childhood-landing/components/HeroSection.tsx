@@ -30,7 +30,7 @@ export function HeroSection() {
               </span>
               <span className="inline-flex items-center gap-2 rounded-full border border-brand-honey bg-card/70 px-4 py-2 text-base font-medium text-primary arabic-text">
                 <MapPin className="w-4 h-4 text-accent" aria-hidden />
-                {EVENT.region} · الخبر والجبيل
+                {EVENT.region} · الخبر
               </span>
               <span className="inline-flex items-center gap-2 rounded-full border border-brand-honey bg-card/70 px-4 py-2 text-base font-medium text-primary arabic-text">
                 <Users className="w-4 h-4 text-accent" aria-hidden />

@@ -58,7 +58,7 @@ export const TIMELINE_EVENTS: TimelineEvent[] = [
   },
   {
     shortName: "العرض النهائي",
-    name: "العرض النهائي (حضوري · مدينة الجبيل)",
+    name: "العرض النهائي (حضوري · مدينة الخبر)",
     dateLabel: "18 نوفمبر",
     start: "2026-11-18",
     end: "2026-11-18",

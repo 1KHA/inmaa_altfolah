@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: { default: SITE_TITLE, template: `%s | ${EVENT.name}` },
   description: SITE_DESCRIPTION,
   applicationName: EVENT.name,
-  keywords: ["هاكثون", "هاكثون الطفولة", "الطفولة", "ابتكار", "الطفل", "الأسرة", "التقنية", "جمعية إنماء", "المنطقة الشرقية", "الخبر", "الجبيل"],
+  keywords: ["هاكثون", "هاكثون الطفولة", "الطفولة", "ابتكار", "الطفل", "الأسرة", "التقنية", "جمعية إنماء", "المنطقة الشرقية", "الخبر"],
   authors: [{ name: EVENT.organizer }],
   creator: EVENT.organizer,
   publisher: EVENT.organizer,

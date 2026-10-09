@@ -8,7 +8,7 @@ export const EVENT = {
   organizer: "جمعية إنماء لرعاية الطفولة",
   region: "المنطقة الشرقية",
   venue: "مختبر الابتكار بالخبر",
-  closingVenue: "مدينة الجبيل",
+  closingVenue: "مدينة الخبر",
   dateRange: "8 – 18 نوفمبر 2026",
 };
 
