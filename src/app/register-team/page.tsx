@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { REGISTRATION_CLOSED, MAX_FILE_SIZE, MAX_FILE_SIZE_MB, TEAM_MIN_MEMBERS, TEAM_SIZE_OPTIONS } from '@/lib/constants'
+import { REGISTRATION_CLOSED, INDIVIDUAL_REGISTRATION_OPEN, MAX_FILE_SIZE, MAX_FILE_SIZE_MB, TEAM_MIN_MEMBERS, TEAM_MAX_MEMBERS, TEAM_SIZE_OPTIONS } from '@/lib/constants'
 import { uploadFileToSupabase } from '@/lib/supabase-client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -46,7 +46,8 @@ const initialParticipantState: Participant = {
 }
 
 const initialFormState = {
-  registrationType: '', // 'individual' or 'team'
+  // 'individual' or 'team'; fixed to 'team' while solo sign-ups are closed
+  registrationType: INDIVIDUAL_REGISTRATION_OPEN ? '' : 'team',
   teamName: '',
   hackathonTrack: '',
   ideaDescription: '',
@@ -169,7 +170,10 @@ export default function RegisterTeamPage() {
     try {
       const savedState = localStorage.getItem('registrationForm')
       if (savedState) {
-        setFormState(JSON.parse(savedState))
+        const restored = JSON.parse(savedState)
+        // A draft saved while solo sign-ups were open must not bring them back
+        if (!INDIVIDUAL_REGISTRATION_OPEN) restored.registrationType = 'team'
+        setFormState(restored)
       }
     } catch (error) {
       console.error('Failed to parse form state from localStorage', error)
@@ -622,11 +626,16 @@ export default function RegisterTeamPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Registration Type Selection */}
+              {/* Registration Type Selection (teams only while solo sign-ups are closed) */}
               <div className="bg-gray-50/50 p-6 rounded-xl border-2 border-gray-100 space-y-6">
                 <h3 className="text-2xl font-bold pb-3 border-b-2 border-gray-200 text-primary">
                   نوع المشاركة
                 </h3>
+                {!INDIVIDUAL_REGISTRATION_OPEN ? (
+                  <p className="text-lg font-medium text-primary">
+                    التسجيل متاح حاليًا للفرق فقط، من {TEAM_MIN_MEMBERS} إلى {TEAM_MAX_MEMBERS} أعضاء بمن فيهم قائد الفريق.
+                  </p>
+                ) : (
                 <div>
                   <Label className="text-lg font-medium mb-4 block text-primary">
                     هل ستشارك كفريق؟
@@ -651,6 +660,7 @@ export default function RegisterTeamPage() {
                     </div>
                   </RadioGroup>
                 </div>
+                )}
               </div>
 
               {/* Hackathon Track Selection - Show for both individual and team */}

@@ -39,3 +39,8 @@ export const TEAM_SIZE_OPTIONS = Array.from(
 // and every "سجل فريقك" entry point is hidden). Registration is OPEN here, so
 // this stays false — the upstream project ships it as true.
 export const TEAM_REGISTRATION_HIDDEN = false;
+
+// Solo (individual) sign-ups on /register-team. While false the form registers
+// teams only (the "مشاركة فردية" choice is hidden) and /api/register-team
+// rejects individual registrations; set to true to reopen them.
+export const INDIVIDUAL_REGISTRATION_OPEN = false;

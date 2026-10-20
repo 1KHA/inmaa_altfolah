@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client'
 import { dispatchNotification } from '@/lib/notify'
 import { uploadToStorage } from '@/lib/supabase-storage'
 import { buildStorageFilename } from '@/lib/storage-keys'
-import { MAX_FILE_SIZE, MAX_FILE_SIZE_MB, TEAM_MIN_MEMBERS, TEAM_MAX_MEMBERS } from '@/lib/constants'
+import { MAX_FILE_SIZE, MAX_FILE_SIZE_MB, TEAM_MIN_MEMBERS, TEAM_MAX_MEMBERS, INDIVIDUAL_REGISTRATION_OPEN } from '@/lib/constants'
 
 // Ensure this route is dynamic
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,12 @@ export async function POST(request: NextRequest) {
 
     const registrationType = formData.get('registrationType') as string;
     const isTeamRegistration = formData.get('isTeamRegistration') === 'true';
-    
+
+    // Solo sign-ups are closed for now: only teams may register
+    if (!isTeamRegistration && !INDIVIDUAL_REGISTRATION_OPEN) {
+      return NextResponse.json({ error: 'التسجيل متاح حاليًا للفرق فقط' }, { status: 400 })
+    }
+
     // Parse participant data
     const leaderInfo = JSON.parse(formData.get('leaderInfo') as string || '{}');
     const members = isTeamRegistration ? JSON.parse(formData.get('members') as string || '[]') : [];
