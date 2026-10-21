@@ -22,8 +22,8 @@ export const REGISTRATION_DEADLINE = {
 export const REGISTER_URL = "/register-team";
 
 export const CONTACT = {
-  phoneDisplay: "0501 095 095",
-  phoneHref: "tel:+966501095095",
+  phoneDisplay: "0539 898 913",
+  phoneHref: "tel:+966539898913",
   email: "info@inma.org.sa",
   website: "https://inma.org.sa/",
   websiteDisplay: "inma.org.sa",
