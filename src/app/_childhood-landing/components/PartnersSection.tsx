@@ -25,13 +25,16 @@ const tiers: PartnerTier[] = [
   {
     title: "شريك استراتيجي",
     size: "lg",
-    columns: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
+    columns: "grid-cols-2 sm:grid-cols-4",
     partners: [
       { name: "الهيئة الملكية للجبيل وينبع", logo: logo("rcjy") },
       { name: "صندوق دعم الجمعيات", logo: logo("associations-fund") },
       { name: "مؤسسة فرحان ابن المبارك القحطاني", logo: logo("ibn-almubarak") },
       { name: "نادي القادسية", logo: logo("qadsiah") },
-      { name: "غرفة الشرقية", logo: logo("asharqia-chamber") }
+      { name: "غرفة الشرقية", logo: logo("asharqia-chamber") },
+      // Added after the sheet, from public/new_partners
+      { name: "وزارة التعليم", logo: logo("moe") },
+      { name: "هبة — مركز المهيدب لمتلازمة داون", logo: logo("hiba") }
     ]
   },
   {
