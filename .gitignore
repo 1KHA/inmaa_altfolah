@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.email.example
 .env.local
 .env.development.local
 .env.test.local
@@ -83,3 +84,9 @@ shortcut.md
 motion_reel_prompt.md
 /exports/
 move
+/solo
+src/app/_childhood-landing/content/terms.md
+
+.env.email.example
+scripts/send-custom-email.example.json
+scripts/send-custom-email.js

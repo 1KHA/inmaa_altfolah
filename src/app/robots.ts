@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/register-team", "/login"],
+      allow: ["/", "/register-team", "/login", "/terms"],
       disallow: [
         "/admin-login",
         "/admin-hackton-dashboard/",

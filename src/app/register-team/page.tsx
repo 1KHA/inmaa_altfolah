@@ -18,6 +18,7 @@ import Loader from '@/components/ui/loader'
 import { HACKATHON_TRACKS } from '@/lib/tracks'
 import { PROFESSIONAL_FIELD_OPTIONS, professionalFieldExamples } from '@/lib/professional-fields'
 import PublicPageShell from '@/components/site/PublicPageShell'
+import { TERMS_TITLE, TermsBody } from '@/app/_childhood-landing/components/TermsContent'
 
 interface Participant {
   fullName: string
@@ -129,6 +130,71 @@ function IdeaRulesDialog() {
             >
               فهمت، لنبدأ
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+/* The agreement text next to the terms checkbox: opens the full terms
+   (same text as /terms), and agreeing from the dialog ticks the checkbox. */
+function TermsDialog({ onAgree }: { onAgree: () => void }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-lg text-primary font-medium text-right"
+      >
+        أوافق على{' '}
+        <span className="underline underline-offset-4 decoration-brand-orange decoration-2 hover:text-accent">
+          الشروط والأحكام
+        </span>
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent dir="rtl" aria-describedby={undefined} className="max-w-[95vw] sm:max-w-3xl p-0 overflow-hidden">
+          {/* The identity's four colour plates */}
+          <div aria-hidden className="flex h-2 w-full">
+            <span className="flex-1 bg-brand-navy"></span>
+            <span className="flex-1 bg-brand-orange"></span>
+            <span className="flex-1 bg-brand-honey"></span>
+            <span className="flex-1 bg-brand-green"></span>
+          </div>
+          <div className="p-5 sm:p-7">
+            <DialogHeader className="text-right sm:text-right">
+              <DialogTitle className="text-xl sm:text-2xl text-primary font-bold">
+                {TERMS_TITLE}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="mt-4 max-h-[60vh] overflow-y-auto rounded-xl border-2 border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+              <TermsBody />
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                className="sm:flex-1 border-primary/30 text-primary font-medium"
+              >
+                إغلاق
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  onAgree()
+                  setOpen(false)
+                }}
+                className="sm:flex-1 bg-primary hover:bg-primary-dark font-medium"
+              >
+                أوافق على الشروط والأحكام
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -806,16 +872,15 @@ export default function RegisterTeamPage() {
               
               <div className="bg-gray-50/50 p-6 rounded-xl border-2 border-gray-100">
                 <div className="flex items-center gap-3">
-                  <Checkbox 
-                    id="terms" 
-                    required 
-                    checked={formState.agreeToTerms} 
+                  <Checkbox
+                    id="terms"
+                    required
+                    aria-label="أوافق على الشروط والأحكام"
+                    checked={formState.agreeToTerms}
                     onCheckedChange={(checked) => handleStateChange('agreeToTerms', !!checked)}
                     className="border-primary data-[state=checked]:bg-primary"
                   />
-                  <Label htmlFor="terms" className="text-lg cursor-pointer text-primary font-medium">
-                    أوافق على الشروط والأحكام
-                  </Label>
+                  <TermsDialog onAgree={() => handleStateChange('agreeToTerms', true)} />
                 </div>
               </div>
 

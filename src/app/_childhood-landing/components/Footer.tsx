@@ -104,6 +104,9 @@ export function Footer() {
 
         <div className="mt-14 pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
           <p>© 2026 {EVENT.name}. جميع الحقوق محفوظة.</p>
+          <a href="/terms" className="font-semibold text-primary hover:text-accent transition-smooth">
+            الشروط والأحكام
+          </a>
         </div>
       </div>
     </footer>
