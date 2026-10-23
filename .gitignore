@@ -85,7 +85,6 @@ motion_reel_prompt.md
 /exports/
 move
 /solo
-src/app/_childhood-landing/content/terms.md
 
 .env.email.example
 scripts/send-custom-email.example.json
