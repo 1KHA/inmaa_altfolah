@@ -1,7 +1,8 @@
 import "../childhood-landing.css";
 import Link from "next/link";
+import { Megaphone } from "lucide-react";
 import { Button } from "./ui/button";
-import { EVENT, NAV_LINKS, REGISTER_URL } from "../content/event";
+import { ANNOUNCEMENT, EVENT, NAV_LINKS, REGISTER_URL } from "../content/event";
 
 export function Header() {
   return (
@@ -10,6 +11,15 @@ export function Header() {
     // `childhood-landing` brings the landing's tokens along when the header is
     // reused on /login and /register-team.
     <header className="childhood-landing fixed top-0 inset-x-0 z-50 bg-background/85 backdrop-blur-sm border-b border-border/60">
+      {/* Announcement bar; the hero and PublicPageShell add room for it */}
+      {ANNOUNCEMENT && (
+        <div className="bg-primary text-primary-foreground">
+          <p className="container mx-auto px-4 py-2 flex items-center justify-center gap-2 text-center text-xs sm:text-sm font-semibold">
+            <Megaphone className="w-4 h-4 shrink-0 text-brand-honey" aria-hidden />
+            {ANNOUNCEMENT}
+          </p>
+        </div>
+      )}
       <div className="container mx-auto px-6 py-3 flex items-center justify-between gap-6">
         {/* Logo/Brand */}
         <a href="/#top" className="flex items-center gap-4 shrink-0">

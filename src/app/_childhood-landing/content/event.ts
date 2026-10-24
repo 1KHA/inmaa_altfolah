@@ -18,6 +18,10 @@ export const REGISTRATION_DEADLINE = {
   at: "2026-10-23T23:59:00+03:00",
 };
 
+// Bar above the navbar on the public pages (home, login, register, terms);
+// set to null to hide it
+export const ANNOUNCEMENT: string | null = "سيتم الإعلان عن نتائج القبول يوم الخميس 29 أكتوبر";
+
 // Target of every «سجل الآن» button: the platform's team registration form
 export const REGISTER_URL = "/register-team";
 

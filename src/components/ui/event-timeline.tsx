@@ -45,9 +45,9 @@ export const TIMELINE_EVENTS: TimelineEvent[] = [
   {
     shortName: "القبول",
     name: "القبول (إلكتروني)",
-    dateLabel: "31 أكتوبر",
-    start: "2026-10-31",
-    end: "2026-10-31",
+    dateLabel: "29 أكتوبر",
+    start: "2026-10-29",
+    end: "2026-10-29",
   },
   {
     shortName: "ورش العمل",

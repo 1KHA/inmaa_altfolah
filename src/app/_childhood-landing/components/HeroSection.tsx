@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { CalendarDays, MapPin, Users } from "lucide-react";
-import { EVENT, PATRON, REGISTER_URL } from "../content/event";
+import { ANNOUNCEMENT, EVENT, PATRON, REGISTER_URL } from "../content/event";
 import { Countdown } from "./Countdown";
 import { HeroCarousel } from "./HeroCarousel";
 
@@ -50,7 +50,7 @@ function PatronFigure() {
 
 export function HeroSection() {
   return (
-    <section id="top" className="min-h-screen flex items-center justify-center pt-28 pb-16 px-6 relative overflow-hidden">
+    <section id="top" className={`min-h-screen flex items-center justify-center ${ANNOUNCEMENT ? "pt-36" : "pt-28"} pb-16 px-6 relative overflow-hidden`}>
       {/* Background decorative elements — organic shapes from the identity's colour plates */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="blob absolute -top-24 -left-24 w-80 h-80 bg-brand-honey/20"></div>

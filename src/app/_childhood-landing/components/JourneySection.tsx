@@ -18,7 +18,7 @@ const journeyStages = [
   {
     phase: "2",
     title: "القبول",
-    date: "31 أكتوبر 2026",
+    date: "29 أكتوبر 2026",
     mode: "إلكتروني",
     icon: MailCheck
   },
