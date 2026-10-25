@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 export const dynamic = 'force-dynamic';
 
 /**
- * Request a password-reset link (participants and mentors — admins have no
+ * Request a password-reset link (participants, mentors and advisors — admins have no
  * email on their accounts and reset through an operator instead).
  *
  * The token is a stateless 30-minute JWT with a dedicated `purpose` claim, so
@@ -34,10 +34,10 @@ export async function POST(request: Request) {
           'إذا كان البريد الإلكتروني مسجلاً لدينا، فستصلك رسالة تحتوي على رابط إعادة تعيين كلمة المرور.',
       });
 
-    // Same lookup order as the login route: participant first, then mentor.
+    // Same lookup order as the login route: participant, mentor, then advisor.
     // Try the address as typed, then lowercased (addresses are stored as typed).
     const candidates = Array.from(new Set([email, email.toLowerCase()]));
-    let account: { userType: 'participant' | 'mentor'; id: string } | null = null;
+    let account: { userType: 'participant' | 'mentor' | 'advisor'; id: string } | null = null;
     for (const candidate of candidates) {
       const participant = await prisma.participant.findUnique({ where: { email: candidate } });
       if (participant) {
@@ -47,6 +47,11 @@ export async function POST(request: Request) {
       const mentor = await prisma.mentor.findUnique({ where: { email: candidate } });
       if (mentor) {
         account = { userType: 'mentor', id: mentor.id };
+        break;
+      }
+      const advisor = await prisma.advisor.findUnique({ where: { email: candidate } });
+      if (advisor) {
+        account = { userType: 'advisor', id: advisor.id };
         break;
       }
     }

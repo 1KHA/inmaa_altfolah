@@ -39,7 +39,7 @@ export async function PUT(request: NextRequest, { params }: { params: { key: str
       dashboardMessage: String(body.dashboardMessage ?? defaults.dashboardMessage),
       emailSubject: String(body.emailSubject ?? defaults.emailSubject),
       emailBody: String(body.emailBody ?? defaults.emailBody),
-      emailEnabled: Boolean(body.emailEnabled ?? true),
+      emailEnabled: Boolean(body.emailEnabled ?? defaults.emailEnabled ?? true),
       actionUrl: body.actionUrl ? String(body.actionUrl) : null,
     };
 

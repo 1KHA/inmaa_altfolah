@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-export type RecipientType = 'admin' | 'participant' | 'mentor';
+export type RecipientType = 'admin' | 'participant' | 'mentor' | 'advisor';
 
 export interface Recipient {
   recipientType: RecipientType;
@@ -10,7 +10,7 @@ export interface Recipient {
 }
 
 /**
- * Claims that may appear on a token issued by any of the three login routes.
+ * Claims that may appear on a token issued by any of the login routes.
  *
  * The three routes do not agree on shape: participant and mentor tokens carry
  * both `id` and a legacy `<type>Id` alias, while the admin token carries only
@@ -23,6 +23,7 @@ export interface TokenClaims {
   adminId?: string;
   participantId?: string;
   mentorId?: string;
+  advisorId?: string;
 }
 
 /**
@@ -47,7 +48,7 @@ export function verifyToken(token: string | undefined): TokenClaims | null {
  * `{ id, username, role: 'admin' }` — it has no `adminId` claim. Resolving on
  * the alias alone is what made every admin request to /api/notifications fail.
  *
- * Returns null when the token belongs to none of the three known user types.
+ * Returns null when the token belongs to none of the known user types.
  */
 export function resolveRecipient(claims: TokenClaims | null): Recipient | null {
   if (!claims) return null;
@@ -65,6 +66,11 @@ export function resolveRecipient(claims: TokenClaims | null): Recipient | null {
   if (claims.role === 'mentor' || claims.mentorId) {
     const recipientId = claims.mentorId || claims.id;
     return recipientId ? { recipientType: 'mentor', recipientId } : null;
+  }
+
+  if (claims.role === 'advisor' || claims.advisorId) {
+    const recipientId = claims.advisorId || claims.id;
+    return recipientId ? { recipientType: 'advisor', recipientId } : null;
   }
 
   return null;
@@ -86,4 +92,15 @@ export function requireAdmin(token: string | undefined): string | null {
   const claims = verifyToken(token);
   if (!claims || claims.role !== 'admin') return null;
   return claims.adminId || claims.id || null;
+}
+
+/**
+ * Advisor gate for API routes: returns the advisor's id, or null when the
+ * token is missing, invalid, or not an advisor's. Whether the account is
+ * disabled is checked separately (requireActiveAdvisor in account-status.ts).
+ */
+export function requireAdvisor(token: string | undefined): string | null {
+  const claims = verifyToken(token);
+  if (!claims || claims.role !== 'advisor') return null;
+  return claims.advisorId || claims.id || null;
 }

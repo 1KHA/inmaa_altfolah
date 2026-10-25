@@ -13,7 +13,7 @@ import { useToast } from "../../../components/ui/use-toast";
 interface Template {
   key: string;
   label: string;
-  category: "admin" | "participant" | "mentor";
+  category: "admin" | "participant" | "mentor" | "advisor";
   variables: string[];
   type: string;
   bulk: boolean;
@@ -29,6 +29,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   admin: "إشعارات المشرفين",
   participant: "إشعارات المشاركين",
   mentor: "إشعارات المرشدين",
+  advisor: "إشعارات المستشارين",
 };
 
 function TemplateRow({
@@ -229,7 +230,7 @@ export default function TemplateEditor() {
   if (loading) return <p className="text-center p-4">جاري تحميل البيانات...</p>;
   if (error) return <p className="text-center p-4 text-red-500">{error}</p>;
 
-  const categories = ["admin", "participant", "mentor"] as const;
+  const categories = ["admin", "participant", "mentor", "advisor"] as const;
 
   return (
     <div className="space-y-6">

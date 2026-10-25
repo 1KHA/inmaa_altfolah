@@ -224,6 +224,34 @@ export async function requireActiveMentor(
   return NextResponse.json({ error: DISABLED_ACCOUNT_MESSAGE, disabled: true }, { status: 403 });
 }
 
+// ---------------------------------------------------------------------------
+// Advisors (practice-card reviewers) — like mentors, except that a deleted
+// advisor also loses access at once (their token outlives the row).
+// ---------------------------------------------------------------------------
+
+/** Disabled or deleted. Fails open on a database error like the versions above. */
+export async function isAdvisorDisabled(advisorId: string): Promise<boolean> {
+  if (!advisorId) return false;
+  try {
+    const row = await prisma.advisor.findUnique({
+      where: { id: advisorId },
+      select: { isDisabled: true },
+    });
+    return !row || row.isDisabled;
+  } catch {
+    return false;
+  }
+}
+
+/** Route guard for advisor-facing endpoints — mirrors requireActiveMentor(). */
+export async function requireActiveAdvisor(
+  advisorId: string | undefined | null
+): Promise<NextResponse | null> {
+  if (!advisorId) return null;
+  if (!(await isAdvisorDisabled(advisorId))) return null;
+  return NextResponse.json({ error: DISABLED_ACCOUNT_MESSAGE, disabled: true }, { status: 403 });
+}
+
 /**
  * Participants governed by a given phase — a team member through their TEAM's
  * phase, an individual through their own.

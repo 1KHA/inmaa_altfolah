@@ -189,7 +189,7 @@ export function escapeHtml(value: string): string {
 }
 
 /** Who an email is addressed to — selects the support-channels footer. */
-export type EmailAudience = 'participant' | 'mentor' | 'admin';
+export type EmailAudience = 'participant' | 'mentor' | 'advisor' | 'admin';
 
 export const SUPPORT_EMAIL = 'info@inma.org.sa';
 
@@ -207,18 +207,18 @@ const FOOTER_LINK_STYLE = `color:${NAVY};text-decoration:none`;
 
 /**
  * Support line for the footer, same style as the automated-message line: the
- * organiser's e-mail. Only participants and mentors get it; admin/unknown
+ * organiser's e-mail. Participants, mentors and advisors get it; admin/unknown
  * audiences get nothing extra.
  */
 function renderSupportChannelsHtml(audience?: EmailAudience): string {
-  if (audience !== 'participant' && audience !== 'mentor') return '';
+  if (audience !== 'participant' && audience !== 'mentor' && audience !== 'advisor') return '';
   const mail = `<a href="mailto:${SUPPORT_EMAIL}" style="${FOOTER_LINK_STYLE}" dir="ltr">${SUPPORT_EMAIL}</a>`;
   return `<div style="margin-top:8px">للاستفسار يرجى التواصل عبر البريد الإلكتروني: ${mail}</div>`;
 }
 
 /** Plain-text twin of the support line (for the text/plain part). */
 export function renderSupportChannelsText(audience?: EmailAudience): string {
-  if (audience !== 'participant' && audience !== 'mentor') return '';
+  if (audience !== 'participant' && audience !== 'mentor' && audience !== 'advisor') return '';
   return `للاستفسار يرجى التواصل عبر البريد الإلكتروني: ${SUPPORT_EMAIL}`;
 }
 

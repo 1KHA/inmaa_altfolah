@@ -35,7 +35,7 @@ export async function GET() {
         dashboardMessage: row?.dashboardMessage ?? d.dashboardMessage,
         emailSubject: row?.emailSubject ?? d.emailSubject,
         emailBody: row?.emailBody ?? d.emailBody,
-        emailEnabled: row?.emailEnabled ?? true,
+        emailEnabled: row?.emailEnabled ?? d.emailEnabled ?? true,
         actionUrl: row?.actionUrl ?? d.actionUrl ?? null,
         isCustomized: Boolean(row),
         defaults: {

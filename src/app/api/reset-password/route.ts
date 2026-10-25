@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 interface ResetClaims {
   purpose?: string;
-  userType?: 'participant' | 'mentor';
+  userType?: 'participant' | 'mentor' | 'advisor';
   id?: string;
 }
 
@@ -51,6 +51,8 @@ export async function POST(request: Request) {
       await prisma.participant.update({ where: { id: claims.id }, data: { passwordHash } });
     } else if (claims.userType === 'mentor') {
       await prisma.mentor.update({ where: { id: claims.id }, data: { passwordHash } });
+    } else if (claims.userType === 'advisor') {
+      await prisma.advisor.update({ where: { id: claims.id }, data: { passwordHash } });
     } else {
       return NextResponse.json({ error: 'رابط إعادة التعيين غير صالح' }, { status: 400 });
     }

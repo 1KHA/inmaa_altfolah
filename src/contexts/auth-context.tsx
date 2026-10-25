@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-type UserRole = 'admin' | 'participant' | 'mentor' | 'judge'
+type UserRole = 'admin' | 'participant' | 'mentor' | 'advisor' | 'judge'
 
 interface User {
   id: string
@@ -132,6 +132,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         }
+        else if (userRole === 'advisor') {
+          const response = await fetch('/api/advisor/me', {
+            credentials: 'include',
+          })
+
+          if (response.ok) {
+            const advisorData = await response.json()
+            if (advisorData.success && advisorData.role === 'advisor') {
+              setUser({
+                id: advisorData.id,
+                email: advisorData.email,
+                role: 'advisor',
+                name: advisorData.name,
+                fullName: advisorData.name
+              })
+              localStorage.setItem('user', JSON.stringify({ role: 'advisor' }))
+              return
+            }
+          }
+        }
         else if (userRole === 'admin') {
           const response = await fetch('/api/admin/me', {
             credentials: 'include',
@@ -212,7 +232,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
         
-        // If both fail, try admin endpoint
+        // Then the advisor endpoint
+        response = await fetch('/api/advisor/me', {
+          credentials: 'include',
+        })
+
+        if (response.ok) {
+          const advisorData = await response.json()
+          if (advisorData.success && advisorData.role === 'advisor') {
+            setUser({
+              id: advisorData.id,
+              email: advisorData.email,
+              role: 'advisor',
+              name: advisorData.name,
+              fullName: advisorData.name
+            })
+            localStorage.setItem('user', JSON.stringify({ role: 'advisor' }))
+            return
+          }
+        }
+
+        // If all of those fail, try admin endpoint
         response = await fetch('/api/admin/me', {
           credentials: 'include',
         })

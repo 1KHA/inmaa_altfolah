@@ -96,5 +96,6 @@ export const config = {
     '/admin-hackton-dashboard/:path*',
     '/participant-dashboard/:path*',
     '/mentor-dashboard/:path*',
+    '/advisor-dashboard/:path*',
   ],
 };

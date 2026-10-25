@@ -31,7 +31,8 @@ model Team {
   updatedAt            DateTime  @updatedAt
   participants         Participant[]
   receivedJoinRequests TeamJoinRequest[]
-  
+  practiceSubmissions  PracticeSubmission[]
+
   // DEPRECATED FIELDS - Keep for backward compatibility
   challenge            String?
   challengeReason      String?
@@ -126,6 +127,61 @@ model Mentor {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   availabilities MentorAvailability[]
+}
+
+// Reviews the teams' practice cards (نماذج المختبرات). Created by an admin,
+// who emails the login details; signs in on /login like mentors.
+model Advisor {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  phone        String?
+  specialty    String?
+  // Disabled by an admin: cannot log in, cannot review, gets no notifications.
+  isDisabled   Boolean   @default(false)
+  disabledAt   DateTime?
+  passwordHash String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+/// One practice card (src/lib/practice-cards.ts) as filled in by a team. Only
+/// the team leader writes; the other members read. See src/lib/practice.ts.
+model PracticeSubmission {
+  id            String           @id @default(cuid())
+  teamId        String
+  team          Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  cardKey       String
+  answers       String           @default("{}") // JSON object: field key -> text
+  status        String           @default("draft") // draft | submitted | needs_revision | approved
+  // Score (1-5) of the latest review; hidden from participants
+  score         Int?
+  submitCount   Int              @default(0)
+  submittedAt   DateTime?
+  submittedById String?          // participant (the leader) who sent it last
+  reviewedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  reviews       PracticeReview[]
+
+  @@unique([teamId, cardKey])
+  @@index([status, submittedAt])
+}
+
+/// One review of a practice card by an advisor or an admin.
+model PracticeReview {
+  id           String             @id @default(cuid())
+  submissionId String
+  submission   PracticeSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewerType String             // advisor | admin
+  reviewerId   String
+  reviewerName String
+  decision     String             // approved | needs_revision
+  score        Int                // 1-5
+  comment      String
+  createdAt    DateTime           @default(now())
+
+  @@index([submissionId, createdAt])
 }
 
 // A group of mentors (company / entity). Bookings can target the whole

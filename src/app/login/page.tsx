@@ -40,6 +40,8 @@ export default function LoginPage() {
         router.push('/participant-dashboard');
       } else if (user.role === 'mentor') {
         router.push('/mentor-dashboard');
+      } else if (user.role === 'advisor') {
+        router.push('/advisor-dashboard');
       } else if (user.role === 'admin') {
         router.push('/admin-hackton-dashboard');
       }

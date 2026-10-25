@@ -26,7 +26,7 @@ interface Notification {
 }
 
 interface NotificationDropdownProps {
-  userType: 'admin' | 'participant' | 'mentor';
+  userType: 'admin' | 'participant' | 'mentor' | 'advisor';
   className?: string;
 }
 
@@ -35,6 +35,7 @@ const NOTIFICATIONS_PAGE: Record<NotificationDropdownProps['userType'], string> 
   admin: '/admin-hackton-dashboard/notifications',
   participant: '/participant-dashboard/notifications',
   mentor: '/mentor-dashboard/notifications',
+  advisor: '/advisor-dashboard/notifications',
 };
 
 export default function NotificationDropdown({ userType, className }: NotificationDropdownProps) {

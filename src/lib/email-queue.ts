@@ -48,7 +48,7 @@ const RETRY_BACKOFF_MS = 60_000;
 export const ADMIN_INBOX_RECIPIENT_ID = 'shared-inbox';
 
 export interface QueueRecipientInput {
-  recipientType: 'participant' | 'mentor' | 'admin';
+  recipientType: 'participant' | 'mentor' | 'advisor' | 'admin';
   recipientId: string;
   email: string;
   notificationId?: string | null;

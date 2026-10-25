@@ -150,8 +150,13 @@ export async function POST(request: NextRequest) {
       where: { email },
     });
 
-    if (!mentor || !mentor.passwordHash) {
-      console.log(`❌ No mentor found or no password hash for ${email}`);
+    // Neither a participant nor a mentor: maybe an advisor
+    if (!mentor) {
+      return loginAdvisor(request, email, password);
+    }
+
+    if (!mentor.passwordHash) {
+      console.log(`❌ No password hash for mentor ${email}`);
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -223,4 +228,43 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+/**
+ * Advisors (practice-card reviewers) sign in on the same form, checked after
+ * participants and mentors. Same checks and cookie as the mentor branch.
+ */
+async function loginAdvisor(request: NextRequest, email: string, password: string) {
+  // Advisor emails are stored lowercased (src/app/api/admin/advisors)
+  const advisor = await prisma.advisor.findUnique({ where: { email: String(email).trim().toLowerCase() } });
+
+  if (!advisor || !advisor.passwordHash || !(await bcrypt.compare(password, advisor.passwordHash))) {
+    console.log(`❌ No account matches ${email}`);
+    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+  }
+
+  // Disabled by an admin — after the password check, same as the others.
+  if (advisor.isDisabled) {
+    console.log(`❌ Advisor account disabled: ${email}`);
+    return NextResponse.json({ error: DISABLED_ACCOUNT_MESSAGE }, { status: 403 });
+  }
+
+  const token = jwt.sign(
+    { id: advisor.id, advisorId: advisor.id, email: advisor.email, role: 'advisor' },
+    JWT_SECRET,
+    { expiresIn: '60m' }
+  );
+
+  const response = NextResponse.json({
+    success: true,
+    user: { id: advisor.id, fullName: advisor.name, email: advisor.email, role: 'advisor' },
+  });
+  response.cookies.set('token', token, {
+    httpOnly: true,
+    secure: isSecureRequest(request),
+    sameSite: 'lax',
+    maxAge: 60 * 60, // 60 minutes (matches JWT expiration)
+    path: '/',
+  });
+  return response;
 }

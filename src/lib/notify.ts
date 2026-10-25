@@ -39,7 +39,7 @@ import {
 export interface TemplateDefaults {
   key: string;
   label: string; // Arabic display name for the editor
-  category: 'admin' | 'participant' | 'mentor';
+  category: 'admin' | 'participant' | 'mentor' | 'advisor';
   variables: string[];
   type: 'success' | 'info' | 'warning' | 'error';
   dashboardTitle: string;
@@ -49,6 +49,11 @@ export interface TemplateDefaults {
   actionUrl?: string;
   /** true for templates that fan out via BCC — no per-recipient variables. */
   bulk?: boolean;
+  /**
+   * Email switch until an admin saves the template (default true). False for
+   * high-volume alerts that should stay dashboard-only unless switched on.
+   */
+  emailEnabled?: boolean;
 }
 
 function def(
@@ -489,6 +494,71 @@ export const TEMPLATE_DEFAULTS: Record<string, TemplateDefaults> = Object.fromEn
       dashboardMessage: 'تم إلغاء الجلسة مع {{participantName}} المقررة في {{dateTime}}',
       actionUrl: '/mentor-dashboard/sessions',
     }),
+    // ---- practice cards (نماذج المختبرات) -----------------------------------
+    // Submissions can come in by the hundred, so the reviewer alerts stay
+    // dashboard-only unless an admin switches their email on.
+    def({
+      key: 'practiceCardSubmitted',
+      label: 'نموذج جديد بانتظار المراجعة (للمشرفين)',
+      category: 'admin',
+      variables: ['teamName', 'cardTitle'],
+      type: 'info',
+      dashboardTitle: 'نموذج بانتظار المراجعة',
+      dashboardMessage: 'أرسل فريق {{teamName}} «{{cardTitle}}» للمراجعة',
+      actionUrl: '/admin-hackton-dashboard/practice',
+      emailEnabled: false,
+    }),
+    def({
+      key: 'practiceCardSubmittedAdvisor',
+      label: 'نموذج جديد بانتظار المراجعة (للمستشارين)',
+      category: 'advisor',
+      variables: ['teamName', 'cardTitle'],
+      type: 'info',
+      dashboardTitle: 'نموذج بانتظار المراجعة',
+      dashboardMessage: 'أرسل فريق {{teamName}} «{{cardTitle}}» للمراجعة',
+      actionUrl: '/advisor-dashboard',
+      emailEnabled: false,
+    }),
+    def({
+      key: 'practiceRevisionRequested',
+      label: 'إعادة نموذج للتعديل',
+      category: 'participant',
+      // Emailed to every member of the team (BCC): the leader edits, the rest follow along
+      variables: ['teamName', 'cardTitle', 'reviewerName', 'reviewComment', 'cardUrl'],
+      type: 'warning',
+      dashboardTitle: 'مطلوب تعديل: {{cardTitle}}',
+      dashboardMessage: 'أعاد {{reviewerName}} «{{cardTitle}}» للتعديل. الملاحظات: {{reviewComment}}',
+      emailSubject: 'ملاحظات على «{{cardTitle}}» — مطلوب تعديل',
+      emailBody:
+        'مرحباً،\n\nراجع {{reviewerName}} نموذج «{{cardTitle}}» الذي أرسله فريقكم ({{teamName}})، وترك لكم ملاحظات ويطلب التعديل عليه.\n\nملاحظات المراجع:\n{{reviewComment}}\n\nالمطلوب الآن:\nيعدّل قائد الفريق النموذج وفق الملاحظات ثم يرسله للمراجعة من جديد. ويستطيع بقية أعضاء الفريق الاطلاع على النموذج والملاحظات.\n\nلفتح النموذج: {{cardUrl}}',
+      actionUrl: '/participant-dashboard/practice',
+    }),
+    def({
+      key: 'practiceCardApproved',
+      label: 'اعتماد نموذج',
+      category: 'participant',
+      variables: ['cardTitle', 'reviewerName', 'reviewComment'],
+      type: 'success',
+      dashboardTitle: 'تم اعتماد {{cardTitle}}',
+      dashboardMessage: 'اعتمد {{reviewerName}} «{{cardTitle}}». {{reviewComment}}',
+      actionUrl: '/participant-dashboard/practice',
+      emailEnabled: false,
+    }),
+
+    // ---- advisor-facing ---------------------------------------------------
+    def({
+      key: 'advisorAccountCreated',
+      label: 'بيانات دخول المستشار',
+      category: 'advisor',
+      variables: ['advisorName', 'email', 'password', 'loginUrl'],
+      type: 'success',
+      dashboardTitle: 'مرحباً بك مستشاراً في هاكثون الطفولة',
+      dashboardMessage: 'من لوحة المستشار يمكنك مراجعة نماذج الفرق وتقييمها وإرسال ملاحظاتك لها',
+      emailSubject: 'حسابك كمستشار في هاكثون الطفولة — بيانات الدخول',
+      emailBody:
+        'مرحباً {{advisorName}}،\n\nتمت إضافتك مستشاراً في منصة هاكثون الطفولة لمراجعة نماذج الفرق وتقييمها.\n\nبيانات الدخول إلى لوحة المستشار:\nالبريد الإلكتروني: {{email}}\nكلمة المرور: {{password}}\n\nرابط تسجيل الدخول: {{loginUrl}}\n\nهذه البيانات خاصة بك ولا تشاركها مع أحد. يمكنك تغيير كلمة المرور في أي وقت عبر خيار "نسيت كلمة المرور" في صفحة الدخول.',
+      actionUrl: '/advisor-dashboard',
+    }),
     def({
       key: 'mentorProfileApproval',
       label: 'قبول المرشد',
@@ -533,7 +603,7 @@ export async function getEffectiveTemplate(key: string): Promise<EffectiveTempla
 
   try {
     const row = await prisma.notificationTemplate.findUnique({ where: { key } });
-    if (!row) return { ...defaults, emailEnabled: true, isCustomized: false };
+    if (!row) return { ...defaults, emailEnabled: defaults.emailEnabled ?? true, isCustomized: false };
 
     return {
       ...defaults,
@@ -547,7 +617,7 @@ export async function getEffectiveTemplate(key: string): Promise<EffectiveTempla
     };
   } catch (error) {
     console.error(`Error loading template override for ${key}:`, error);
-    return { ...defaults, emailEnabled: true, isCustomized: false };
+    return { ...defaults, emailEnabled: defaults.emailEnabled ?? true, isCustomized: false };
   }
 }
 
@@ -558,6 +628,9 @@ export async function getEffectiveTemplate(key: string): Promise<EffectiveTempla
 export type Audience =
   | { kind: 'participant'; id: string }
   | { kind: 'mentor'; id: string }
+  | { kind: 'advisor'; id: string }
+  /** Every advisor whose account is not disabled. */
+  | { kind: 'advisors' }
   | { kind: 'admins' }
   | { kind: 'team'; teamId: string }
   | { kind: 'allParticipants' }
@@ -583,7 +656,7 @@ export interface DispatchParams {
 
 export interface PlannedRecipient {
   notificationId: string;
-  recipientType: 'admin' | 'participant' | 'mentor';
+  recipientType: 'admin' | 'participant' | 'mentor' | 'advisor';
   recipientId: string;
   email: string | null; // null => no email deliverable for this row
   /** Fully merged variables for this recipient (shared + per-recipient). */
@@ -679,6 +752,21 @@ export async function createNotificationRows(
       email,
       variables: varsFor(audience.id),
     });
+  } else if (audience.kind === 'advisor' || audience.kind === 'advisors') {
+    // Disabled advisors get no notification, like disabled mentors.
+    const advisors = await prisma.advisor.findMany({
+      where: audience.kind === 'advisor' ? { id: audience.id, isDisabled: false } : { isDisabled: false },
+      select: { id: true, email: true },
+    });
+    for (const a of advisors) {
+      recipients.push({
+        notificationId: crypto.randomUUID(),
+        recipientType: 'advisor',
+        recipientId: a.id,
+        email: a.email,
+        variables: varsFor(a.id),
+      });
+    }
   } else if (audience.kind === 'admins') {
     // Mirrors notifyAllAdmins (notifications.ts): fall back to "admin-1" when
     // the table is empty. Admin email goes to the shared inbox, resolved later.
