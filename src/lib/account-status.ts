@@ -73,6 +73,28 @@ export const ELIGIBLE_PARTICIPANT_WHERE: Prisma.ParticipantWhereInput = {
   ],
 };
 
+/**
+ * Registrants still waiting for a decision: a team member while their TEAM is
+ * pending, an individual while their own status is pending. Disabled accounts
+ * are excluded, as are rejected ones.
+ *
+ * Only the admin broadcast audiences «جميع المسجلين» / «المسجلون غير المقبولين
+ * بعد» use this — automatic announcements still go to approved participants
+ * only (ELIGIBLE_PARTICIPANT_WHERE).
+ */
+export const PENDING_REGISTRANT_WHERE: Prisma.ParticipantWhereInput = {
+  isDisabled: false,
+  OR: [
+    { teamId: null, status: 'pending', ...PHASE_OK },
+    { team: { is: { isDisabled: false, status: 'pending', ...PHASE_OK } } },
+  ],
+};
+
+/** Everyone registered who has not been turned down or disabled: approved or still pending. */
+export const REGISTRANT_WHERE: Prisma.ParticipantWhereInput = {
+  OR: [ELIGIBLE_PARTICIPANT_WHERE, PENDING_REGISTRANT_WHERE],
+};
+
 /** Mentors who may receive bulk email: activated by an admin and not disabled. */
 export const ELIGIBLE_MENTOR_WHERE: Prisma.MentorWhereInput = {
   isDisabled: false,

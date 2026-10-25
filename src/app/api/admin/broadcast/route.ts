@@ -10,6 +10,8 @@ import {
   DISABLED_MENTOR_WHERE,
   ELIGIBLE_PARTICIPANT_WHERE,
   ELIGIBLE_MENTOR_WHERE,
+  PENDING_REGISTRANT_WHERE,
+  REGISTRANT_WHERE,
   phaseParticipantWhere,
 } from '@/lib/account-status';
 import {
@@ -42,9 +44,14 @@ interface AudienceInput {
    * is the deliberate exception that lets an admin reach disabled accounts
    * (e.g. "you did not qualify") — they receive no transactional mail, but a
    * broadcast aimed at them still goes out. See mdfiles/disable-accounts.md.
+   * `all-registrants` (approved + pending) and `pending-registrants` (pending
+   * only) reach applicants who were not accepted yet; email only, since they
+   * cannot log in to see a dashboard notification.
    */
   type:
     | 'all-participants'
+    | 'all-registrants'
+    | 'pending-registrants'
     | 'all-mentors'
     | 'all-admins'
     | 'disabled-accounts'
@@ -62,7 +69,19 @@ interface ResolvedRecipient {
   email: string | null; // admins resolve to the shared inbox at send time
 }
 
+/** Audiences of applicants who may not have an account yet: email is the only channel that reaches them. */
+const EMAIL_ONLY_AUDIENCES = ['all-registrants', 'pending-registrants'];
+
 async function resolveAudience(audience: AudienceInput): Promise<ResolvedRecipient[]> {
+  if (audience.type === 'all-registrants' || audience.type === 'pending-registrants') {
+    // Not rejected and not disabled; team members by their team's status
+    const rows = await prisma.participant.findMany({
+      where: audience.type === 'all-registrants' ? REGISTRANT_WHERE : PENDING_REGISTRANT_WHERE,
+      select: { id: true, email: true },
+    });
+    return rows.map((r) => ({ recipientType: 'participant', recipientId: r.id, email: r.email }));
+  }
+
   if (audience.type === 'all-participants') {
     // Approved participants only: pending applicants and rejected ones are
     // excluded, as are disabled accounts (use 'disabled-accounts' for those).
@@ -171,8 +190,14 @@ export async function POST(request: NextRequest) {
     if (channels.length === 0 || !channels.every((c) => c === 'dashboard' || c === 'email')) {
       return NextResponse.json({ error: 'يرجى اختيار قناة إرسال واحدة على الأقل' }, { status: 400 });
     }
-    if (!audience || !['all-participants', 'all-mentors', 'all-admins', 'disabled-accounts', 'phase', 'phase-failed', 'selected'].includes(audience.type)) {
+    if (!audience || !['all-participants', 'all-registrants', 'pending-registrants', 'all-mentors', 'all-admins', 'disabled-accounts', 'phase', 'phase-failed', 'selected'].includes(audience.type)) {
       return NextResponse.json({ error: 'جمهور الإرسال غير صالح' }, { status: 400 });
+    }
+    if (EMAIL_ONLY_AUDIENCES.includes(audience.type) && (channels.length !== 1 || channels[0] !== 'email')) {
+      return NextResponse.json(
+        { error: 'هذا الجمهور يُراسل بالبريد الإلكتروني فقط، لأن غير المقبولين لا يستطيعون الدخول إلى لوحة التحكم' },
+        { status: 400 }
+      );
     }
     if (audience.type === 'selected' && (!audience.selected || audience.selected.length === 0)) {
       return NextResponse.json({ error: 'يرجى اختيار مستلم واحد على الأقل' }, { status: 400 });
@@ -182,6 +207,13 @@ export async function POST(request: NextRequest) {
     }
 
     const recipients = await resolveAudience(audience);
+
+    // Dry run: how many would receive it, so the admin can confirm a large send
+    if (body.dryRun === true) {
+      const emails = new Set(recipients.filter((r) => r.email).map((r) => r.email));
+      return NextResponse.json({ recipients: recipients.length, emails: emails.size });
+    }
+
     if (recipients.length === 0) {
       return NextResponse.json({ error: 'لا يوجد مستلمون مطابقون' }, { status: 400 });
     }

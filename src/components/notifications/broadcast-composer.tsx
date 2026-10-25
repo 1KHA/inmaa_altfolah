@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "../../../components/ui/use-toast";
 
 interface PickerUser {
@@ -51,6 +52,8 @@ const PROGRESS_POLL_MS = 3000;
 
 type AudienceType =
   | "all-participants"
+  | "all-registrants"
+  | "pending-registrants"
   | "all-mentors"
   | "all-admins"
   | "disabled-accounts"
@@ -60,6 +63,9 @@ type AudienceType =
 
 const AUDIENCE_LABELS: Record<string, string> = {
   "all-participants": "جميع المشاركين",
+  // Applicants not accepted yet have no account: these two go by email only
+  "all-registrants": "جميع المسجلين (بمن فيهم غير المقبولين)",
+  "pending-registrants": "المسجلون غير المقبولين بعد",
   "all-mentors": "جميع المرشدين",
   "all-admins": "جميع المشرفين",
   // The one channel that still reaches disabled accounts — they receive no
@@ -71,6 +77,9 @@ const AUDIENCE_LABELS: Record<string, string> = {
   "phase-failed": "المتعثّرون في مرحلة",
   selected: "مستخدمون محددون",
 };
+
+/** Audiences that may include people without an account — email only, confirmed before sending. */
+const EMAIL_ONLY_AUDIENCES: AudienceType[] = ["all-registrants", "pending-registrants"];
 
 export default function BroadcastComposer() {
   const [title, setTitle] = useState("");
@@ -87,7 +96,10 @@ export default function BroadcastComposer() {
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<BroadcastRow[]>([]);
   const [retrying, setRetrying] = useState<string | null>(null);
+  // Recipient count shown before a send to applicants is confirmed
+  const [confirmCount, setConfirmCount] = useState<{ recipients: number; emails: number } | null>(null);
   const { toast } = useToast();
+  const emailOnly = EMAIL_ONLY_AUDIENCES.includes(audienceType);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -162,26 +174,56 @@ export default function BroadcastComposer() {
     });
   };
 
+  const buildAudience = () =>
+    audienceType === "selected"
+      ? {
+          type: "selected",
+          selected: Array.from(selectedIds).map((key) => {
+            const [type, id] = key.split(":");
+            return { type, id };
+          }),
+        }
+      : audienceType === "phase" || audienceType === "phase-failed"
+      ? { type: audienceType, phaseId }
+      : { type: audienceType };
+
+  const buildChannels = () => [
+    ...(channelDashboard && !emailOnly ? ["dashboard"] : []),
+    ...(channelEmail ? ["email"] : []),
+  ];
+
+  // Applicants: count the recipients first and ask for confirmation
+  const requestSend = async () => {
+    if (!emailOnly) return send();
+    try {
+      setSending(true);
+      const res = await fetch("/api/admin/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title, body, channels: buildChannels(), audience: buildAudience(), dryRun: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "تعذر حساب عدد المستلمين");
+      if (data.emails === 0) throw new Error("لا يوجد مستلمون مطابقون");
+      setConfirmCount(data);
+    } catch (err) {
+      toast({
+        title: "خطأ",
+        description: err instanceof Error ? err.message : "تعذر حساب عدد المستلمين",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
   const send = async () => {
     try {
       setSending(true);
-      const audience =
-        audienceType === "selected"
-          ? {
-              type: "selected",
-              selected: Array.from(selectedIds).map((key) => {
-                const [type, id] = key.split(":");
-                return { type, id };
-              }),
-            }
-          : audienceType === "phase" || audienceType === "phase-failed"
-          ? { type: audienceType, phaseId }
-          : { type: audienceType };
-
-      const channels = [
-        ...(channelDashboard ? ["dashboard"] : []),
-        ...(channelEmail ? ["email"] : []),
-      ];
+      setConfirmCount(null);
+      const audience = buildAudience();
+      const channels = buildChannels();
 
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
@@ -226,7 +268,7 @@ export default function BroadcastComposer() {
   const canSend =
     title.trim() &&
     body.trim() &&
-    (channelDashboard || channelEmail) &&
+    (emailOnly ? channelEmail : channelDashboard || channelEmail) &&
     (audienceType !== "selected" || selectedIds.size > 0) &&
     ((audienceType !== "phase" && audienceType !== "phase-failed") || Boolean(phaseId));
 
@@ -260,10 +302,13 @@ export default function BroadcastComposer() {
             <div className="flex items-center gap-2">
               <Checkbox
                 id="ch-dash"
-                checked={channelDashboard}
+                checked={channelDashboard && !emailOnly}
+                disabled={emailOnly}
                 onCheckedChange={(v) => setChannelDashboard(v === true)}
               />
-              <Label htmlFor="ch-dash">إشعار في لوحة التحكم</Label>
+              <Label htmlFor="ch-dash" className={emailOnly ? "text-muted-foreground" : undefined}>
+                إشعار في لوحة التحكم
+              </Label>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
@@ -284,13 +329,27 @@ export default function BroadcastComposer() {
                   type="button"
                   size="sm"
                   variant={audienceType === t ? "default" : "outline"}
-                  onClick={() => setAudienceType(t)}
+                  onClick={() => {
+                    setAudienceType(t);
+                    // Applicants can only be reached by email
+                    if (EMAIL_ONLY_AUDIENCES.includes(t)) setChannelEmail(true);
+                  }}
                 >
                   {AUDIENCE_LABELS[t]}
                 </Button>
               ))}
             </div>
           </div>
+
+          {emailOnly && (
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 leading-6">
+              {audienceType === "all-registrants"
+                ? "يشمل كل من سجّل في الهاكثون: المقبولين ومن لم يُبت في طلبه بعد (أعضاء الفرق بحسب حالة فرقهم)."
+                : "يشمل فقط من لم يُبت في طلبه بعد: أعضاء الفرق غير المقبولة بعد والمشاركين الأفراد غير المقبولين."}{" "}
+              لا يشمل المرفوضين ولا الحسابات المعطلة. يُرسل بالبريد الإلكتروني فقط لأن غير المقبولين لا يستطيعون
+              الدخول إلى لوحة التحكم، وسيُعرض عليك عدد المستلمين للتأكيد قبل الإرسال.
+            </p>
+          )}
 
           {audienceType === "disabled-accounts" && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
@@ -383,7 +442,7 @@ export default function BroadcastComposer() {
           )}
 
           <Button
-            onClick={send}
+            onClick={requestSend}
             disabled={!canSend || sending}
             className="bg-primary hover:bg-primary"
           >
@@ -392,6 +451,31 @@ export default function BroadcastComposer() {
           </Button>
         </CardContent>
       </Card>
+
+      <Dialog open={confirmCount !== null} onOpenChange={(open) => !open && setConfirmCount(null)}>
+        <DialogContent dir="rtl" className="sm:max-w-md">
+          <DialogHeader className="text-right sm:text-right">
+            <DialogTitle>تأكيد الإرسال إلى {AUDIENCE_LABELS[audienceType]}</DialogTitle>
+            <DialogDescription className="leading-7">
+              ستُرسل رسالة «{title}» بالبريد الإلكتروني. عدد عناوين البريد المستلمة:{" "}
+              <strong className="text-foreground">{confirmCount?.emails}</strong>
+              {confirmCount && confirmCount.recipients !== confirmCount.emails
+                ? ` (عدد المسجلين ${confirmCount.recipients}، وبعضهم يتشارك البريد نفسه)`
+                : ""}
+              . تأكد أن باقة خدمة البريد تسمح بهذا العدد.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button onClick={send} disabled={sending}>
+              <Send className="ml-2 h-4 w-4" />
+              تأكيد الإرسال
+            </Button>
+            <Button variant="outline" onClick={() => setConfirmCount(null)} disabled={sending}>
+              إلغاء
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
