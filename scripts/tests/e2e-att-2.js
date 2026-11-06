@@ -171,11 +171,12 @@ async function main() {
   check('  manual marking counted by stats (attended=3)', ev2.json.counts.attended === 3, JSON.stringify(ev2.json.counts));
 
   const gen = await api(`/api/admin/attendance?mode=general&date=${g1.json.date}`, { cookie: aCookie });
-  check('general stats: checked-in list + absentee diff',
+  check('general stats: only the people scanned that day',
     gen.status === 200 && gen.json.counts.checkedIn === 2 &&
+    gen.json.checkedIn.length === 2 &&
     gen.json.checkedIn.some(r => r.participantId === pGen.id) &&
-    gen.json.notCheckedIn.some(r => r.participantId === pNone.id) &&
-    gen.json.counts.total === gen.json.counts.checkedIn + gen.json.counts.notCheckedIn,
+    !gen.json.checkedIn.some(r => r.participantId === pNone.id) &&
+    !('notCheckedIn' in gen.json) && !('total' in gen.json.counts),
     JSON.stringify(gen.json.counts));
 
   section('undo');

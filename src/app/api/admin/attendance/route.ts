@@ -34,7 +34,7 @@ const participantSelect = {
  * GET — attendance tracking data.
  *
  *   ?mode=event&eventId=…  every registration with name/team/status/scan info + counts
- *   ?mode=general&date=…   checked-in list + absentee diff + counts (date defaults to today)
+ *   ?mode=general&date=…   the people scanned in that day + counts (date defaults to today)
  */
 export async function GET(request: NextRequest) {
   if (!requireAdmin(cookies().get('token')?.value)) {
@@ -49,27 +49,36 @@ export async function GET(request: NextRequest) {
     const mode = searchParams.get('mode') === 'general' ? 'general' : 'event';
 
     // ---- general venue check-in ---------------------------------------------
+    // Only the people actually scanned that day — not every registrant.
     if (mode === 'general') {
       const date = searchParams.get('date') || riyadhToday();
 
-      const [records, allParticipants] = await Promise.all([
-        prisma.attendanceRecord.findMany({
-          where: { eventId: null, checkinDate: date },
-          include: { participant: { select: participantSelect } },
-          orderBy: { createdAt: 'desc' },
-        }),
-        prisma.participant.findMany({ select: participantSelect }),
+      const records = await prisma.attendanceRecord.findMany({
+        where: { eventId: null, checkinDate: date },
+        include: { participant: { select: participantSelect } },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // scannedBy holds an admin or an organizer id — show who scanned
+      const scannerIds = Array.from(new Set(records.map((r) => r.scannedBy)));
+      const [admins, organizers] = await Promise.all([
+        prisma.admin.findMany({ where: { id: { in: scannerIds } }, select: { id: true, username: true } }),
+        prisma.organizer.findMany({ where: { id: { in: scannerIds } }, select: { id: true, name: true } }),
+      ]);
+      const scannerName = new Map<string, string>([
+        ...admins.map((a) => [a.id, `مسؤول: ${a.username}`] as [string, string]),
+        ...organizers.map((o) => [o.id, `منظم: ${o.name}`] as [string, string]),
       ]);
 
-      const checkedInIds = new Set(records.map((r) => r.participantId));
+      const teams = new Set(records.map((r) => r.participant.team?.teamName).filter(Boolean));
 
       return NextResponse.json({
         mode: 'general',
         date,
         counts: {
-          total: allParticipants.length,
           checkedIn: records.length,
-          notCheckedIn: allParticipants.length - records.length,
+          teams: teams.size,
+          solo: records.filter((r) => !r.participant.team).length,
         },
         checkedIn: records.map((r) => ({
           participantId: r.participantId,
@@ -78,16 +87,8 @@ export async function GET(request: NextRequest) {
           teamName: r.participant.team?.teamName ?? null,
           time: r.createdAt,
           method: r.method,
-          scannedBy: r.scannedBy,
+          scannedBy: scannerName.get(r.scannedBy) ?? null,
         })),
-        notCheckedIn: allParticipants
-          .filter((p) => !checkedInIds.has(p.id))
-          .map((p) => ({
-            participantId: p.id,
-            name: displayName(p),
-            email: p.email,
-            teamName: p.team?.teamName ?? null,
-          })),
       });
     }
 

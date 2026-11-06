@@ -58,6 +58,8 @@ interface AttendanceRow {
   scannedAt?: string | null;
   time?: string;
   method?: string | null;
+  /** General mode: who scanned, e.g. "منظم: منظم 1". */
+  scannedBy?: string | null;
 }
 
 interface AttendanceData {
@@ -66,8 +68,8 @@ interface AttendanceData {
   event?: { id: string; title: string };
   counts: Record<string, number>;
   rows?: AttendanceRow[];
+  /** General mode: only the people scanned in on `date`. */
   checkedIn?: AttendanceRow[];
-  notCheckedIn?: AttendanceRow[];
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -76,6 +78,14 @@ const STATUS_LABELS: Record<string, string> = {
   absent: "غائب",
   cancelled: "ملغى",
 };
+
+const METHOD_LABELS: Record<string, string> = { scan: "مسح", manual: "يدوي" };
+
+/** Check-in time of day in Saudi time, whatever the viewer's timezone. */
+function formatTime(value?: string | null): string {
+  if (!value) return "-";
+  return new Date(value).toLocaleTimeString("ar-SA", { timeZone: "Asia/Riyadh", hour: "2-digit", minute: "2-digit" });
+}
 
 const STATUS_PILL: Record<string, string> = {
   registered: "bg-brand-honey/20 text-primary-dark",
@@ -325,16 +335,13 @@ export default function AttendancePage() {
   const tableRows: AttendanceRow[] = useMemo(() => {
     if (!data) return [];
     if (data.mode === "event") return data.rows ?? [];
-    return [
-      ...(data.checkedIn ?? []).map((r) => ({ ...r, status: "attended" })),
-      ...(data.notCheckedIn ?? []).map((r) => ({ ...r, status: "registered" })),
-    ];
+    return (data.checkedIn ?? []).map((r) => ({ ...r, status: "attended" }));
   }, [data]);
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tableRows.filter((r) => {
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (mode === "event" && statusFilter !== "all" && r.status !== statusFilter) return false;
       if (!q) return true;
       return (
         r.name.toLowerCase().includes(q) ||
@@ -342,29 +349,37 @@ export default function AttendancePage() {
         (r.teamName ?? "").toLowerCase().includes(q)
       );
     });
-  }, [tableRows, search, statusFilter]);
+  }, [tableRows, search, statusFilter, mode]);
 
   const handleExport = () => {
+    const wb = XLSX.utils.book_new();
+    if (mode === "general") {
+      // the people scanned in that day, grouped by team
+      const rows = [...filteredRows]
+        .sort((x, y) => (x.teamName || "\uffff").localeCompare(y.teamName || "\uffff", "ar") || x.name.localeCompare(y.name, "ar"))
+        .map((r) => ({
+          الاسم: r.name,
+          "البريد الإلكتروني": r.email,
+          الفريق: r.teamName || "بدون فريق",
+          التاريخ: date,
+          "وقت التسجيل": formatTime(r.time),
+          الطريقة: METHOD_LABELS[r.method ?? ""] ?? "-",
+          "سُجّل بواسطة": r.scannedBy || "-",
+        }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), date);
+      XLSX.writeFile(wb, `الحضور_العام_${date}.xlsx`);
+      return;
+    }
     const rows = filteredRows.map((r) => ({
       الاسم: r.name,
       "البريد الإلكتروني": r.email,
       الفريق: r.teamName || "بدون فريق",
       الحالة: STATUS_LABELS[r.status ?? ""] ?? r.status ?? "-",
-      "وقت التسجيل": r.scannedAt
-        ? new Date(r.scannedAt).toLocaleString("ar-SA")
-        : (r as any).time
-          ? new Date((r as any).time).toLocaleString("ar-SA")
-          : "-",
-      الطريقة: r.method === "scan" ? "مسح" : r.method === "manual" ? "يدوي" : "-",
+      "وقت التسجيل": r.scannedAt ? new Date(r.scannedAt).toLocaleString("ar-SA") : "-",
+      الطريقة: METHOD_LABELS[r.method ?? ""] ?? "-",
     }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "الحضور");
-    const label =
-      mode === "event"
-        ? events.find((e) => e.id === eventId)?.title || "فعالية"
-        : `حضور_عام_${date}`;
-    XLSX.writeFile(wb, `الحضور_${label}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "الحضور");
+    XLSX.writeFile(wb, `الحضور_${events.find((e) => e.id === eventId)?.title || "فعالية"}.xlsx`);
   };
 
   const resultStyles: Record<ScanResult["kind"], string> = {
@@ -386,9 +401,9 @@ export default function AttendancePage() {
         ]
       : data
         ? [
-            { label: "إجمالي المشاركين", value: data.counts.total },
-            { label: "سجّلوا الدخول", value: data.counts.checkedIn },
-            { label: "لم يسجلوا", value: data.counts.notCheckedIn },
+            { label: "حضروا في هذا اليوم", value: data.counts.checkedIn },
+            { label: "عدد الفرق", value: data.counts.teams },
+            { label: "بدون فريق", value: data.counts.solo },
           ]
         : [];
 
@@ -605,14 +620,15 @@ export default function AttendancePage() {
             <CardContent>
               <div className="flex flex-col md:flex-row gap-3 mb-4">
                 <div className="relative flex-1">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    className="pr-10"
+                    className="ps-10"
                     placeholder="ابحث بالاسم أو البريد أو الفريق..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
+                {data.mode === "event" && (
                 <Select value={statusFilter} onValueChange={setStatusFilter} dir="rtl">
                   <SelectTrigger className="md:w-[180px]">
                     <SelectValue />
@@ -620,16 +636,21 @@ export default function AttendancePage() {
                   <SelectContent>
                     <SelectItem value="all">كل الحالات</SelectItem>
                     <SelectItem value="attended">حاضر</SelectItem>
-                    <SelectItem value="registered">{data.mode === "event" ? "مسجل (لم يحضر)" : "لم يسجل الدخول"}</SelectItem>
-                    {data.mode === "event" && <SelectItem value="absent">غائب</SelectItem>}
-                    {data.mode === "event" && <SelectItem value="cancelled">ملغى</SelectItem>}
+                    <SelectItem value="registered">مسجل (لم يحضر)</SelectItem>
+                    <SelectItem value="absent">غائب</SelectItem>
+                    <SelectItem value="cancelled">ملغى</SelectItem>
                   </SelectContent>
                 </Select>
+                )}
               </div>
 
               {filteredRows.length === 0 ? (
                 <p className="text-center p-4 text-muted-foreground">
-                  {data.mode === "event" && !eventId ? "اختر فعالية لعرض قائمتها." : "لا توجد نتائج."}
+                  {data.mode === "event" && !eventId
+                    ? "اختر فعالية لعرض قائمتها."
+                    : data.mode === "general" && !search.trim()
+                      ? "لم يُسجَّل حضور أحد في هذا اليوم."
+                      : "لا توجد نتائج."}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -638,9 +659,10 @@ export default function AttendancePage() {
                       <tr className="bg-muted">
                         <th className="border p-2 text-right">الاسم</th>
                         <th className="border p-2 text-right">الفريق</th>
-                        <th className="border p-2 text-right">الحالة</th>
+                        {data.mode === "event" && <th className="border p-2 text-right">الحالة</th>}
                         <th className="border p-2 text-right">وقت التسجيل</th>
                         <th className="border p-2 text-right">الطريقة</th>
+                        {data.mode === "general" && <th className="border p-2 text-right">سُجّل بواسطة</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -653,21 +675,22 @@ export default function AttendancePage() {
                             </div>
                           </td>
                           <td className="border p-2 text-sm">{r.teamName || "بدون فريق"}</td>
-                          <td className="border p-2">
-                            <span className={`px-2 py-1 rounded-full text-xs ${STATUS_PILL[r.status ?? ""] ?? "bg-gray-100 text-gray-600"}`}>
-                              {STATUS_LABELS[r.status ?? ""] ?? r.status}
-                            </span>
-                          </td>
+                          {data.mode === "event" && (
+                            <td className="border p-2">
+                              <span className={`px-2 py-1 rounded-full text-xs ${STATUS_PILL[r.status ?? ""] ?? "bg-gray-100 text-gray-600"}`}>
+                                {STATUS_LABELS[r.status ?? ""] ?? r.status}
+                              </span>
+                            </td>
+                          )}
                           <td className="border p-2 text-sm">
-                            {r.scannedAt
-                              ? new Date(r.scannedAt).toLocaleString("ar-SA")
-                              : (r as any).time
-                                ? new Date((r as any).time).toLocaleString("ar-SA")
+                            {data.mode === "general"
+                              ? formatTime(r.time)
+                              : r.scannedAt
+                                ? new Date(r.scannedAt).toLocaleString("ar-SA")
                                 : "-"}
                           </td>
-                          <td className="border p-2 text-sm">
-                            {r.method === "scan" ? "مسح" : r.method === "manual" ? "يدوي" : "-"}
-                          </td>
+                          <td className="border p-2 text-sm">{METHOD_LABELS[r.method ?? ""] ?? "-"}</td>
+                          {data.mode === "general" && <td className="border p-2 text-sm">{r.scannedBy || "-"}</td>}
                         </tr>
                       ))}
                     </tbody>
@@ -676,7 +699,7 @@ export default function AttendancePage() {
               )}
 
               <div className="mt-4 text-sm text-muted-foreground text-center">
-                إجمالي الصفوف: {filteredRows.length}
+                {data.mode === "general" ? "عدد الحاضرين المعروضين" : "إجمالي الصفوف"}: {filteredRows.length}
               </div>
             </CardContent>
           </Card>
