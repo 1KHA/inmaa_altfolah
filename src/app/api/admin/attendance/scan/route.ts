@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/notification-auth';
-import { dispatchNotification } from '@/lib/notify';
-import { riyadhToday } from '@/lib/badge-dates';
+import { findBadgeHolder, checkInGeneral, notifyAttendance } from '@/lib/general-checkin';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,65 +45,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'يرجى اختيار الفعالية أولاً' }, { status: 400 });
     }
 
-    const participant = await prisma.participant.findUnique({
-      where: { badgeCode },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        firstName: true,
-        secondName: true,
-        familyName: true,
-        team: { select: { teamName: true } },
-      },
-    });
-
-    if (!participant) {
+    const identity = await findBadgeHolder(badgeCode);
+    if (!identity) {
       return NextResponse.json({ error: 'بطاقة غير معروفة — تحقق من الرمز' }, { status: 404 });
     }
-
-    const identity = {
-      participantId: participant.id,
-      fullName:
-        participant.fullName ||
-        `${participant.firstName ?? ''} ${participant.secondName ?? ''} ${participant.familyName ?? ''}`.trim() ||
-        participant.email,
-      teamName: participant.team?.teamName ?? null,
-    };
+    const participant = { id: identity.participantId };
 
     // ---- general venue check-in ---------------------------------------------
     if (mode === 'general') {
-      const today = riyadhToday();
-      try {
-        const record = await prisma.attendanceRecord.create({
-          data: {
-            participantId: participant.id,
-            eventId: null,
-            checkinDate: today,
-            scannedBy: adminId,
-            method,
-          },
-        });
-        await notifyAttendance(participant.id, 'الحضور العام');
-        return NextResponse.json({
-          success: true,
-          result: 'checkedIn',
-          date: today,
-          recordId: record.id,
-          ...identity,
-        });
-      } catch (error: unknown) {
-        if ((error as { code?: string })?.code === 'P2002') {
-          // same-day duplicate — not an error at the door
-          return NextResponse.json({
-            success: true,
-            result: 'alreadyCheckedIn',
-            date: today,
-            ...identity,
-          });
-        }
-        throw error;
-      }
+      // same-day duplicate comes back as result 'alreadyCheckedIn' — not an error at the door
+      const outcome = await checkInGeneral({ participantId: participant.id, scannedBy: adminId, method });
+      return NextResponse.json({ success: true, ...outcome, ...identity });
     }
 
     // ---- event attendance -----------------------------------------------------
@@ -177,19 +128,5 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error recording attendance:', error);
     return NextResponse.json({ error: 'خطأ في الخادم' }, { status: 500 });
-  }
-}
-
-/** Best-effort attendance notification — never fails the scan. */
-async function notifyAttendance(participantId: string, eventTitle: string): Promise<void> {
-  try {
-    await dispatchNotification({
-      templateKey: 'attendanceRecorded',
-      variables: { eventTitle },
-      audience: { kind: 'participant', id: participantId },
-      relatedEntityType: 'attendance',
-    });
-  } catch (error) {
-    console.error('Error sending attendance notification:', error);
   }
 }

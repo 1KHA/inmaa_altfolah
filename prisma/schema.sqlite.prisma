@@ -108,6 +108,19 @@ model Admin {
   updatedAt    DateTime @updatedAt
 }
 
+// Door staff (منظم): can only check badges in (general attendance) and look up
+// active participants. Separate from Admin on purpose — no admin route accepts
+// the 'organizer' role. Not to be confused with Organization (mentor groups).
+model Organizer {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  name         String
+  passwordHash String
+  isDisabled   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model Mentor {
   id             String               @id @default(cuid())
   name           String

@@ -97,5 +97,6 @@ export const config = {
     '/participant-dashboard/:path*',
     '/mentor-dashboard/:path*',
     '/advisor-dashboard/:path*',
+    '/organizer-dashboard/:path*',
   ],
 };
